@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use sqlx::SqlitePool;
+use sqlx::{SqliteConnection, SqlitePool};
 
 use crate::domain::effective_match::{self, EventView, LeagueOverrides};
 use crate::domain::lock_reveal::{self, MemberSpan, Outcome};
@@ -54,43 +54,60 @@ impl LeagueMatches {
 /// hand-added Matches and its Overrides in force (#13), merged by
 /// [`effective_match::effective_view`].
 pub async fn effective_view(db: &SqlitePool, league: &League) -> Result<EventView, sqlx::Error> {
-    Ok(effective_view_and_overrides(db, league).await?.0)
+    let mut conn = db.acquire().await?;
+    Ok(effective_view_and_overrides(&mut conn, league).await?.0)
 }
 
 /// The League Admins' working view (#13): [`effective_view`] including the
 /// hidden Matches, and the Overrides in force.
 pub async fn admin_view(
-    db: &SqlitePool,
+    db: &mut SqliteConnection,
     league: &League,
 ) -> Result<(EventView, LeagueOverrides), sqlx::Error> {
-    let base = events::base_view(db, league.event_id)
+    let base = events::base_view(&mut *db, league.event_id)
         .await?
         .ok_or_else(|| sqlx::Error::RowNotFound)?;
-    let overrides = store_overrides::for_league(db, league.id).await?;
+    let overrides = store_overrides::for_league(&mut *db, league.id).await?;
     Ok((effective_match::with_hidden(base, &overrides), overrides))
 }
 
 /// [`effective_view`] and the Overrides it was built with.
 pub async fn effective_view_and_overrides(
-    db: &SqlitePool,
+    db: &mut SqliteConnection,
     league: &League,
 ) -> Result<(EventView, LeagueOverrides), sqlx::Error> {
-    let base = events::base_view(db, league.event_id)
+    let base = events::base_view(&mut *db, league.event_id)
         .await?
         .ok_or_else(|| sqlx::Error::RowNotFound)?;
-    let overrides = store_overrides::for_league(db, league.id).await?;
+    let overrides = store_overrides::for_league(&mut *db, league.id).await?;
     Ok((effective_match::effective_view(base, &overrides), overrides))
 }
 
 /// Loads the League's Matches, evaluates Lock/Reveal for each at `now`, and
-/// stores any new Lock/Reveal stamps.
+/// stores any new Lock/Reveal stamps. For reads; a write that depends on Lock
+/// uses [`evaluate_in`] inside its transaction.
 pub async fn evaluate(
     db: &SqlitePool,
     league: &League,
     now: DateTime<Utc>,
 ) -> Result<LeagueMatches, sqlx::Error> {
-    let (view, overrides) = effective_view_and_overrides(db, league).await?;
-    let members: Vec<MemberSpan> = leagues::all_memberships(db, league.id)
+    evaluate_in(&mut *db.acquire().await?, league, now).await
+}
+
+/// [`evaluate`] on one connection, typically a write transaction from
+/// [`crate::db::begin_write`]: a write that must respect Lock (a Prediction,
+/// a Pick'em, an Override, a poll that may move a Scheduled Start) opens the
+/// transaction, reads `now` from the clock, evaluates (storing every Lock due
+/// by the data it has), checks, writes, evaluates again and commits. No other
+/// writer runs in between, so no write lands after a Lock or Reveal that has
+/// happened, and no later data un-happens one (ADR-0003).
+pub async fn evaluate_in(
+    db: &mut SqliteConnection,
+    league: &League,
+    now: DateTime<Utc>,
+) -> Result<LeagueMatches, sqlx::Error> {
+    let (view, overrides) = effective_view_and_overrides(&mut *db, league).await?;
+    let members: Vec<MemberSpan> = leagues::all_memberships(&mut *db, league.id)
         .await?
         .into_iter()
         .map(|m| MemberSpan {
@@ -103,7 +120,7 @@ pub async fn evaluate(
     // effective view (#13): after a teams Override, a pick of a team that no
     // longer plays it is as good as none (it does not count toward Reveal and
     // scores nothing). The row is kept, so clearing the Override restores it.
-    let predictions: Vec<Prediction> = predictions::for_league(db, league.id)
+    let predictions: Vec<Prediction> = predictions::for_league(&mut *db, league.id)
         .await?
         .into_iter()
         .filter(|p| {
@@ -111,7 +128,7 @@ pub async fn evaluate(
                 .is_some_and(|m| m.data.teams().contains(&Some(p.team_id)))
         })
         .collect();
-    let stored = predictions::stamps(db, league.id).await?;
+    let stored = predictions::stamps(&mut *db, league.id).await?;
 
     let mut outcomes = HashMap::new();
     for m in &view.matches {
@@ -129,7 +146,7 @@ pub async fn evaluate(
             now,
         });
         if !outcome.transitions.is_empty() {
-            predictions::record(db, league.id, id, &outcome.transitions).await?;
+            predictions::record(&mut *db, league.id, id, &outcome.transitions).await?;
         }
         outcomes.insert(id, outcome);
     }
@@ -141,7 +158,7 @@ pub async fn evaluate(
         .iter()
         .filter(|s| matches!(s.kind, StageKind::Swiss | StageKind::Playoffs))
     {
-        pickems::evaluate_lock(db, league.id, &view, stage.ordinal, now).await?;
+        pickems::evaluate_lock(&mut *db, league.id, &view, stage.ordinal, now).await?;
     }
 
     Ok(LeagueMatches {
@@ -149,7 +166,7 @@ pub async fn evaluate(
         outcomes,
         predictions,
         members,
-        profiles: leagues::members(db, league.id).await?,
+        profiles: leagues::members(&mut *db, league.id).await?,
         overrides,
     })
 }

@@ -20,8 +20,9 @@ use std::time::Duration as StdDuration;
 
 use chrono::{DateTime, Duration, Utc};
 
+use crate::db;
 use crate::domain::league::final_decided;
-use crate::domain::{EventId, Match, MatchStatus};
+use crate::domain::{EventId, EventSnapshot, Match, MatchStatus};
 use crate::league_matches::{self, LeagueMatches};
 use crate::notifications;
 use crate::state::AppState;
@@ -122,7 +123,7 @@ async fn poll_event_list(state: &AppState, now: DateTime<Utc>) -> Result<(), sql
 
 async fn poll_event(state: &AppState, id: EventId, now: DateTime<Utc>) -> Result<(), sqlx::Error> {
     let key = event_key(id);
-    let stored: Vec<Match> = events::base_view(&state.db, id)
+    let stored: Vec<Match> = events::base_view(&mut *state.db.acquire().await?, id)
         .await?
         .map(|view| view.matches.into_iter().map(|m| m.data).collect())
         .unwrap_or_default();
@@ -132,10 +133,27 @@ async fn poll_event(state: &AppState, id: EventId, now: DateTime<Utc>) -> Result
     }
     events::record_poll(&state.db, &key, now).await?;
     match state.source.fetch_event(id).await {
-        Ok(snapshot) => events::save_snapshot(&state.db, &snapshot, now).await?,
+        Ok(snapshot) => save_snapshot(state, &snapshot).await?,
         Err(e) => tracing::warn!("polling Event {id} failed: {e}"),
     }
     Ok(())
+}
+
+/// Stores a fetched snapshot. The fetch may have taken a while (an HLTV page
+/// load can take a minute), so in the same write transaction, at the clock's
+/// current time, every League on the Event is first evaluated against the
+/// data stored so far: a Lock that fell due during the fetch is stamped
+/// before a postponement in the snapshot could move it (ADR-0003).
+async fn save_snapshot(state: &AppState, snapshot: &EventSnapshot) -> Result<(), sqlx::Error> {
+    let mut tx = db::begin_write(&state.db).await?;
+    let now = state.clock.now();
+    for league in leagues::active(&mut *tx).await? {
+        if league.event_id == snapshot.event.id {
+            league_matches::evaluate_in(&mut tx, &league, now).await?;
+        }
+    }
+    events::save_snapshot(&mut tx, snapshot, now).await?;
+    tx.commit().await
 }
 
 /// How long to wait between polls of an Event with these Matches.

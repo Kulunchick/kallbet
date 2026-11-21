@@ -23,9 +23,11 @@ use axum::routing::get;
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::SqliteConnection;
 
 use crate::api::leagues::{require_member, require_writable};
 use crate::auth::session::CurrentUser;
+use crate::db;
 use crate::domain::effective_match::EventView;
 use std::collections::HashMap;
 
@@ -34,14 +36,12 @@ use crate::domain::{LeagueId, Stage, StageKind, StageOrdinal, TeamId, UserId};
 use crate::error::{ApiError, ApiResult};
 use crate::league_matches;
 use crate::state::AppState;
-use crate::store::{leagues, pickems};
+use crate::store::leagues::{self, League};
+use crate::store::pickems;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route(
-            "/leagues/{id}/stages/{ordinal}/pickem",
-            get(show).put(save),
-        )
+        .route("/leagues/{id}/stages/{ordinal}/pickem", get(show).put(save))
         .route("/leagues/{id}/pickem-leaderboard", get(leaderboard))
 }
 
@@ -79,7 +79,9 @@ async fn leaderboard(
     {
         let outcomes = pickem::swiss_outcomes(&view, stage.ordinal);
         let bracket = Bracket::of(&view, stage.ordinal);
-        for stored in pickems::for_stage(&state.db, league.id, stage.ordinal).await? {
+        for stored in
+            pickems::for_stage(&mut *state.db.acquire().await?, league.id, stage.ordinal).await?
+        {
             *points.entry(stored.user_id).or_default() +=
                 stored_points(stage.kind, &bracket, &outcomes, &stored.picks);
         }
@@ -305,8 +307,10 @@ async fn show(
     let matches = league_matches::evaluate(&state.db, &league, now).await?;
     let view = &matches.view;
     let stage = pickem_stage(view, ordinal)?;
-    let locked_at = pickems::evaluate_lock(&state.db, league.id, view, ordinal, now).await?;
-    let all = pickems::for_stage(&state.db, league.id, ordinal).await?;
+    let mut conn = state.db.acquire().await?;
+    let locked_at = pickems::evaluate_lock(&mut conn, league.id, view, ordinal, now).await?;
+    let all = pickems::for_stage(&mut conn, league.id, ordinal).await?;
+    drop(conn);
     let bracket = Bracket::of(view, ordinal);
     let outcomes = pickem::swiss_outcomes(view, ordinal);
 
@@ -388,12 +392,27 @@ async fn save(
 ) -> ApiResult<Json<PickemJson>> {
     let (league, _) = require_member(&state, &user, id).await?;
     require_writable(&league)?;
+    // Check and write are one write transaction (ADR-0003): no Lock can be
+    // stored between them, and `now` is read once it holds the write lock.
+    let mut tx = db::begin_write(&state.db).await?;
     let now = state.clock.now();
-    let matches = league_matches::evaluate(&state.db, &league, now).await?;
+    let result = save_in(&mut tx, &league, user.id, ordinal, body, now).await;
+    db::finish(tx, result).await.map(Json)
+}
+
+async fn save_in(
+    db: &mut SqliteConnection,
+    league: &League,
+    user: UserId,
+    ordinal: StageOrdinal,
+    body: serde_json::Value,
+    now: DateTime<Utc>,
+) -> ApiResult<PickemJson> {
+    let matches = league_matches::evaluate_in(db, league, now).await?;
     let view = &matches.view;
     let stage = pickem_stage(view, ordinal)?;
     // Lock is re-checked on the server, so a stale page cannot bypass it.
-    if pickems::evaluate_lock(&state.db, league.id, view, ordinal, now)
+    if pickems::evaluate_lock(db, league.id, view, ordinal, now)
         .await?
         .is_some()
     {
@@ -422,6 +441,8 @@ async fn save(
             (picks.to_picks(), swiss_json(picks, now))
         }
     };
-    pickems::save(&state.db, league.id, ordinal, user.id, &picks, now).await?;
-    Ok(Json(saved))
+    if !pickems::save(db, league.id, ordinal, user, &picks, now).await? {
+        return Err(ApiError::conflict("pickem_locked"));
+    }
+    Ok(saved)
 }

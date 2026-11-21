@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{Executor, FromRow, Sqlite, SqliteConnection};
 
 use crate::domain::lock_reveal::{Stamps, Transition};
 use crate::domain::{LeagueId, MatchId, TeamId, UserId};
@@ -20,7 +20,10 @@ pub struct Prediction {
 
 /// Every Prediction in the League. Only the server sees all of them: what a
 /// Member may see is decided by the Reveal state.
-pub async fn for_league(db: &SqlitePool, league: LeagueId) -> Result<Vec<Prediction>, sqlx::Error> {
+pub async fn for_league<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
+    league: LeagueId,
+) -> Result<Vec<Prediction>, sqlx::Error> {
     sqlx::query_as(
         "SELECT match_id, user_id, team_id, updated_at FROM predictions \
          WHERE league_id = ? ORDER BY match_id, updated_at, user_id",
@@ -30,18 +33,26 @@ pub async fn for_league(db: &SqlitePool, league: LeagueId) -> Result<Vec<Predict
     .await
 }
 
-/// Creates or changes `user`'s Prediction. The caller has checked Lock.
-pub async fn upsert(
-    db: &SqlitePool,
+/// Creates or changes `user`'s Prediction, unless the Match has a stored
+/// Lock in the League: then nothing is written and `None` is returned.
+///
+/// The check is part of the write (one statement), so a Lock or Reveal stored
+/// by anyone after the caller evaluated the League still wins (ADR-0003). The
+/// caller evaluates the League at `now` first, so a Lock due by the data it
+/// has is stored before this runs.
+pub async fn upsert<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
     league: LeagueId,
     game: MatchId,
     user: UserId,
     team: TeamId,
     now: DateTime<Utc>,
-) -> Result<Prediction, sqlx::Error> {
+) -> Result<Option<Prediction>, sqlx::Error> {
     sqlx::query_as(
         "INSERT INTO predictions (league_id, match_id, user_id, team_id, updated_at) \
-         VALUES (?, ?, ?, ?, ?) \
+         SELECT ?1, ?2, ?3, ?4, ?5 WHERE NOT EXISTS ( \
+           SELECT 1 FROM match_locks \
+           WHERE league_id = ?1 AND match_id = ?2 AND locked_at IS NOT NULL) \
          ON CONFLICT (league_id, match_id, user_id) DO UPDATE SET \
            team_id = excluded.team_id, updated_at = excluded.updated_at \
          RETURNING match_id, user_id, team_id, updated_at",
@@ -51,13 +62,13 @@ pub async fn upsert(
     .bind(user)
     .bind(team)
     .bind(now)
-    .fetch_one(db)
+    .fetch_optional(db)
     .await
 }
 
 /// The stored Lock/Reveal stamps of every Match in the League that has any.
-pub async fn stamps(
-    db: &SqlitePool,
+pub async fn stamps<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
     league: LeagueId,
 ) -> Result<HashMap<MatchId, Stamps>, sqlx::Error> {
     type Row = (MatchId, Option<DateTime<Utc>>, Option<DateTime<Utc>>);
@@ -84,7 +95,7 @@ pub async fn stamps(
 /// Persists the transitions of one evaluation. A stamp already stored is
 /// never overwritten.
 pub async fn record(
-    db: &SqlitePool,
+    db: &mut SqliteConnection,
     league: LeagueId,
     game: MatchId,
     transitions: &[Transition],
@@ -105,7 +116,7 @@ pub async fn record(
         .bind(game)
         .bind(locked_at)
         .bind(revealed_at)
-        .execute(db)
+        .execute(&mut *db)
         .await?;
     }
     Ok(())

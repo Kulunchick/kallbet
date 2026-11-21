@@ -6,7 +6,7 @@
 //! through [`base_view`] directly.
 
 use chrono::{DateTime, Utc};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{Connection, Executor, FromRow, Sqlite, SqliteConnection, SqlitePool};
 
 use crate::domain::effective_match::{EventView, SourcedMatch};
 use crate::domain::{
@@ -49,7 +49,10 @@ pub async fn upsert(db: &SqlitePool, event: &Event) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn find(db: &SqlitePool, id: EventId) -> Result<Option<Event>, sqlx::Error> {
+pub async fn find<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
+    id: EventId,
+) -> Result<Option<Event>, sqlx::Error> {
     let row: Option<EventRow> =
         sqlx::query_as("SELECT id, name, starts_at, ends_at FROM events WHERE id = ?")
             .bind(id)
@@ -95,7 +98,7 @@ pub async fn record_poll(db: &SqlitePool, key: &str, at: DateTime<Utc>) -> Resul
 /// Matches' `updated_at`, and the `actual_start` of a Match first seen live
 /// (or finished) when the Data Source does not report one.
 pub async fn save_snapshot(
-    db: &SqlitePool,
+    db: &mut SqliteConnection,
     snapshot: &EventSnapshot,
     now: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -193,15 +196,18 @@ pub async fn save_snapshot(
 
 /// The stored base data of one Event (no Overrides applied). `None` when the
 /// Event is unknown.
-pub async fn base_view(db: &SqlitePool, id: EventId) -> Result<Option<EventView>, sqlx::Error> {
-    let Some(event) = find(db, id).await? else {
+pub async fn base_view(
+    db: &mut SqliteConnection,
+    id: EventId,
+) -> Result<Option<EventView>, sqlx::Error> {
+    let Some(event) = find(&mut *db, id).await? else {
         return Ok(None);
     };
     let stages: Vec<(u8, String, String)> = sqlx::query_as(
         "SELECT ordinal, kind, name FROM stages WHERE event_id = ? ORDER BY ordinal",
     )
     .bind(id)
-    .fetch_all(db)
+    .fetch_all(&mut *db)
     .await?;
     let stages = stages
         .into_iter()
@@ -218,7 +224,7 @@ pub async fn base_view(db: &SqlitePool, id: EventId) -> Result<Option<EventView>
          WHERE m.event_id = ? AND m.league_id IS NULL ORDER BY t.id",
     )
     .bind(id)
-    .fetch_all(db)
+    .fetch_all(&mut *db)
     .await?;
     let teams = teams
         .into_iter()
@@ -232,7 +238,7 @@ pub async fn base_view(db: &SqlitePool, id: EventId) -> Result<Option<EventView>
          FROM matches WHERE event_id = ? AND league_id IS NULL ORDER BY id",
     )
     .bind(id)
-    .fetch_all(db)
+    .fetch_all(&mut *db)
     .await?;
     let matches = rows.into_iter().map(SourcedMatch::from).collect();
 
@@ -246,8 +252,8 @@ pub async fn base_view(db: &SqlitePool, id: EventId) -> Result<Option<EventView>
 
 /// The Matches League Admins of `league` added by hand (#13): League data,
 /// never part of [`base_view`].
-pub async fn added_matches(
-    db: &SqlitePool,
+pub async fn added_matches<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
     league: crate::domain::LeagueId,
 ) -> Result<Vec<SourcedMatch>, sqlx::Error> {
     let rows: Vec<MatchRow> = sqlx::query_as(
@@ -264,8 +270,8 @@ pub async fn added_matches(
 
 /// Stores a Match added by hand to `league` (#13). `game.id` is a local id
 /// (`store::external_ids::allocate_local_ids`).
-pub async fn insert_added_match(
-    db: &SqlitePool,
+pub async fn insert_added_match<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
     league: crate::domain::LeagueId,
     event: EventId,
     game: &Match,

@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{Executor, FromRow, Sqlite, SqliteConnection};
 
 use crate::domain::effective_match::{LeagueOverrides, MatchOverrides, ResultOverride};
 use crate::domain::{LeagueId, MatchId, TeamId, UserId};
@@ -94,7 +94,10 @@ pub struct NewEntry {
 }
 
 /// The League's whole Override history, oldest first.
-pub async fn history(db: &SqlitePool, league: LeagueId) -> Result<Vec<Entry>, sqlx::Error> {
+pub async fn history<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
+    league: LeagueId,
+) -> Result<Vec<Entry>, sqlx::Error> {
     let rows: Vec<Row> = sqlx::query_as(
         "SELECT o.id, o.match_id, o.field, o.cleared, o.scheduled_start, o.winner, o.team_a, \
            o.team_b, o.author_id, u.nickname AS author_nickname, o.created_at \
@@ -125,8 +128,8 @@ pub async fn history(db: &SqlitePool, league: LeagueId) -> Result<Vec<Entry>, sq
 }
 
 /// Appends one entry to the League's history and returns its id.
-pub async fn record(
-    db: &SqlitePool,
+pub async fn record<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
     league: LeagueId,
     game: MatchId,
     field: Field,
@@ -190,10 +193,13 @@ pub fn in_force(history: &[Entry]) -> HashMap<MatchId, MatchOverrides> {
 
 /// Everything the League changed: its hand-added Matches and the Overrides
 /// in force. The input of `domain::effective_match::effective_view`.
-pub async fn for_league(db: &SqlitePool, league: LeagueId) -> Result<LeagueOverrides, sqlx::Error> {
-    let history = history(db, league).await?;
+pub async fn for_league(
+    db: &mut SqliteConnection,
+    league: LeagueId,
+) -> Result<LeagueOverrides, sqlx::Error> {
+    let history = history(&mut *db, league).await?;
     Ok(LeagueOverrides {
-        added: events::added_matches(db, league).await?,
+        added: events::added_matches(&mut *db, league).await?,
         matches: in_force(&history),
     })
 }

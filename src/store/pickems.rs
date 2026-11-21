@@ -2,7 +2,7 @@
 //! Lock (`pickem_locks`, set once, never cleared).
 
 use chrono::{DateTime, Utc};
-use sqlx::SqlitePool;
+use sqlx::{Connection, SqliteConnection};
 
 use crate::domain::effective_match::EventView;
 use crate::domain::pickem::{self, Pick, PickKind};
@@ -16,16 +16,22 @@ pub struct StoredPickem {
     pub picks: Vec<Pick>,
 }
 
-/// Creates or replaces `user`'s Pick'em for the Stage. The caller has
-/// validated it and checked Lock.
+/// Creates or replaces `user`'s Pick'em for the Stage, unless the Stage's
+/// Pick'em has a stored Lock: then nothing is written and `false` is
+/// returned. The caller has validated it.
+///
+/// The Lock check runs inside the write's transaction, after its first
+/// write, so the transaction already holds SQLite's write lock: a Lock
+/// stored by anyone after the caller evaluated the League still wins
+/// (ADR-0003).
 pub async fn save(
-    db: &SqlitePool,
+    db: &mut SqliteConnection,
     league: LeagueId,
     stage: StageOrdinal,
     user: UserId,
     picks: &[Pick],
     now: DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> Result<bool, sqlx::Error> {
     let mut tx = db.begin().await?;
     // Deleting the row cascades to its Picks.
     sqlx::query("DELETE FROM pickems WHERE league_id = ? AND stage_ordinal = ? AND user_id = ?")
@@ -34,6 +40,17 @@ pub async fn save(
         .bind(user)
         .execute(&mut *tx)
         .await?;
+    let locked: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM pickem_locks WHERE league_id = ? AND stage_ordinal = ?)",
+    )
+    .bind(league)
+    .bind(stage.0)
+    .fetch_one(&mut *tx)
+    .await?;
+    if locked {
+        tx.rollback().await?;
+        return Ok(false);
+    }
     sqlx::query(
         "INSERT INTO pickems (league_id, stage_ordinal, user_id, updated_at) VALUES (?, ?, ?, ?)",
     )
@@ -57,13 +74,14 @@ pub async fn save(
         .execute(&mut *tx)
         .await?;
     }
-    tx.commit().await
+    tx.commit().await?;
+    Ok(true)
 }
 
 /// Every Pick'em of the Stage. Only the server sees all of them: Members see
 /// others' only after Lock.
 pub async fn for_stage(
-    db: &SqlitePool,
+    db: &mut SqliteConnection,
     league: LeagueId,
     stage: StageOrdinal,
 ) -> Result<Vec<StoredPickem>, sqlx::Error> {
@@ -73,7 +91,7 @@ pub async fn for_stage(
     )
     .bind(league)
     .bind(stage.0)
-    .fetch_all(db)
+    .fetch_all(&mut *db)
     .await?;
     let rows: Vec<(UserId, String, u8, TeamId)> = sqlx::query_as(
         "SELECT user_id, kind, slot, team_id FROM picks \
@@ -81,7 +99,7 @@ pub async fn for_stage(
     )
     .bind(league)
     .bind(stage.0)
-    .fetch_all(db)
+    .fetch_all(&mut *db)
     .await?;
     Ok(heads
         .into_iter()
@@ -106,7 +124,7 @@ pub async fn for_stage(
 /// The Stage Pick'em's Lock as of `now`, stored the first time it is seen
 /// (so a later postponement cannot undo it).
 pub async fn evaluate_lock(
-    db: &SqlitePool,
+    db: &mut SqliteConnection,
     league: LeagueId,
     view: &EventView,
     stage: StageOrdinal,
@@ -117,7 +135,7 @@ pub async fn evaluate_lock(
     )
     .bind(league)
     .bind(stage.0)
-    .fetch_optional(db)
+    .fetch_optional(&mut *db)
     .await?;
     let locked_at = pickem::lock(view, stage, stored, now);
     if stored.is_none()
@@ -130,7 +148,7 @@ pub async fn evaluate_lock(
         .bind(league)
         .bind(stage.0)
         .bind(at)
-        .execute(db)
+        .execute(&mut *db)
         .await?;
     }
     Ok(locked_at)

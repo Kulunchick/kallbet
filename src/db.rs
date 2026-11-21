@@ -2,7 +2,9 @@
 
 use std::str::FromStr;
 
-use sqlx::SqlitePool;
+use sqlx::{Sqlite, SqlitePool, Transaction};
+
+use crate::error::ApiResult;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
@@ -33,6 +35,24 @@ pub async fn connect_in_memory() -> Result<SqlitePool, sqlx::Error> {
         .await?;
     migrate(&pool).await?;
     Ok(pool)
+}
+
+/// Opens a write transaction that takes SQLite's write lock at once
+/// (`BEGIN IMMEDIATE`), so a check-then-write sequence inside it is never
+/// interleaved with another writer. Read the clock after it is open.
+pub async fn begin_write(pool: &SqlitePool) -> Result<Transaction<'static, Sqlite>, sqlx::Error> {
+    pool.begin_with("BEGIN IMMEDIATE").await
+}
+
+/// Ends a request's [`begin_write`] transaction by the request's result:
+/// commits when it succeeded or was refused (a 4xx, so the Lock and Reveal
+/// stamps its evaluation stored are kept), rolls back on a server error.
+pub async fn finish<T>(tx: Transaction<'static, Sqlite>, result: ApiResult<T>) -> ApiResult<T> {
+    if result.as_ref().is_err_and(|e| e.status.is_server_error()) {
+        return result; // dropping `tx` rolls it back
+    }
+    tx.commit().await?;
+    result
 }
 
 async fn migrate(pool: &SqlitePool) -> Result<(), sqlx::Error> {

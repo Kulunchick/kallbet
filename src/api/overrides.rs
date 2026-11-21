@@ -33,9 +33,11 @@ use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::SqliteConnection;
 
 use crate::api::leagues::{require_admin, require_member, require_writable};
 use crate::auth::session::CurrentUser;
+use crate::db;
 use crate::domain::effective_match::EventView;
 use crate::domain::{
     LeagueId, Match, MatchFormat, MatchId, MatchPlacement, MatchStatus, StageKind, StageOrdinal,
@@ -176,7 +178,8 @@ async fn list(
     Path(id): Path<LeagueId>,
 ) -> ApiResult<Json<OverridesView>> {
     let (league, _) = require_member(&state, &user, id).await?;
-    let (view, active) = league_matches::admin_view(&state.db, &league).await?;
+    let (view, active) =
+        league_matches::admin_view(&mut *state.db.acquire().await?, &league).await?;
     let history = overrides::history(&state.db, league.id).await?;
     Ok(Json(OverridesView {
         entries: history.iter().rev().map(|e| entry_view(&view, e)).collect(),
@@ -218,20 +221,45 @@ enum Body {
     Hidden,
 }
 
-/// The admin, the League (writable) and the Match (also a hidden one).
-async fn admin_and_match(
+/// The admin and the League, which must be writable.
+async fn writable_admin(
     state: &AppState,
     user: &crate::domain::User,
     id: LeagueId,
-    match_id: MatchId,
-) -> ApiResult<(League, EventView)> {
+) -> ApiResult<League> {
     let (league, _) = require_admin(state, user, id).await?;
     require_writable(&league)?;
-    let (view, _) = league_matches::admin_view(&state.db, &league).await?;
-    if view.match_by_id(match_id).is_none() {
+    Ok(league)
+}
+
+/// Runs an Override write in one write transaction, at the clock's time once
+/// it holds the write lock: `change` first evaluates the League with the
+/// data as it is, so a Lock already due is stamped before the change can
+/// move it (ADR-0003), then writes and evaluates again.
+async fn in_write<T>(
+    state: &AppState,
+    change: impl AsyncFnOnce(&mut SqliteConnection, DateTime<Utc>) -> ApiResult<T>,
+) -> ApiResult<(T, DateTime<Utc>)> {
+    let mut tx = db::begin_write(&state.db).await?;
+    let now = state.clock.now();
+    let result = change(&mut tx, now).await;
+    db::finish(tx, result).await.map(|value| (value, now))
+}
+
+/// The League's admin view after storing every Lock due at `now`; 404 when
+/// `match_id` is not in it (hidden Matches are).
+async fn evaluated_admin_view(
+    db: &mut SqliteConnection,
+    league: &League,
+    match_id: Option<MatchId>,
+    now: DateTime<Utc>,
+) -> ApiResult<EventView> {
+    league_matches::evaluate_in(db, league, now).await?;
+    let (view, _) = league_matches::admin_view(db, league).await?;
+    if match_id.is_some_and(|id| view.match_by_id(id).is_none()) {
         return Err(ApiError::not_found());
     }
-    Ok((league, view))
+    Ok(view)
 }
 
 fn check_teams(view: &EventView, a: TeamId, b: TeamId) -> ApiResult<()> {
@@ -250,12 +278,26 @@ async fn create(
     Path((id, match_id)): Path<(LeagueId, MatchId)>,
     Json(body): Json<serde_json::Value>,
 ) -> ApiResult<(StatusCode, Json<EntryView>)> {
-    let (league, view) = admin_and_match(&state, &user, id, match_id).await?;
-    let body: Body =
-        serde_json::from_value(body).map_err(|_| ApiError::unprocessable("override_invalid"))?;
-    let game = &view.match_by_id(match_id).expect("checked").data;
+    let league = writable_admin(&state, &user, id).await?;
+    let (entry_id, now) = in_write(&state, async |db, now| {
+        let view = evaluated_admin_view(db, &league, Some(match_id), now).await?;
+        let body: Body = serde_json::from_value(body)
+            .map_err(|_| ApiError::unprocessable("override_invalid"))?;
+        let game = &view.match_by_id(match_id).expect("checked").data;
+        let (field, entry) = new_entry(&view, game, body)?;
+        let entry_id =
+            overrides::record(&mut *db, league.id, match_id, field, &entry, user.id, now).await?;
+        league_matches::evaluate_in(db, &league, now).await?;
+        Ok(entry_id)
+    })
+    .await?;
+    let response = after_change(&state, &league, entry_id, now).await?;
+    Ok((StatusCode::CREATED, Json(response)))
+}
 
-    let (field, entry) = match body {
+/// The history entry a request body asks for, validated against the Match.
+fn new_entry(view: &EventView, game: &Match, body: Body) -> ApiResult<(Field, NewEntry)> {
+    Ok(match body {
         Body::ScheduledStart { scheduled_start } => (
             Field::ScheduledStart,
             NewEntry {
@@ -279,7 +321,7 @@ async fn create(
             )
         }
         Body::Teams { team_a, team_b } => {
-            check_teams(&view, team_a, team_b)?;
+            check_teams(view, team_a, team_b)?;
             (
                 Field::Teams,
                 NewEntry {
@@ -290,13 +332,7 @@ async fn create(
             )
         }
         Body::Hidden => (Field::Hidden, NewEntry::default()),
-    };
-
-    let now = state.clock.now();
-    let entry_id =
-        overrides::record(&state.db, league.id, match_id, field, &entry, user.id, now).await?;
-    let response = after_change(&state, &league, entry_id, now).await?;
-    Ok((StatusCode::CREATED, Json(response)))
+    })
 }
 
 async fn remove(
@@ -304,23 +340,26 @@ async fn remove(
     CurrentUser(user): CurrentUser,
     Path((id, match_id, field)): Path<(LeagueId, MatchId, String)>,
 ) -> ApiResult<Json<EntryView>> {
-    let (league, _) = admin_and_match(&state, &user, id, match_id).await?;
-    let field = Field::from_code(&field).ok_or(ApiError::not_found())?;
-    let history = overrides::history(&state.db, league.id).await?;
-    let in_force = overrides::in_force(&history)
-        .get(&match_id)
-        .is_some_and(|o| o.fields().contains(&field.code()));
-    if !in_force {
-        return Err(ApiError::not_found());
-    }
-    let now = state.clock.now();
-    let cleared = NewEntry {
-        cleared: true,
-        ..NewEntry::default()
-    };
-    let entry_id = overrides::record(
-        &state.db, league.id, match_id, field, &cleared, user.id, now,
-    )
+    let league = writable_admin(&state, &user, id).await?;
+    let (entry_id, now) = in_write(&state, async |db, now| {
+        evaluated_admin_view(db, &league, Some(match_id), now).await?;
+        let field = Field::from_code(&field).ok_or(ApiError::not_found())?;
+        let history = overrides::history(&mut *db, league.id).await?;
+        let in_force = overrides::in_force(&history)
+            .get(&match_id)
+            .is_some_and(|o| o.fields().contains(&field.code()));
+        if !in_force {
+            return Err(ApiError::not_found());
+        }
+        let cleared = NewEntry {
+            cleared: true,
+            ..NewEntry::default()
+        };
+        let entry_id =
+            overrides::record(&mut *db, league.id, match_id, field, &cleared, user.id, now).await?;
+        league_matches::evaluate_in(db, &league, now).await?;
+        Ok(entry_id)
+    })
     .await?;
     Ok(Json(after_change(&state, &league, entry_id, now).await?))
 }
@@ -336,7 +375,7 @@ async fn after_change(
 ) -> ApiResult<EntryView> {
     let matches = league_matches::evaluate(&state.db, league, now).await?;
     poller::archive_if_final_decided(state, league, &matches, now).await?;
-    let (view, _) = league_matches::admin_view(&state.db, league).await?;
+    let (view, _) = league_matches::admin_view(&mut *state.db.acquire().await?, league).await?;
     let history = overrides::history(&state.db, league.id).await?;
     let entry = history
         .iter()
@@ -376,40 +415,41 @@ async fn add_match(
     Path(id): Path<LeagueId>,
     Json(body): Json<serde_json::Value>,
 ) -> ApiResult<(StatusCode, Json<Added>)> {
-    let (league, _) = require_admin(&state, &user, id).await?;
-    require_writable(&league)?;
+    let league = writable_admin(&state, &user, id).await?;
     let body: NewMatch =
         serde_json::from_value(body).map_err(|_| ApiError::unprocessable("override_invalid"))?;
-    let (view, _) = league_matches::admin_view(&state.db, &league).await?;
-    if view.stage(body.stage).is_none() {
-        return Err(ApiError::unprocessable("stage_not_found"));
-    }
-    check_teams(&view, body.team_a, body.team_b)?;
-
-    let now = state.clock.now();
-    let id = MatchId(external_ids::allocate_local_ids(&state.db, IdKind::Match, 1).await?);
-    let game = Match {
-        id,
-        stage: body.stage,
-        placement: body.placement,
-        team_a: Some(body.team_a),
-        team_b: Some(body.team_b),
-        format: body.format,
-        scheduled_start: Some(body.scheduled_start),
-        actual_start: None,
-        status: MatchStatus::Upcoming,
-        winner: None,
-        score: None,
-    };
-    events::insert_added_match(&state.db, league.id, league.event_id, &game, now).await?;
-    let entry = NewEntry {
-        scheduled_start: game.scheduled_start,
-        team_a: game.team_a,
-        team_b: game.team_b,
-        ..NewEntry::default()
-    };
-    overrides::record(&state.db, league.id, id, Field::Added, &entry, user.id, now).await?;
-    league_matches::evaluate(&state.db, &league, now).await?;
+    let (id, _) = in_write(&state, async |db, now| {
+        let view = evaluated_admin_view(db, &league, None, now).await?;
+        if view.stage(body.stage).is_none() {
+            return Err(ApiError::unprocessable("stage_not_found"));
+        }
+        check_teams(&view, body.team_a, body.team_b)?;
+        let id = MatchId(external_ids::allocate_local_ids(&mut *db, IdKind::Match, 1).await?);
+        let game = Match {
+            id,
+            stage: body.stage,
+            placement: body.placement,
+            team_a: Some(body.team_a),
+            team_b: Some(body.team_b),
+            format: body.format,
+            scheduled_start: Some(body.scheduled_start),
+            actual_start: None,
+            status: MatchStatus::Upcoming,
+            winner: None,
+            score: None,
+        };
+        events::insert_added_match(&mut *db, league.id, league.event_id, &game, now).await?;
+        let entry = NewEntry {
+            scheduled_start: game.scheduled_start,
+            team_a: game.team_a,
+            team_b: game.team_b,
+            ..NewEntry::default()
+        };
+        overrides::record(&mut *db, league.id, id, Field::Added, &entry, user.id, now).await?;
+        league_matches::evaluate_in(db, &league, now).await?;
+        Ok(id)
+    })
+    .await?;
     Ok((StatusCode::CREATED, Json(Added { id })))
 }
 
@@ -450,7 +490,7 @@ async fn warnings(
     Path(id): Path<LeagueId>,
 ) -> ApiResult<Json<Warnings>> {
     let (league, _) = require_admin(&state, &user, id).await?;
-    let (view, _) = league_matches::admin_view(&state.db, &league).await?;
+    let (view, _) = league_matches::admin_view(&mut *state.db.acquire().await?, &league).await?;
     let conflicts = external_ids::conflicts(&state.db, league.event_id)
         .await?
         .into_iter()

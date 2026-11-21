@@ -133,8 +133,8 @@ pub async fn set_manual(
 /// Reserves `count` local ids of `kind` (`Match` or `Team`) and returns the
 /// first; the others count down from it (-1, -2, ...). #13 takes the id of a
 /// Match added by hand from here.
-pub async fn allocate_local_ids(
-    db: &SqlitePool,
+pub async fn allocate_local_ids<'e>(
+    db: impl sqlx::Executor<'e, Database = sqlx::Sqlite>,
     kind: IdKind,
     count: usize,
 ) -> Result<i64, sqlx::Error> {

@@ -214,7 +214,7 @@ impl FallbackSource {
             )
             .await?;
         }
-        let Some(stored) = events::base_view(&self.db, id).await? else {
+        let Some(stored) = events::base_view(&mut *self.db.acquire().await?, id).await? else {
             return Ok(());
         };
         let conflicts = mapping::primary_conflicts(&stored, snapshot);
@@ -295,7 +295,9 @@ impl FallbackSource {
         let external = self.external_event(link, id, now).await?;
         let ext = Self::guarded(link, now, link.source.fetch_event(&external)).await?;
 
-        let stored = events::base_view(&self.db, id).await.map_err(db_error)?;
+        let stored = events::base_view(&mut *self.db.acquire().await.map_err(db_error)?, id)
+            .await
+            .map_err(db_error)?;
         let event = match &stored {
             Some(view) => view.event.clone(),
             None => Event {

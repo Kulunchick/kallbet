@@ -5,7 +5,7 @@
 //! new row. Later tickets compute Eligible Members from `all_memberships`.
 
 use chrono::{DateTime, Utc};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{Executor, FromRow, Sqlite, SqlitePool};
 
 use crate::domain::{EventId, LeagueId, Role, UserId};
 
@@ -129,7 +129,9 @@ pub async fn find_by_invite_token(
 
 /// Leagues that are not archived, oldest first: the ones the poller
 /// evaluates after each pass.
-pub async fn active(db: &SqlitePool) -> Result<Vec<League>, sqlx::Error> {
+pub async fn active<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
+) -> Result<Vec<League>, sqlx::Error> {
     sqlx::query_as(sqlx::AssertSqlSafe(format!(
         "SELECT {LEAGUE_COLUMNS} FROM leagues WHERE archived_at IS NULL ORDER BY id"
     )))
@@ -181,8 +183,8 @@ pub async fn membership(
 
 /// Every stretch of membership ever in `league`, including ended ones. The
 /// input of the Eligible Member rule.
-pub async fn all_memberships(
-    db: &SqlitePool,
+pub async fn all_memberships<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
     league: LeagueId,
 ) -> Result<Vec<Membership>, sqlx::Error> {
     let rows: Vec<MembershipRow> = sqlx::query_as(
@@ -196,7 +198,10 @@ pub async fn all_memberships(
 }
 
 /// Current Members, in the order they joined.
-pub async fn members(db: &SqlitePool, league: LeagueId) -> Result<Vec<MemberProfile>, sqlx::Error> {
+pub async fn members<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
+    league: LeagueId,
+) -> Result<Vec<MemberProfile>, sqlx::Error> {
     let rows: Vec<MemberProfileRow> = sqlx::query_as(
         "SELECT u.id AS user_id, u.nickname, u.avatar_url, m.role, m.joined_at \
          FROM memberships m JOIN users u ON u.id = m.user_id \
@@ -264,11 +269,12 @@ pub async fn archive(
     league: LeagueId,
     now: DateTime<Utc>,
 ) -> Result<bool, sqlx::Error> {
-    let done = sqlx::query("UPDATE leagues SET archived_at = ? WHERE id = ? AND archived_at IS NULL")
-        .bind(now)
-        .bind(league)
-        .execute(db)
-        .await?;
+    let done =
+        sqlx::query("UPDATE leagues SET archived_at = ? WHERE id = ? AND archived_at IS NULL")
+            .bind(now)
+            .bind(league)
+            .execute(db)
+            .await?;
     Ok(done.rows_affected() > 0)
 }
 
