@@ -233,6 +233,15 @@ How League logic gets its Matches — read this before #6, #7, #13, #14, #16, #1
 - **API**: `GET /api/leagues/{id}/leaderboard` → `{ rows: [{ place, user_id, nickname, avatar_url, points, playoff_points, percent_correct|null }] }`, ordered by place then nickname. `MatchCard` gained `my_result` (`pending|correct|wrong|missing|void`) and `my_points`. `GET /api/leagues` items gained `my_place` (null if not ranked) and `my_points`.
 - **SPA**: `/leagues/:id/leaderboard` (`web/src/pages/leaderboard/`, namespace `leaderboard`, place 1 gold, my row highlighted). #17 should render medals in this page. #14's Pick'em Leaderboard is separate.
 
+## Archive (ticket #17)
+
+- **The final** is the Playoffs Match with `rounds_before_final == 0`, finished with a winner, read from the League's *effective* Match view (`domain::league::final_decided`). A Void final (cancelled, or finished with no winner) does not archive. So when #13 sets a winner by Override in one League, only that League archives.
+- **Archiving** is `leagues.archived_at`, set once by `store::leagues::archive` (`WHERE archived_at IS NULL`, never cleared, even if the final's data later changes). `poller::after_poll` calls `poller::archive_if_final_decided(state, league, matches, now)`; it is idempotent. **#13: call it right after an Override sets a winner** (with a freshly evaluated `LeagueMatches`) so the League archives at once instead of on the next tick. The poller already skips Events with only archived Leagues, and Locks need no more evaluation.
+- **Read-only guard**: `api::leagues::require_writable(&league)` returns 409 `league_archived`. Call it right after `require_member`/`require_admin` (before reading the body or validating) in **every write that changes the game**. Applied today to: Prediction PUT, Pick'em PUT, join via Invite Link, kick. **#13 must call it in every Override endpoint, and #15/#6 keep their existing call**; the test "archived Leagues reject Overrides" comes with #13 (no Override endpoint exists yet).
+- **Still allowed after archiving**: leaving, deleting (creator), reissuing the Invite Link and changing roles (none of them changes a score). Joining and kicking are rejected so the final Leaderboard keeps its Members; leaving does remove the leaver from the Leaderboard, which is accepted.
+- **Medals**: `web/src/components/Medal.tsx` renders 🥇🥈🥉 for places 1-3; shared places share a medal because places are already numbered 1, 1, 3. `LeaderboardPage` and `PickemPage` show it only when `GET /api/leagues/{id}` has `archived_at` set. The League page shows an archived banner and hides the Invite Link and Kick controls.
+- Tests: `tests/api_archive.rs`.
+
 ## Accounts (ticket #3)
 
 - API: `POST /api/auth/telegram` (body `{auth: <widget payload>, language?}`; `language` only seeds a new User), `POST /api/auth/logout` (204), `GET /api/auth/config`, `GET|PATCH /api/me` (`{nickname?, language?}`). Error codes: `invalid_login`, `login_expired` (401), `login_unavailable` (503), `nickname_invalid`, `language_invalid` (422), `nickname_taken` (409). Payloads older than 10 minutes are rejected.

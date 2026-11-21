@@ -256,6 +256,22 @@ pub async fn end_membership(
     Ok(done.rows_affected() > 0)
 }
 
+/// Archives the League at `now`. The timestamp is set once and never
+/// cleared: archiving an archived League keeps the first time. Returns
+/// whether this call archived it.
+pub async fn archive(
+    db: &SqlitePool,
+    league: LeagueId,
+    now: DateTime<Utc>,
+) -> Result<bool, sqlx::Error> {
+    let done = sqlx::query("UPDATE leagues SET archived_at = ? WHERE id = ? AND archived_at IS NULL")
+        .bind(now)
+        .bind(league)
+        .execute(db)
+        .await?;
+    Ok(done.rows_affected() > 0)
+}
+
 /// Replaces the Invite Link secret; the old one stops working.
 pub async fn set_invite_token(
     db: &SqlitePool,
