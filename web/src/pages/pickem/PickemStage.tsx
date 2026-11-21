@@ -30,7 +30,7 @@ export function PickemStage({
     if (result.state !== "ready") return;
     const mine = result.data.my_pickem;
     const next: Record<number, Choice> = {};
-    for (const c of CHOICES) for (const team of mine?.[c] ?? []) next[team] = c;
+    if (mine?.shape === "swiss") for (const c of CHOICES) for (const team of mine[c]) next[team] = c;
     setDraft(next);
   }, [result]);
 
@@ -128,12 +128,13 @@ function LockedView({ view, nameOf }: { view: PickemView; nameOf: (id: number) =
             <span className="font-semibold">{p.nickname}</span>
             <span className="ml-auto font-display text-gold-a">{t("points", { count: p.points })}</span>
           </div>
-          {CHOICES.map((c) => (
-            <p key={c} className="text-sm">
-              <span className="text-mute">{t(`kind.${c}`)}: </span>
-              {p[c].map(nameOf).join(", ")}
-            </p>
-          ))}
+          {p.shape === "swiss" &&
+            CHOICES.map((c) => (
+              <p key={c} className="text-sm">
+                <span className="text-mute">{t(`kind.${c}`)}: </span>
+                {p[c].map(nameOf).join(", ")}
+              </p>
+            ))}
         </li>
       ))}
     </ul>

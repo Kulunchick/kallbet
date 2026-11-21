@@ -8,9 +8,11 @@
 //!   `pickem_team_not_in_stage`.
 //!
 //! The Pick'em JSON carries a `shape`: `"swiss"` (#14) with `three_nil`,
-//! `zero_three` and `advance` team-id lists. #15 adds the `"playoffs"` shape
-//! (a bracket) as a second variant of the same endpoints, and returns it from
-//! the same handlers by Stage kind.
+//! `zero_three` and `advance` team-id lists, or `"playoffs"` (#15) with
+//! `picks: [{rounds_before_final, slot, team_id}]`, the picked winner of every
+//! bracket slot. The same endpoints serve both, by the Stage's kind. A
+//! Playoffs GET also carries `bracket {ready, slots}`; PUT on a bracket whose
+//! first-round teams are not all known answers 422 `pickem_bracket_not_ready`.
 //!
 //! The Pick'em Leaderboard (`GET /api/leagues/{id}/pickem-leaderboard`) is
 //! served from here too, so that this ticket needs no edit in
@@ -25,7 +27,9 @@ use serde::{Deserialize, Serialize};
 use crate::api::leagues::require_member;
 use crate::auth::session::CurrentUser;
 use crate::domain::effective_match::EventView;
-use crate::domain::pickem::{self, SwissPickem};
+use std::collections::HashMap;
+
+use crate::domain::pickem::{self, Bracket, BracketPickem, Pick, SwissPickem};
 use crate::domain::{LeagueId, Stage, StageKind, StageOrdinal, TeamId, UserId};
 use crate::error::{ApiError, ApiResult};
 use crate::league_matches;
@@ -67,13 +71,17 @@ async fn leaderboard(
 ) -> ApiResult<Json<Leaderboard>> {
     let (league, _) = require_member(&state, &user, id).await?;
     let view = league_matches::effective_view(&state.db, &league).await?;
-    let mut points: std::collections::HashMap<UserId, u32> = std::collections::HashMap::new();
-    // #15: add the Playoffs Stage's scoring here, in the same sum.
-    for stage in view.stages.iter().filter(|s| s.kind == StageKind::Swiss) {
+    let mut points: HashMap<UserId, u32> = HashMap::new();
+    for stage in view
+        .stages
+        .iter()
+        .filter(|s| matches!(s.kind, StageKind::Swiss | StageKind::Playoffs))
+    {
         let outcomes = pickem::swiss_outcomes(&view, stage.ordinal);
+        let bracket = Bracket::of(&view, stage.ordinal);
         for stored in pickems::for_stage(&state.db, league.id, stage.ordinal).await? {
-            let swiss = SwissPickem::from_picks(&stored.picks);
-            *points.entry(stored.user_id).or_default() += pickem::score_swiss(&swiss, &outcomes);
+            *points.entry(stored.user_id).or_default() +=
+                stored_points(stage.kind, &bracket, &outcomes, &stored.picks);
         }
     }
     let mut members = leagues::members(&state.db, league.id).await?;
@@ -116,12 +124,44 @@ impl From<SwissBody> for SwissPickem {
     }
 }
 
+/// One picked slot winner of a bracket, in the request and the response.
+#[derive(Serialize, Deserialize)]
+struct BracketPickBody {
+    rounds_before_final: u8,
+    slot: u8,
+    team_id: TeamId,
+}
+
+#[derive(Deserialize)]
+struct BracketBody {
+    picks: Vec<BracketPickBody>,
+}
+
+impl From<BracketBody> for BracketPickem {
+    fn from(b: BracketBody) -> BracketPickem {
+        BracketPickem {
+            winners: b
+                .picks
+                .into_iter()
+                .map(|p| (p.rounds_before_final, p.slot, p.team_id))
+                .collect(),
+        }
+    }
+}
+
+/// A saved Pick'em, tagged by `shape`.
 #[derive(Serialize)]
-struct PickemJson {
-    shape: &'static str,
-    #[serde(flatten)]
-    swiss: SwissBody,
-    updated_at: DateTime<Utc>,
+#[serde(tag = "shape", rename_all = "lowercase")]
+enum PickemJson {
+    Swiss {
+        #[serde(flatten)]
+        swiss: SwissBody,
+        updated_at: DateTime<Utc>,
+    },
+    Playoffs {
+        picks: Vec<BracketPickBody>,
+        updated_at: DateTime<Utc>,
+    },
 }
 
 #[derive(Serialize)]
@@ -157,31 +197,101 @@ struct MemberPickem {
 }
 
 #[derive(Serialize)]
+struct BracketSlotJson {
+    rounds_before_final: u8,
+    slot: u8,
+    /// Teams known from the data (a first slot's two teams, or the teams the
+    /// Data Source has since placed in a later slot); the rest come from
+    /// the Member's own picks.
+    team_a: Option<TeamId>,
+    team_b: Option<TeamId>,
+    /// A first slot: its teams are not picked winners of earlier slots.
+    leaf: bool,
+    /// Who really won this slot, once decided.
+    winner: Option<TeamId>,
+}
+
+#[derive(Serialize)]
+struct BracketJson {
+    /// False while a first-round slot's teams are still TBD: the Pick'em
+    /// cannot be filled yet (it still Locks at the first Match start).
+    ready: bool,
+    slots: Vec<BracketSlotJson>,
+}
+
+#[derive(Serialize)]
 struct PickemView {
     stage: StageInfo,
+    /// Swiss: the Stage's teams. Playoffs: the teams of the first slots.
     teams: Vec<TeamRef>,
     lock: LockJson,
     my_pickem: Option<PickemJson>,
     /// Every current Member's Pick'em: `null` until the Stage's Lock.
     pickems: Option<Vec<MemberPickem>>,
+    /// The Playoffs Stage's bracket; absent for a Swiss Stage.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bracket: Option<BracketJson>,
 }
 
-/// The Stage if it has a Swiss Pick'em (the only shape until #15).
+/// The Stage if it has a Pick'em: a Swiss Stage or the Playoffs. Group Stages
+/// have none, so an Event without a Swiss Stage offers the Playoffs only.
 fn pickem_stage(view: &EventView, ordinal: StageOrdinal) -> ApiResult<&Stage> {
     view.stage(ordinal)
-        .filter(|s| s.kind == StageKind::Swiss)
+        .filter(|s| matches!(s.kind, StageKind::Swiss | StageKind::Playoffs))
         .ok_or(ApiError::not_found())
 }
 
 fn swiss_json(p: SwissPickem, updated_at: DateTime<Utc>) -> PickemJson {
-    PickemJson {
-        shape: "swiss",
+    PickemJson::Swiss {
         swiss: SwissBody {
             three_nil: p.three_nil,
             zero_three: p.zero_three,
             advance: p.advance,
         },
         updated_at,
+    }
+}
+
+fn bracket_json(p: BracketPickem, updated_at: DateTime<Utc>) -> PickemJson {
+    PickemJson::Playoffs {
+        picks: p
+            .winners
+            .into_iter()
+            .map(|(rounds_before_final, slot, team_id)| BracketPickBody {
+                rounds_before_final,
+                slot,
+                team_id,
+            })
+            .collect(),
+        updated_at,
+    }
+}
+
+/// A stored Pick'em in the shape of its Stage.
+fn stored_json(
+    kind: StageKind,
+    bracket: &Bracket,
+    picks: &[Pick],
+    updated_at: DateTime<Utc>,
+) -> PickemJson {
+    match kind {
+        StageKind::Playoffs => bracket_json(BracketPickem::from_picks(picks, bracket), updated_at),
+        _ => swiss_json(SwissPickem::from_picks(picks), updated_at),
+    }
+}
+
+/// A stored Pick'em's Points, by the shape of its Stage.
+fn stored_points(
+    kind: StageKind,
+    bracket: &Bracket,
+    outcomes: &HashMap<TeamId, pickem::SwissOutcome>,
+    picks: &[Pick],
+) -> u32 {
+    match kind {
+        StageKind::Playoffs => {
+            pickem::score_bracket(&BracketPickem::from_picks(picks, bracket), bracket)
+        }
+        _ => pickem::score_swiss(&SwissPickem::from_picks(picks), outcomes),
     }
 }
 
@@ -197,28 +307,27 @@ async fn show(
     let stage = pickem_stage(view, ordinal)?;
     let locked_at = pickems::evaluate_lock(&state.db, league.id, view, ordinal, now).await?;
     let all = pickems::for_stage(&state.db, league.id, ordinal).await?;
+    let bracket = Bracket::of(view, ordinal);
+    let outcomes = pickem::swiss_outcomes(view, ordinal);
 
     let mine = all
         .iter()
         .find(|p| p.user_id == user.id)
-        .map(|p| swiss_json(SwissPickem::from_picks(&p.picks), p.updated_at));
+        .map(|p| stored_json(stage.kind, &bracket, &p.picks, p.updated_at));
     // Other Members' Pick'ems exist in the response only after Lock.
     let others = if locked_at.is_some() {
-        let outcomes = pickem::swiss_outcomes(view, ordinal);
         let members = leagues::members(&state.db, league.id).await?;
         Some(
             members
                 .into_iter()
                 .filter_map(|m| {
                     let p = all.iter().find(|p| p.user_id == m.user_id)?;
-                    let swiss = SwissPickem::from_picks(&p.picks);
-                    let points = pickem::score_swiss(&swiss, &outcomes);
                     Some(MemberPickem {
                         user_id: m.user_id,
                         nickname: m.nickname,
                         avatar_url: m.avatar_url,
-                        pickem: swiss_json(swiss, p.updated_at),
-                        points,
+                        pickem: stored_json(stage.kind, &bracket, &p.picks, p.updated_at),
+                        points: stored_points(stage.kind, &bracket, &outcomes, &p.picks),
                     })
                 })
                 .collect(),
@@ -226,7 +335,11 @@ async fn show(
     } else {
         None
     };
-    let teams = pickem::swiss_teams(view, ordinal)
+    let team_ids = match stage.kind {
+        StageKind::Playoffs => bracket.teams(),
+        _ => pickem::swiss_teams(view, ordinal),
+    };
+    let teams = team_ids
         .into_iter()
         .filter_map(|id| view.team(id))
         .map(|t| TeamRef {
@@ -234,6 +347,21 @@ async fn show(
             name: t.name.clone(),
         })
         .collect();
+    let bracket_view = (stage.kind == StageKind::Playoffs).then(|| BracketJson {
+        ready: bracket.ready(),
+        slots: bracket
+            .slots
+            .iter()
+            .map(|s| BracketSlotJson {
+                rounds_before_final: s.rounds_before_final,
+                slot: s.slot,
+                team_a: s.teams[0],
+                team_b: s.teams[1],
+                leaf: s.leaf,
+                winner: s.winner,
+            })
+            .collect(),
+    });
     Ok(Json(PickemView {
         stage: StageInfo {
             ordinal,
@@ -248,6 +376,7 @@ async fn show(
         },
         my_pickem: mine,
         pickems: others,
+        bracket: bracket_view,
     }))
 }
 
@@ -255,13 +384,15 @@ async fn save(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path((id, ordinal)): Path<(LeagueId, StageOrdinal)>,
-    Json(body): Json<SwissBody>,
+    Json(body): Json<serde_json::Value>,
 ) -> ApiResult<Json<PickemJson>> {
     let (league, _) = require_member(&state, &user, id).await?;
+    // #17: the archived (read-only) League check goes here, before anything
+    // is validated or written.
     let now = state.clock.now();
     let matches = league_matches::evaluate(&state.db, &league, now).await?;
     let view = &matches.view;
-    pickem_stage(view, ordinal)?;
+    let stage = pickem_stage(view, ordinal)?;
     // Lock is re-checked on the server, so a stale page cannot bypass it.
     if pickems::evaluate_lock(&state.db, league.id, view, ordinal, now)
         .await?
@@ -269,10 +400,29 @@ async fn save(
     {
         return Err(ApiError::conflict("pickem_locked"));
     }
-    let picks = SwissPickem::from(body);
-    picks
-        .validate(&pickem::swiss_teams(view, ordinal))
-        .map_err(|e| ApiError::unprocessable(e.code()))?;
-    pickems::save(&state.db, league.id, ordinal, user.id, &picks.to_picks(), now).await?;
-    Ok(Json(swiss_json(picks, now)))
+    // A body of the wrong shape for the Stage is a wrong count of picks.
+    let malformed = || ApiError::unprocessable(pickem::PickemError::WrongCount.code());
+    let (picks, saved) = match stage.kind {
+        StageKind::Playoffs => {
+            let bracket = Bracket::of(view, ordinal);
+            let picks: BracketPickem = serde_json::from_value::<BracketBody>(body)
+                .map_err(|_| malformed())?
+                .into();
+            picks
+                .validate(&bracket)
+                .map_err(|e| ApiError::unprocessable(e.code()))?;
+            (picks.to_picks(), bracket_json(picks, now))
+        }
+        _ => {
+            let picks: SwissPickem = serde_json::from_value::<SwissBody>(body)
+                .map_err(|_| malformed())?
+                .into();
+            picks
+                .validate(&pickem::swiss_teams(view, ordinal))
+                .map_err(|e| ApiError::unprocessable(e.code()))?;
+            (picks.to_picks(), swiss_json(picks, now))
+        }
+    };
+    pickems::save(&state.db, league.id, ordinal, user.id, &picks, now).await?;
+    Ok(Json(saved))
 }

@@ -96,7 +96,11 @@ pub async fn evaluate(
 
     // Store each Stage Pick'em's Lock the moment it is due (#14), for the
     // same reason as the Match Locks above: a postponement must not undo it.
-    for stage in view.stages.iter().filter(|s| s.kind == StageKind::Swiss) {
+    for stage in view
+        .stages
+        .iter()
+        .filter(|s| matches!(s.kind, StageKind::Swiss | StageKind::Playoffs))
+    {
         pickems::evaluate_lock(db, league.id, &view, stage.ordinal, now).await?;
     }
 

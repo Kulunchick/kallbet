@@ -349,10 +349,11 @@ async fn deleting_a_league_with_pickems_works() {
 }
 
 #[tokio::test]
-async fn only_swiss_stages_of_the_leagues_event_have_a_swiss_pickem() {
+async fn only_the_leagues_own_stages_have_a_pickem_and_only_for_members() {
     let s = setup().await;
-    // Stage 2 is the Playoffs; stage 9 does not exist.
-    for stage in [2, 9] {
+    // Stage 2 is the Playoffs (its Pick'em is tested in api_pickem_playoffs);
+    // stage 9 does not exist.
+    for stage in [9] {
         let url = format!("/api/leagues/{}/stages/{stage}/pickem", s.league);
         assert_eq!(s.alice.get(&url).await.status, StatusCode::NOT_FOUND);
         assert_eq!(s.alice.put(&url, &valid()).await.status, StatusCode::NOT_FOUND);
