@@ -263,6 +263,28 @@ async fn one_point_per_slot_whose_picked_winner_won_and_it_joins_the_leaderboard
     assert_eq!(points("bob"), 1);
 }
 
+/// A6: a result that arrives before the Stage Locks (a forfeit reported
+/// before the planned start) scores nothing until Lock, so Points cannot
+/// leak a Member's unrevealed Picks.
+#[tokio::test]
+async fn a_result_before_the_stage_locks_scores_nothing_until_lock() {
+    let s = quarterfinals().await;
+    s.alice.put(&s.url(1), &valid()).await;
+    // T2 forfeits the first quarterfinal an hour before its planned start.
+    s.app.clock.advance(Duration::hours(1));
+    let start = s.start;
+    s.app.source.update_match(EventId(EVENT), MatchId(1), |m| m.actual_start = Some(start));
+    s.app.source.finish(EventId(EVENT), MatchId(1), "T1", (2, 0));
+    poller::tick(&s.app.state).await;
+    assert_eq!(s.view(&s.bob, 1).await["lock"]["locked"], false, "precondition: open");
+
+    assert_eq!(leaderboard(&s).await[0].2, 0, "a Point before Lock tells bob alice's Pick");
+
+    s.app.clock.set(s.start);
+    poller::tick(&s.app.state).await;
+    assert_eq!(leaderboard(&s).await, vec![(1, "alice".into(), 1), (2, "bob".into(), 0)]);
+}
+
 #[tokio::test]
 async fn a_void_slot_scores_nothing() {
     let s = quarterfinals().await;

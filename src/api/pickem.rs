@@ -62,30 +62,38 @@ struct Leaderboard {
 /// The Pick'em Leaderboard: every current Member ranked by Pick'em Points
 /// (all Stages together), equal Points sharing a place. Separate from the
 /// Match Leaderboard: no Match Prediction counts here. It holds only Points,
-/// so it reveals nothing about unrevealed Picks (a Stage scores only once its
-/// Matches have finished, so after its Lock).
+/// so it reveals nothing about unrevealed Picks: a Stage scores only once its
+/// Pick'em has Locked (a result can arrive before that, e.g. a forfeit
+/// reported before the planned start).
 async fn leaderboard(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(id): Path<LeagueId>,
 ) -> ApiResult<Json<Leaderboard>> {
     let (league, _) = require_member(&state, &user, id).await?;
-    let view = league_matches::effective_view(&state.db, &league).await?;
+    let now = state.clock.now();
+    let view = league_matches::evaluate(&state.db, &league, now).await?.view;
     let mut points: HashMap<UserId, u32> = HashMap::new();
+    let mut conn = state.db.acquire().await?;
     for stage in view
         .stages
         .iter()
         .filter(|s| matches!(s.kind, StageKind::Swiss | StageKind::Playoffs))
     {
+        if pickems::evaluate_lock(&mut conn, league.id, &view, stage.ordinal, now)
+            .await?
+            .is_none()
+        {
+            continue;
+        }
         let outcomes = pickem::swiss_outcomes(&view, stage.ordinal);
         let bracket = Bracket::of(&view, stage.ordinal);
-        for stored in
-            pickems::for_stage(&mut *state.db.acquire().await?, league.id, stage.ordinal).await?
-        {
+        for stored in pickems::for_stage(&mut conn, league.id, stage.ordinal).await? {
             *points.entry(stored.user_id).or_default() +=
                 stored_points(stage.kind, &bracket, &outcomes, &stored.picks);
         }
     }
+    drop(conn);
     let mut members = leagues::members(&state.db, league.id).await?;
     members.sort_by_key(|m| m.nickname.to_lowercase());
     let entries = pickem::rank(
