@@ -176,3 +176,13 @@ Settings come from environment variables; `.env` is loaded for local development
 A new setting needs a field in `Config`, a line in `Config::from_lookup`, a value in `Config::for_tests`, and an entry in `.env.example`. `Config`'s `Debug` output redacts secrets; keep it that way for new ones.
 
 Dev login, when enabled: `POST /api/dev/login` with `{"nickname": "alice"}` signs in as that User, creating it if needed. When disabled the route does not exist (404).
+
+## Leagues and membership (ticket #4)
+
+- **Gate every League-scoped endpoint** with `api::leagues::require_member(&state, &user, league_id)` (404 `not_found` for non-Members and missing Leagues) or `require_admin` (adds 403 `forbidden`). Both return the `store::leagues::League` and the caller's `Membership`.
+- **Membership is a stretch of time**: table `memberships` has `joined_at` and `left_at` (NULL while current). Leaving sets `left_at`; joining again inserts a new row. `store::leagues::all_memberships(db, league)` returns every stretch, for the Eligible Member rule. `store::leagues::members` lists current Members only. At most one current row per User per League (partial unique index). #12's kick should call `end_membership`.
+- Roles are `domain::Role` (`member`, `admin`). The creator is `leagues.creator_id` and also an admin Member; the creator cannot leave (409 `creator_cannot_leave`).
+- The `events` table (0400) holds only id, name and dates, upserted from `MatchSource::fetch_event` when a League is created. #5 adds Stages, teams and Matches in its own migration and fills `store/events.rs`.
+- Invite Link: the secret is `leagues.invite_token`; the SPA link is `/join/<token>`. API: `GET /api/invites/{token}` (preview) and `POST /api/invites/{token}/join`; an unknown or reissued token is 404 `invite_invalid`. Only admins receive `invite_token` in the League JSON.
+- Data Source failures reach clients as 502 `source_unavailable` (`api::events::source_error`).
+- Frontend: nothing links to `/leagues` yet; the header (#3, `HeaderUser`) should. `/join/<token>` shows the 401 text when signed out; after sign-in (#3) it should return the User to the link.
