@@ -49,6 +49,44 @@ pub async fn upsert(db: &SqlitePool, event: &Event) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
+/// Stores the Event list a Data Source returned, in its order, replacing the
+/// previous one; each Event is upserted too.
+pub async fn save_list(db: &SqlitePool, listed: &[Event]) -> Result<(), sqlx::Error> {
+    let mut tx = db.begin().await?;
+    sqlx::query("DELETE FROM event_list").execute(&mut *tx).await?;
+    for (position, event) in listed.iter().enumerate() {
+        sqlx::query(
+            "INSERT INTO events (id, name, starts_at, ends_at) VALUES (?, ?, ?, ?) \
+             ON CONFLICT (id) DO UPDATE SET name = excluded.name, \
+               starts_at = excluded.starts_at, ends_at = excluded.ends_at",
+        )
+        .bind(event.id)
+        .bind(&event.name)
+        .bind(event.starts_at)
+        .bind(event.ends_at)
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query("INSERT OR REPLACE INTO event_list (event_id, position) VALUES (?, ?)")
+            .bind(event.id)
+            .bind(position as i64)
+            .execute(&mut *tx)
+            .await?;
+    }
+    tx.commit().await
+}
+
+/// The Event list last stored by [`save_list`], in the source's order
+/// (empty if none was stored yet, or the source listed nothing).
+pub async fn stored_list(db: &SqlitePool) -> Result<Vec<Event>, sqlx::Error> {
+    let rows: Vec<EventRow> = sqlx::query_as(
+        "SELECT e.id, e.name, e.starts_at, e.ends_at FROM event_list l \
+         JOIN events e ON e.id = l.event_id ORDER BY l.position",
+    )
+    .fetch_all(db)
+    .await?;
+    Ok(rows.into_iter().map(Event::from).collect())
+}
+
 pub async fn find<'e>(
     db: impl Executor<'e, Database = Sqlite>,
     id: EventId,

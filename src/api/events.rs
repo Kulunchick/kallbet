@@ -12,7 +12,9 @@ use crate::domain::league::parse_hltv_event_link;
 use crate::domain::{Event, EventId, EventSnapshot};
 use crate::error::{ApiError, ApiResult};
 use crate::ports::SourceError;
+use crate::poller;
 use crate::state::AppState;
+use crate::store::events as event_store;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -37,12 +39,21 @@ pub(crate) async fn fetch(state: &AppState, id: EventId) -> ApiResult<EventSnaps
     state.source.fetch_event(id).await.map_err(source_error)
 }
 
+/// The Event list as the poller last stored it (every 6 hours), so browsing
+/// it costs the Data Sources nothing. Only while no list is stored yet (just
+/// after the first start) does a request ask the source, once, and store it.
 async fn list(
     State(state): State<AppState>,
     CurrentUser(_user): CurrentUser,
 ) -> ApiResult<Json<Vec<Event>>> {
-    let events = state.source.list_events().await.map_err(source_error)?;
-    Ok(Json(events))
+    let stored = event_store::stored_list(&state.db).await?;
+    if !stored.is_empty() {
+        return Ok(Json(stored));
+    }
+    let listed = poller::refresh_event_list(&state, state.clock.now())
+        .await?
+        .map_err(source_error)?;
+    Ok(Json(listed))
 }
 
 #[derive(Deserialize)]

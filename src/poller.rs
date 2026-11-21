@@ -109,16 +109,29 @@ async fn poll_event_list(state: &AppState, now: DateTime<Utc>) -> Result<(), sql
     if last.is_some_and(|at| now - at < EVENT_LIST_EVERY) {
         return Ok(());
     }
+    let _ = refresh_event_list(state, now).await?;
+    Ok(())
+}
+
+/// Asks the source for the Event list and stores it (the copy
+/// `GET /api/events` serves); counts as a list poll for the cadence. A
+/// failure is logged and keeps the stored copy; the source's error is
+/// returned in the inner `Result`.
+pub async fn refresh_event_list(
+    state: &AppState,
+    now: DateTime<Utc>,
+) -> Result<Result<Vec<crate::domain::Event>, crate::ports::SourceError>, sqlx::Error> {
     events::record_poll(&state.db, EVENT_LIST_KEY, now).await?;
     match state.source.list_events().await {
         Ok(listed) => {
-            for event in &listed {
-                events::upsert(&state.db, event).await?;
-            }
+            events::save_list(&state.db, &listed).await?;
+            Ok(Ok(listed))
         }
-        Err(e) => tracing::warn!("polling the Event list failed: {e}"),
+        Err(e) => {
+            tracing::warn!("polling the Event list failed: {e}");
+            Ok(Err(e))
+        }
     }
-    Ok(())
 }
 
 async fn poll_event(state: &AppState, id: EventId, now: DateTime<Utc>) -> Result<(), sqlx::Error> {

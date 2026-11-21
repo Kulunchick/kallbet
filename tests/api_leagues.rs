@@ -51,6 +51,29 @@ async fn events_are_listed_through_the_match_source() {
     assert_eq!(app.source.list_events_calls(), 1);
 }
 
+/// A12: the Event list is served from the copy the poller keeps (every 6
+/// hours), so browsing it causes no Data Source traffic.
+#[tokio::test]
+async fn the_event_list_is_served_from_the_stored_copy() {
+    let app = app_with_event().await;
+    kallbet::poller::tick(&app.state).await;
+    assert_eq!(app.source.list_events_calls(), 1, "the poller's list poll");
+    let alice = app.user("alice").await;
+
+    for _ in 0..3 {
+        let res = alice.get("/api/events").await;
+        assert_eq!(res.status, StatusCode::OK);
+        assert_eq!(res.json()[0]["id"], EVENT);
+    }
+    assert_eq!(app.source.list_events_calls(), 1, "no request reached the source");
+
+    // A source failure later does not empty the list either.
+    app.source.fail_with(SourceError::Unavailable("down".into()));
+    let res = alice.get("/api/events").await;
+    assert_eq!(res.status, StatusCode::OK);
+    assert_eq!(res.json()[0]["id"], EVENT);
+}
+
 #[tokio::test]
 async fn events_need_a_session() {
     let app = app_with_event().await;
