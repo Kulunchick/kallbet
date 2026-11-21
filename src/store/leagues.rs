@@ -127,6 +127,16 @@ pub async fn find_by_invite_token(
     .await
 }
 
+/// Leagues that are not archived, oldest first: the ones the poller
+/// evaluates after each pass.
+pub async fn active(db: &SqlitePool) -> Result<Vec<League>, sqlx::Error> {
+    sqlx::query_as(sqlx::AssertSqlSafe(format!(
+        "SELECT {LEAGUE_COLUMNS} FROM leagues WHERE archived_at IS NULL ORDER BY id"
+    )))
+    .fetch_all(db)
+    .await
+}
+
 /// Leagues `user` currently belongs to, newest first, with their role.
 pub async fn leagues_of(db: &SqlitePool, user: UserId) -> Result<Vec<(League, Role)>, sqlx::Error> {
     #[derive(FromRow)]
