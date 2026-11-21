@@ -192,7 +192,7 @@ async fn list_mine(
             .into_iter()
             .map(|m| m.user_id)
             .collect();
-        let mine = leaderboard::standings(&matches, &members)
+        let mine = leaderboard::ranking(&matches, &members)
             .into_iter()
             .find(|s| s.user_id == user.id);
         out.push(LeagueSummary {

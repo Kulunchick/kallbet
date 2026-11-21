@@ -1,7 +1,7 @@
 //! Leaderboard and Pick'em Leaderboard API.
 //!
 //! `GET /api/leagues/{id}/leaderboard` ranks the current Members by Match
-//! Points. Nothing is stored: [`standings`] computes the ranking from the
+//! Points. Nothing is stored: [`ranking`] computes the ranking from the
 //! League's effective Match view and Predictions, so every poll that delivers
 //! a result (and, from #13, every Override) shows up at once. #14 adds the
 //! Pick'em Leaderboard here.
@@ -13,7 +13,7 @@ use serde::Serialize;
 
 use crate::api::leagues::require_member;
 use crate::auth::session::CurrentUser;
-use crate::domain::scoring::{self, ScoredMatch, Standing};
+use crate::domain::scoring::{self, ScoredMatch, LeaderboardRow};
 use crate::domain::{LeagueId, StageKind, UserId};
 use crate::error::ApiResult;
 use crate::league_matches::{self, LeagueMatches};
@@ -27,7 +27,7 @@ pub fn router() -> Router<AppState> {
 /// Ranks `members` by Match Points over every Match of the League's
 /// effective view. Reusable: #16 scores a subset of Matches the same way for
 /// "Points gained today", #17 renders the final ranking with medals.
-pub fn standings(matches: &LeagueMatches, members: &[UserId]) -> Vec<Standing> {
+pub fn ranking(matches: &LeagueMatches, members: &[UserId]) -> Vec<LeaderboardRow> {
     let games: Vec<ScoredMatch> = matches
         .view
         .matches
@@ -74,7 +74,7 @@ async fn show(
     let profiles = leagues::members(&state.db, league.id).await?;
     let ids: Vec<UserId> = profiles.iter().map(|p| p.user_id).collect();
 
-    let mut rows: Vec<Row> = standings(&matches, &ids)
+    let mut rows: Vec<Row> = ranking(&matches, &ids)
         .into_iter()
         .filter_map(|s| {
             let profile = profiles.iter().find(|p| p.user_id == s.user_id)?;

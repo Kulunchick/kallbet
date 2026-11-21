@@ -52,7 +52,7 @@ pub struct ScoredMatch<'a> {
 
 /// One Member's row of the Leaderboard.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Standing {
+pub struct LeaderboardRow {
     /// 1-based; Members with equal Points share a place and the next place is
     /// skipped (1, 1, 3).
     pub place: u32,
@@ -65,7 +65,7 @@ pub struct Standing {
     pub wrong: u32,
 }
 
-impl Standing {
+impl LeaderboardRow {
     /// Correct Predictions as a whole percentage of the Predictions made on
     /// decided, non-Void Matches. `None` before there is any.
     pub fn percent_correct(&self) -> Option<u32> {
@@ -82,11 +82,11 @@ pub fn leaderboard(
     members: &[UserId],
     games: &[ScoredMatch],
     pick_of: impl Fn(UserId, MatchId) -> Option<TeamId>,
-) -> Vec<Standing> {
-    let mut rows: Vec<Standing> = members
+) -> Vec<LeaderboardRow> {
+    let mut rows: Vec<LeaderboardRow> = members
         .iter()
         .map(|&user_id| {
-            let mut row = Standing {
+            let mut row = LeaderboardRow {
                 place: 0,
                 user_id,
                 points: 0,
@@ -193,7 +193,7 @@ mod tests {
     }
 
     /// `picks`: (user, match, team).
-    fn board(members: &[i64], games: &[(Match, bool)], picks: &[(i64, i64, i64)]) -> Vec<Standing> {
+    fn board(members: &[i64], games: &[(Match, bool)], picks: &[(i64, i64, i64)]) -> Vec<LeaderboardRow> {
         let members: Vec<UserId> = members.iter().map(|&u| UserId(u)).collect();
         let games: Vec<ScoredMatch> = games
             .iter()
@@ -210,7 +210,7 @@ mod tests {
         })
     }
 
-    fn places(board: &[Standing]) -> Vec<(i64, u32, u32)> {
+    fn places(board: &[LeaderboardRow]) -> Vec<(i64, u32, u32)> {
         board
             .iter()
             .map(|s| (s.user_id.0, s.place, s.points))

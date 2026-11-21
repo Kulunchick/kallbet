@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use chrono::{DateTime, Duration, NaiveDate, NaiveTime, Utc};
 
 use super::messages;
-use crate::api::leaderboard::standings;
+use crate::api::leaderboard::ranking;
 use crate::domain::scoring::{self, ScoredMatch};
 use crate::domain::{MatchStatus, UserId};
 use crate::league_matches::LeagueMatches;
@@ -76,7 +76,7 @@ fn digests(league: &League, matches: &LeagueMatches, now: DateTime<Utc>, out: &m
         }
     }
     let member_ids: Vec<UserId> = matches.profiles.iter().map(|p| p.user_id).collect();
-    let total = standings(matches, &member_ids);
+    let total = ranking(matches, &member_ids);
 
     for (day, games) in days {
         let day_end = day
@@ -112,7 +112,7 @@ fn digests(league: &League, matches: &LeagueMatches, now: DateTime<Utc>, out: &m
         });
         for profile in matches.profiles.iter().filter(|p| p.joined_at < day_end) {
             let user = profile.user_id;
-            let (Some(today), Some(standing)) = (
+            let (Some(today), Some(row)) = (
                 gained.iter().find(|s| s.user_id == user),
                 total.iter().find(|s| s.user_id == user),
             ) else {
@@ -127,8 +127,8 @@ fn digests(league: &League, matches: &LeagueMatches, now: DateTime<Utc>, out: &m
                     ("league", league.name.clone()),
                     ("date", day.to_string()),
                     ("gained", today.points.to_string()),
-                    ("place", standing.place.to_string()),
-                    ("total", standing.points.to_string()),
+                    ("place", row.place.to_string()),
+                    ("total", row.points.to_string()),
                 ],
             });
         }
