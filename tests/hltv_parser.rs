@@ -303,6 +303,13 @@ fn a_cloudflare_challenge_is_an_unavailable_source_not_an_empty_event() {
 }
 
 #[test]
+fn an_unknown_event_id_is_not_found() {
+    let html = fixture("event-not-found.html");
+
+    assert_eq!(parse::event_page(&html), Err(SourceError::NotFound));
+}
+
+#[test]
 fn a_page_of_the_wrong_kind_is_a_parse_error() {
     let list = fixture("events-list.html");
     let event = fixture("event-9028-cologne-stage1.html");

@@ -14,6 +14,7 @@ To keep the repository small, `<script>`, `<style>`, `<noscript>` and `<iframe>`
 | `event-9303-stage1-swiss.html` | its Stage 1 (Swiss, round 1 paired) | upcoming |
 | `event-9469-swiss-plus-playoffs.html` | NODWIN Clutch Series 14: Swiss + Bo3 Playoffs, one match live, a renamed team | ongoing |
 | `event-9496-double-elim-nonswiss.html` | POWER Ligaen S33 Finals: double elimination only, final live | ongoing |
+| `event-not-found.html` | `/events/99999999/event`: HLTV's 404 page for an unknown event id | |
 | `matches.html` | `/matches` (live and upcoming list) | |
 | `cloudflare-challenge.html` | Cloudflare's "Just a moment..." page instead of an event page (not trimmed) | |
 

@@ -85,6 +85,13 @@ pub fn event_page(html: &str) -> Result<EventPage, SourceError> {
                 "hltv: Cloudflare challenge instead of the page".into(),
             ));
         }
+        // HLTV's "Page not found" page (served for an unknown event id).
+        if doc
+            .select(&sel(".error-status h1"))
+            .any(|h| text_of(h) == "404")
+        {
+            return Err(SourceError::NotFound);
+        }
         return Err(parse_error("not an HLTV event page (no og:url)".into()));
     };
     let name = meta(&doc, "og:title")
