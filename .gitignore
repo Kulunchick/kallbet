@@ -5,3 +5,10 @@
 # graphify
 /graphify-out/cache/
 /graphify-out/.graphify_*
+
+# local data and build output
+*.db
+*.db-shm
+*.db-wal
+/web/node_modules/
+/web/dist/
