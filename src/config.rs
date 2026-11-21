@@ -144,6 +144,19 @@ impl Config {
     }
 }
 
+/// Where a URL points (`scheme://host:port`), without user info, path or
+/// query, any of which may carry credentials. `…` marks that something was
+/// dropped.
+pub fn url_origin(url: &str) -> String {
+    let (scheme, rest) = url.split_once("://").unwrap_or(("", url));
+    let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let authority = &rest[..authority_end];
+    let host = authority.rsplit_once('@').map_or(authority, |(_, host)| host);
+    let dropped = host.len() != rest.len();
+    let prefix = if scheme.is_empty() { String::new() } else { format!("{scheme}://") };
+    format!("{prefix}{host}{}", if dropped { "/…" } else { "" })
+}
+
 fn redact(secret: &Option<String>) -> &'static str {
     match secret {
         Some(_) => "<set>",
@@ -161,7 +174,7 @@ impl fmt::Debug for Config {
             .field("bot_token", &redact(&self.bot_token))
             .field("bot_username", &self.bot_username)
             .field("pandascore_token", &redact(&self.pandascore_token))
-            .field("chrome_url", &self.chrome_url)
+            .field("chrome_url", &self.chrome_url.as_deref().map(url_origin))
             .field("logo_dir", &self.logo_dir)
             .field("breaker_failures", &self.breaker_failures)
             .field("breaker_open_minutes", &self.breaker_open_minutes)

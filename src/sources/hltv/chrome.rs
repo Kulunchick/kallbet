@@ -29,6 +29,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{Instant, sleep, timeout};
 
 use super::PageLoader;
+use crate::config::url_origin;
 use crate::ports::SourceError;
 
 /// Minimum time between two page loads.
@@ -79,7 +80,7 @@ impl ChromePages {
         let (browser, mut handler) = timeout(Duration::from_secs(20), Browser::connect(url.clone()))
             .await
             .map_err(|_| unavailable(format!("connecting to {url} timed out")))?
-            .map_err(|e| unavailable(format!("connecting to {url}: {e}")))?;
+            .map_err(|e| unavailable(format!("connecting to {}: {e}", url_origin(&url))))?;
         let handler = tokio::spawn(async move {
             while let Some(event) = handler.next().await {
                 if event.is_err() {
@@ -200,7 +201,7 @@ pub async fn resolve_endpoint(endpoint: &str) -> Result<String, SourceError> {
         Some((h, p)) if !h.ends_with(']') || authority.starts_with('[') => {
             let port: u16 = p
                 .parse()
-                .map_err(|_| unavailable(format!("bad Chrome endpoint {endpoint:?}")))?;
+                .map_err(|_| unavailable(format!("bad Chrome endpoint {}", url_origin(endpoint))))?;
             (h, port)
         }
         _ => (authority, 80),
@@ -211,7 +212,7 @@ pub async fn resolve_endpoint(endpoint: &str) -> Result<String, SourceError> {
     }
     let addr = tokio::net::lookup_host((host, port))
         .await
-        .map_err(|e| unavailable(format!("resolving {host}: {e}")))?
+        .map_err(|e| unavailable(format!("resolving {}: {e}", url_origin(endpoint))))?
         .next()
         .ok_or_else(|| unavailable(format!("{host} has no address")))?;
     Ok(format!("http://{addr}"))

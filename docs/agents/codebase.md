@@ -231,7 +231,7 @@ Settings come from environment variables; `.env` is loaded for local development
 | `KALLBET_BREAKER_OPEN_MINUTES` | `15` | How long an open breaker skips its Data Source before one more try. |
 | `KALLBET_MATCH_WINDOW_HOURS` | `6` | ± hours within which two sources' start times count as the same Match. |
 
-A new setting needs a field in `Config`, a line in `Config::from_lookup`, a value in `Config::for_tests`, and an entry in `.env.example`. `Config`'s `Debug` output redacts secrets; keep it that way for new ones.
+A new setting needs a field in `Config`, a line in `Config::from_lookup`, a value in `Config::for_tests`, and an entry in `.env.example`. `Config`'s `Debug` output redacts secrets; keep it that way for new ones (URLs that may carry credentials, like `KALLBET_CHROME_URL`, print only `config::url_origin`). Request logs carry the method and `app::loggable_path` (Invite Link tokens replaced, no query), never the raw URI.
 
 Dev login, when enabled: `POST /api/dev/login` with `{"nickname": "alice"}` signs in as that User, creating it if needed. When disabled the route does not exist (404).
 

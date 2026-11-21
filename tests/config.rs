@@ -41,6 +41,22 @@ fn secrets_come_from_the_environment_and_are_not_printed() {
     assert!(!printed.contains("panda-secret"), "{printed}");
 }
 
+/// A11: a remote browser's DevTools URL can carry credentials (user info or
+/// a token in the query); only where it points is printed.
+#[test]
+fn the_chrome_url_is_printed_without_credentials() {
+    let config = config_from(&[(
+        "KALLBET_CHROME_URL",
+        "https://user:hunter2@chrome.example:3000/devtools?token=tok-secret",
+    )]);
+
+    let printed = format!("{config:?}");
+    assert!(!printed.contains("hunter2"), "{printed}");
+    assert!(!printed.contains("user:"), "{printed}");
+    assert!(!printed.contains("tok-secret"), "{printed}");
+    assert!(printed.contains("chrome.example:3000"), "{printed}");
+}
+
 #[test]
 fn missing_secrets_are_simply_absent() {
     let config = config_from(&[("BOT_TOKEN", "")]);
