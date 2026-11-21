@@ -1,0 +1,25 @@
+{
+  "appName": "KallBET",
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "ru": "Русский",
+    "uk": "Українська"
+  },
+  "footer": {
+    "noMoney": "A private game for friends. No money involved."
+  },
+  "server": {
+    "checking": "Checking the server…",
+    "online": "Server online",
+    "offline": "Server unreachable"
+  },
+  "errors": {
+    "unknown": "Something went wrong. Please try again.",
+    "network": "No connection to the server. Check your internet and try again.",
+    "internal": "The server ran into a problem. Please try again later.",
+    "unauthorized": "Please sign in to continue.",
+    "forbidden": "You are not allowed to do that.",
+    "not_found": "Not found."
+  }
+}

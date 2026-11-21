@@ -1,3 +1,13 @@
+## Working in this codebase
+
+Read `docs/agents/codebase.md` before changing code: it says where a new API area, migration, test, page and locale string go.
+
+Run all three before reporting work as done:
+
+- `cargo test` (repo root): backend tests.
+- `npm run build` (in `web/`): frontend typecheck and build.
+- `npm run check:locales` (in `web/`): en, ru and uk must have identical keys.
+
 ## Agent skills
 
 ### Issue tracker

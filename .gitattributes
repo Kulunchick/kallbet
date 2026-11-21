@@ -1,0 +1,6 @@
+# LF everywhere: sqlx checksums migration files byte-for-byte, and the Docker
+# build runs on Linux.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.woff2 binary

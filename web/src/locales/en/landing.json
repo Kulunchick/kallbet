@@ -1,0 +1,31 @@
+{
+  "hero": {
+    "titleLead": "Call the winners.",
+    "titleAccent": "Beat your friends.",
+    "subtitle": "Private Leagues for predicting CS2 Matches at the Major and other pro Events. Predictions stay hidden until everyone is in.",
+    "badge": "Sign in with Telegram is coming soon"
+  },
+  "how": {
+    "title": "How it works",
+    "league": {
+      "title": "Create a League",
+      "text": "Pick an Event, name your League and share the Invite Link in your chat."
+    },
+    "predict": {
+      "title": "Predict every Match",
+      "text": "One tap on the team you think will win. Change your mind until the Match Locks, 15 minutes before it starts."
+    },
+    "reveal": {
+      "title": "Reveal together",
+      "text": "Nobody sees your Prediction until everyone has predicted or the Match Locks. No copying."
+    },
+    "leaderboard": {
+      "title": "Climb the Leaderboard",
+      "text": "1 Point for every correct Prediction, and a separate Pick'em for each Stage."
+    }
+  },
+  "notFound": {
+    "title": "This page does not exist",
+    "home": "Back to the start"
+  }
+}

@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+/*
+ * The KallBET theme: dark only. Near-black background, emerald for "mine /
+ * correct / primary action", gold for Points, the leader and headings, soft
+ * glow. Use these tokens and utilities; do not hard-code colours in pages.
+ */
+@theme {
+  /* surfaces */
+  --color-ink: #07090a; /* page background */
+  --color-panel: #0c1011; /* cards */
+  --color-raised: #121819; /* hover, inputs */
+  --color-line: #1d2828; /* borders */
+
+  /* text */
+  --color-fg: #e9f1ee;
+  --color-mute: #8a9a96;
+
+  /* emerald: my Prediction, correct, primary actions */
+  --color-emerald-a: #10b981;
+  --color-emerald-b: #34d399;
+
+  /* gold: Points, the leader, headings */
+  --color-gold-a: #f5c542;
+  --color-gold-b: #d4a017;
+
+  --color-danger: #f87171;
+
+  --font-display: "Unbounded Variable", "Unbounded", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background-color: var(--color-ink);
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-ink);
+    background-image:
+      radial-gradient(60rem 30rem at 15% -10%, rgb(16 185 129 / 0.12), transparent 60%),
+      radial-gradient(50rem 28rem at 95% 0%, rgb(245 197 66 / 0.08), transparent 60%);
+    background-repeat: no-repeat;
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-emerald-b);
+    outline-offset: 2px;
+  }
+}
+
+/* Gradients */
+@utility bg-emerald-gradient {
+  background-image: linear-gradient(135deg, var(--color-emerald-a), var(--color-emerald-b));
+}
+@utility bg-gold-gradient {
+  background-image: linear-gradient(135deg, var(--color-gold-a), var(--color-gold-b));
+}
+@utility text-emerald-gradient {
+  background-image: linear-gradient(135deg, var(--color-emerald-a), var(--color-emerald-b));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+@utility text-gold-gradient {
+  background-image: linear-gradient(135deg, var(--color-gold-a), var(--color-gold-b));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* Soft glow */
+@utility glow-emerald {
+  box-shadow:
+    0 0 0 1px rgb(52 211 153 / 0.35),
+    0 0 28px -6px rgb(16 185 129 / 0.55);
+}
+@utility glow-gold {
+  box-shadow:
+    0 0 0 1px rgb(245 197 66 / 0.35),
+    0 0 28px -6px rgb(245 197 66 / 0.5);
+}
+@utility text-glow-gold {
+  filter: drop-shadow(0 0 18px rgb(245 197 66 / 0.35));
+}
+
+/* Building blocks */
+@utility card {
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  background-color: color-mix(in srgb, var(--color-panel) 88%, transparent);
+}
+@utility btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.7rem 1.25rem;
+  font-weight: 600;
+  color: #04130d;
+  background-image: linear-gradient(135deg, var(--color-emerald-a), var(--color-emerald-b));
+  box-shadow: 0 0 28px -8px rgb(16 185 129 / 0.7);
+  transition:
+    filter 150ms,
+    transform 150ms;
+  &:hover {
+    filter: brightness(1.08);
+  }
+  &:active {
+    transform: translateY(1px);
+  }
+  &:disabled {
+    filter: grayscale(0.6) brightness(0.7);
+    cursor: not-allowed;
+  }
+}
+@utility btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-line);
+  padding: 0.7rem 1.25rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  transition: background-color 150ms;
+  &:hover {
+    background-color: var(--color-raised);
+  }
+}
