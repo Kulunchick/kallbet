@@ -3,9 +3,9 @@
 //! the caller's own Prediction.
 //!
 //! `GET /api/leagues/{id}/matches` → [`MatchesView`]. Each Match is a
-//! [`MatchCard`]: #6 adds the Prediction count and the revealed Predictions
-//! there, #7 the Points of the caller's Prediction. Never put another
-//! Member's Prediction in it before Reveal.
+//! [`MatchCard`]: its `predictions` holds the Prediction count and, after
+//! Reveal, everyone's Predictions (#6); #7 adds the Points of the caller's
+//! Prediction. Never put another Member's Prediction in it before Reveal.
 
 use std::collections::BTreeMap;
 
@@ -17,6 +17,7 @@ use serde::Serialize;
 
 use crate::api::leagues::require_member;
 use crate::auth::session::CurrentUser;
+use crate::domain::lock_reveal::Outcome;
 use crate::domain::scoring::{self, Verdict};
 use crate::domain::{
     DataSourceKind, Event, LeagueId, MatchFormat, MatchId, MatchPlacement, MatchScore, MatchStatus,
@@ -116,6 +117,56 @@ pub struct LockView {
     pub locked: bool,
 }
 
+/// The Predictions of a Match as a Member may see them (#6, ADR-0003).
+#[derive(Serialize)]
+pub struct PredictionsView {
+    /// How many Eligible Members have predicted (N of "N of M predicted").
+    pub count: usize,
+    /// How many Eligible Members there are (M).
+    pub eligible: usize,
+    /// When the Predictions were revealed; `null` before Reveal.
+    pub revealed_at: Option<DateTime<Utc>>,
+    /// The Eligible Members' Predictions, `null` before Reveal. Never filled
+    /// earlier: this is the only place other Members' Predictions leave the
+    /// server.
+    pub revealed: Option<Vec<RevealedPrediction>>,
+}
+
+#[derive(Serialize)]
+pub struct RevealedPrediction {
+    pub user_id: UserId,
+    pub nickname: String,
+    pub avatar_url: Option<String>,
+    pub team_id: TeamId,
+}
+
+fn predictions_view(matches: &LeagueMatches, game: MatchId, outcome: &Outcome) -> PredictionsView {
+    let made: Vec<_> = matches
+        .predictions
+        .iter()
+        .filter(|p| p.match_id == game && outcome.eligible.contains(&p.user_id))
+        .collect();
+    let revealed = outcome.is_revealed().then(|| {
+        made.iter()
+            .filter_map(|p| {
+                let member = matches.profiles.iter().find(|m| m.user_id == p.user_id)?;
+                Some(RevealedPrediction {
+                    user_id: p.user_id,
+                    nickname: member.nickname.clone(),
+                    avatar_url: member.avatar_url.clone(),
+                    team_id: p.team_id,
+                })
+            })
+            .collect()
+    });
+    PredictionsView {
+        count: made.len(),
+        eligible: outcome.eligible.len(),
+        revealed_at: outcome.stamps.revealed_at,
+        revealed,
+    }
+}
+
 /// One Match as a Member sees it.
 #[derive(Serialize)]
 pub struct MatchCard {
@@ -132,7 +183,8 @@ pub struct MatchCard {
     pub lock: LockView,
     /// The team the caller picked, if any.
     pub my_prediction: Option<TeamId>,
-    // #6: `predictions: { count, eligible, revealed: [...] }` goes here.
+    /// #6: "N of M predicted" and, once revealed, everyone's Predictions.
+    pub predictions: PredictionsView,
     /// #7: how my Prediction scored: `pending` until the result is in, then
     /// `correct`, `wrong`, `missing` or `void`.
     pub my_result: Verdict,
@@ -201,6 +253,7 @@ pub fn view_for(matches: &LeagueMatches, viewer: UserId) -> MatchesView {
                         locked: outcome.is_locked(),
                     },
                     my_prediction: matches.prediction_of(game.id, viewer).map(|p| p.team_id),
+                    predictions: predictions_view(matches, game.id, &outcome),
                     my_result: verdict,
                     my_points: verdict.points(),
                     source: m.source,

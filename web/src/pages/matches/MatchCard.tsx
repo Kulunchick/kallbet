@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import { PredictionsLine } from "./PredictionsLine";
 import type { MatchCard as Card, TeamRef } from "./api";
 import { formatAgo, formatSpan, formatStart } from "./time";
 
@@ -13,9 +14,8 @@ type Props = {
 
 /**
  * One Match: teams (tap one to predict), format, Scheduled Start in local
- * time, Lock countdown and data freshness. #6 adds the "N of M predicted"
- * line and the revealed avatars in the marked slot; #7 adds the ✓/✗ next to
- * the score.
+ * time, Lock countdown, "N of M predicted" or the revealed avatars, and data
+ * freshness. #7 adds the ✓/✗ next to the score.
  */
 export function MatchCard({ card, now, saving, onPredict }: Props) {
   const { t, i18n } = useTranslation("matches");
@@ -58,7 +58,7 @@ export function MatchCard({ card, now, saving, onPredict }: Props) {
         />
       </div>
 
-      {/* #6: "N of M predicted" and the revealed Predictions go here. */}
+      <PredictionsLine card={card} />
 
       <footer className="flex flex-wrap items-center justify-between gap-2 text-xs">
         <LockLine card={card} locked={locked} locksAt={locksAt} now={now} />

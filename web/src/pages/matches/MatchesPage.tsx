@@ -36,6 +36,8 @@ export function MatchesPage() {
     try {
       await predict(league, match, team.id);
       setView((v) => v && withPrediction(v, match, team.id));
+      // The count changed, and this Prediction may have triggered a Reveal.
+      reload();
     } catch (e) {
       setError({ match, error: e });
       reload();
