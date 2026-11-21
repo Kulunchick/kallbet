@@ -1,0 +1,26 @@
+{
+  "signIn": "Sign in",
+  "signOut": "Sign out",
+  "login": {
+    "title": "Sign in to KallBET",
+    "subtitle": "Use your Telegram account. We never see a password.",
+    "notConfigured": "Telegram sign-in is not set up on this server.",
+    "devLabel": "Development only",
+    "devSubmit": "Sign in as this nickname"
+  },
+  "profile": {
+    "nickname": "Nickname",
+    "nicknameHint": "3 to 20 characters. Other players see it. It must be unique.",
+    "save": "Save",
+    "saved": "Saved.",
+    "language": "Language"
+  },
+  "errors": {
+    "nickname_invalid": "A nickname must be 3 to 20 characters.",
+    "nickname_taken": "This nickname is already taken. Pick another one.",
+    "language_invalid": "This language is not supported.",
+    "invalid_login": "Telegram sign-in could not be verified. Please try again.",
+    "login_expired": "The Telegram sign-in took too long. Please try again.",
+    "login_unavailable": "Sign-in is temporarily unavailable."
+  }
+}
