@@ -9,6 +9,7 @@ pub mod config;
 pub mod db;
 pub mod domain;
 pub mod error;
+pub mod league_matches;
 pub mod notifications;
 pub mod poller;
 pub mod ports;

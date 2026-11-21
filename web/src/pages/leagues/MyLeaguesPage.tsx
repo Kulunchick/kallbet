@@ -33,6 +33,12 @@ export function MyLeaguesPage() {
               >
                 <span className="text-lg font-bold">{league.name}</span>
                 <span className="text-sm text-mute">{league.event.name}</span>
+                {league.my_place !== null && (
+                  <span className="text-sm font-semibold text-gold-a">
+                    {t("mine.place", { place: league.my_place })} ·{" "}
+                    {t("mine.points", { count: league.my_points })}
+                  </span>
+                )}
                 {league.my_role === "admin" && (
                   <span className="text-xs font-semibold uppercase tracking-wide text-gold-a">
                     {t("role.admin")}

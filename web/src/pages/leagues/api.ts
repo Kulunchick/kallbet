@@ -14,6 +14,8 @@ export type LeagueSummary = {
   my_role: Role;
   archived_at: string | null;
 };
+/** An entry of "My Leagues": my place (shared places share the number) and my Match Points. */
+export type LeagueListItem = LeagueSummary & { my_place: number | null; my_points: number };
 export type Member = {
   user_id: number;
   nickname: string;
@@ -41,7 +43,7 @@ export const resolveEvent = (link: string) =>
   api<EventInfo>("/events/resolve", { method: "POST", body: { link } });
 export const createLeague = (event_id: number, name: string) =>
   api<LeagueDetail>("/leagues", { method: "POST", body: { event_id, name } });
-export const myLeagues = () => api<LeagueSummary[]>("/leagues");
+export const myLeagues = () => api<LeagueListItem[]>("/leagues");
 export const getLeague = (id: number) => api<LeagueDetail>(`/leagues/${id}`);
 export const reissueInvite = (id: number) =>
   api<{ invite_token: string }>(`/leagues/${id}/invite/reissue`, { method: "POST" });

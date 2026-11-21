@@ -7,6 +7,7 @@
 use std::sync::Arc;
 
 use crate::config::Config;
+use crate::poller;
 use crate::ports::{
     Clock, LogNotifier, MatchSource, Notifier, SystemClock, UnconfiguredSource,
 };
@@ -27,5 +28,16 @@ pub fn notifier(_config: &Config) -> Arc<dyn Notifier> {
     Arc::new(LogNotifier)
 }
 
-/// Starts the background tasks. Nothing yet: #5 spawns the poller here.
-pub fn spawn_background_tasks(_state: &AppState) {}
+/// Starts the background tasks: the poller, one [`poller::tick`] every
+/// [`poller::TICK_EVERY`]. Must be called inside the Tokio runtime.
+pub fn spawn_background_tasks(state: &AppState) {
+    let state = state.clone();
+    tokio::spawn(async move {
+        let mut every = tokio::time::interval(poller::TICK_EVERY);
+        every.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            every.tick().await;
+            poller::tick(&state).await;
+        }
+    });
+}
