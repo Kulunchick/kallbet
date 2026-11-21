@@ -44,8 +44,9 @@ export function MatchCard({ card, now, saving, onPredict }: Props) {
           onPick={onPredict}
           label={t("pick")}
         />
-        <span className="text-center text-sm font-bold text-mute">
+        <span className="flex flex-col items-center text-center text-sm font-bold text-mute">
           {card.score ? `${card.score.team_a} : ${card.score.team_b}` : t("vs")}
+          <ResultMark result={card.my_result} />
         </span>
         <TeamButton
           team={card.team_b}
@@ -69,6 +70,28 @@ export function MatchCard({ card, now, saving, onPredict }: Props) {
         </span>
       </footer>
     </article>
+  );
+}
+
+/** #7: ✓/✗ for my Prediction on a finished Match. */
+function ResultMark({ result }: { result: Card["my_result"] }) {
+  const { t } = useTranslation("matches");
+  if (result === "pending") return null;
+  const look = {
+    correct: { mark: "✓", color: "text-emerald-b" },
+    wrong: { mark: "✗", color: "text-danger" },
+    missing: { mark: "–", color: "text-mute" },
+    void: { mark: "∅", color: "text-mute" },
+  }[result];
+  return (
+    <span
+      role="img"
+      aria-label={t(`result.${result}`)}
+      title={t(`result.${result}`)}
+      className={`text-lg leading-none ${look.color}`}
+    >
+      {look.mark}
+    </span>
   );
 }
 

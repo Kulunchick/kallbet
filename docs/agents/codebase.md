@@ -224,6 +224,15 @@ How League logic gets its Matches — read this before #6, #7, #13, #14, #16, #1
 - **SPA**: `/leagues/:id/pickem` (`web/src/pages/pickem/`, namespace `pickem`): leaderboard plus one `PickemStage` per Swiss Stage (form until Lock, everyone's Pick'ems after). #15 adds a bracket component for Playoffs Stages next to it.
 - Tests: `tests/api_pickem.rs` (setup has a Swiss Stage of 16 teams and a Playoffs Stage).
 
+## Scoring and Leaderboard (ticket #7)
+
+- **Points are never stored.** The Leaderboard is computed on every read from `LeagueMatches` (the effective Match view + the League's Predictions), so a result from a poll, and #13's Overrides, are reflected at once with no recalculation step. Consequently `poller::after_poll` has no scoring hook; do not add one.
+- **Pure policy** in `domain/scoring.rs`: `judge(&Match, Option<TeamId>) -> Verdict` (`Correct | Wrong | Missing | Void | Pending`; a Void Match is `Void` whatever was predicted), and `leaderboard(members, &[ScoredMatch { game, playoffs }], pick_of) -> Vec<Standing>` with shared places (1, 1, 3). `Standing { place, user_id, points, playoff_points, correct, wrong }` and `percent_correct()` (correct / (correct + wrong), rounded; Void, Pending and Missing are not in the denominator; `None` before any).
+- **Reuse**: `api::leaderboard::standings(&LeagueMatches, &[UserId]) -> Vec<Standing>` ranks the League's Members over every Match. #16 "Points gained today": call `scoring::leaderboard` with only that day's Matches (it is the same function over a subset) and read `points`; the current place comes from `standings`. #17 medals: map `Standing::place` 1/2/3 to 🥇🥈🥉, shared places share the medal. Only pass current Members (`store::leagues::members`), so Members who left or were kicked drop off; late joiners simply have `Missing` for earlier Matches.
+- Playoffs Matches are those whose Stage `kind` is `playoffs`.
+- **API**: `GET /api/leagues/{id}/leaderboard` → `{ rows: [{ place, user_id, nickname, avatar_url, points, playoff_points, percent_correct|null }] }`, ordered by place then nickname. `MatchCard` gained `my_result` (`pending|correct|wrong|missing|void`) and `my_points`. `GET /api/leagues` items gained `my_place` (null if not ranked) and `my_points`.
+- **SPA**: `/leagues/:id/leaderboard` (`web/src/pages/leaderboard/`, namespace `leaderboard`, place 1 gold, my row highlighted). #17 should render medals in this page. #14's Pick'em Leaderboard is separate.
+
 ## Accounts (ticket #3)
 
 - API: `POST /api/auth/telegram` (body `{auth: <widget payload>, language?}`; `language` only seeds a new User), `POST /api/auth/logout` (204), `GET /api/auth/config`, `GET|PATCH /api/me` (`{nickname?, language?}`). Error codes: `invalid_login`, `login_expired` (401), `login_unavailable` (503), `nickname_invalid`, `language_invalid` (422), `nickname_taken` (409). Payloads older than 10 minutes are rejected.

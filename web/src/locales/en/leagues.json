@@ -3,6 +3,9 @@
   "backToLeagues": "Back to my Leagues",
   "role": { "admin": "League Admin" },
   "mine": {
+    "place": "Place {{place}}",
+    "points_one": "{{count}} Point",
+    "points_other": "{{count}} Points",
     "title": "My Leagues",
     "create": "Create a League",
     "empty": "You are not in any League yet. Create one, or open an Invite Link from a friend."

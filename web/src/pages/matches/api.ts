@@ -20,7 +20,9 @@ export type MatchCard = {
   score: { team_a: number; team_b: number } | null;
   lock: { locks_at: string | null; locked_at: string | null; locked: boolean };
   my_prediction: number | null;
-  // #6 adds the Prediction count and revealed Predictions, #7 my Points.
+  // #6 adds the Prediction count and revealed Predictions.
+  my_result: "pending" | "correct" | "wrong" | "missing" | "void";
+  my_points: number;
   source: DataSource;
   updated_at: string;
 };

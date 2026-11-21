@@ -24,6 +24,12 @@
     "roundOf": "Round of {{teams}}",
     "matches": "Matches"
   },
+  "result": {
+    "correct": "Your Prediction was right",
+    "wrong": "Your Prediction was wrong",
+    "missing": "No Prediction",
+    "void": "Void Match: counts for nothing"
+  },
   "errors": {
     "match_locked": "This Match is Locked: Predictions can no longer be made or changed.",
     "team_not_in_match": "That team does not play in this Match.",

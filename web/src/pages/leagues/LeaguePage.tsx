@@ -67,10 +67,13 @@ export function LeaguePage() {
         <h1 className="text-2xl font-extrabold text-gold-gradient">{league.name}</h1>
         <p className="text-mute">{league.event.name}</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Link to={`/leagues/${league.id}/matches`} className="btn-primary self-start">
+          <Link to={`/leagues/${league.id}/matches`} className="btn-primary">
             {t("matches:open")}
           </Link>
-          <Link to={`/leagues/${league.id}/pickem`} className="btn-ghost self-start">
+          <Link to={`/leagues/${league.id}/leaderboard`} className="btn-ghost">
+            {t("leaderboard:open")}
+          </Link>
+          <Link to={`/leagues/${league.id}/pickem`} className="btn-ghost">
             {t("pickem:open")}
           </Link>
         </div>

@@ -1,0 +1,16 @@
+{
+  "open": "Leaderboard",
+  "title": "Leaderboard",
+  "loading": "Loading…",
+  "backToLeague": "Back to the League",
+  "place": "Place",
+  "member": "Member",
+  "points": "Points",
+  "playoffPoints": "Playoffs",
+  "percent": "Correct",
+  "you": "You",
+  "hint": "Each correct Prediction earns 1 Point. Void Matches count for nothing. Playoffs shows the Points earned in the Playoffs.",
+  "errors": {
+    "not_found": "This League was not found."
+  }
+}

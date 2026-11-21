@@ -3,6 +3,11 @@
   "backToLeagues": "К моим лигам",
   "role": { "admin": "Админ лиги" },
   "mine": {
+    "place": "Место {{place}}",
+    "points_one": "{{count}} очко",
+    "points_few": "{{count}} очка",
+    "points_many": "{{count}} очков",
+    "points_other": "{{count}} очка",
     "title": "Мои лиги",
     "create": "Создать лигу",
     "empty": "Вы пока не состоите ни в одной лиге. Создайте свою или откройте пригласительную ссылку от друга."

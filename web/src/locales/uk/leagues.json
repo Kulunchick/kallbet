@@ -3,6 +3,11 @@
   "backToLeagues": "До моїх ліг",
   "role": { "admin": "Адмін ліги" },
   "mine": {
+    "place": "Місце {{place}}",
+    "points_one": "{{count}} бал",
+    "points_few": "{{count}} бали",
+    "points_many": "{{count}} балів",
+    "points_other": "{{count}} бала",
     "title": "Мої ліги",
     "create": "Створити лігу",
     "empty": "Ви поки що не берете участі в жодній лізі. Створіть свою або відкрийте запрошувальне посилання від друга."
