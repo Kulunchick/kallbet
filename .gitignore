@@ -15,3 +15,6 @@
 
 # server env file (deploy)
 kallbet.env
+
+# downloaded team logos (KALLBET_LOGO_DIR)
+/logos/

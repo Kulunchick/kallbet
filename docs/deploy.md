@@ -25,9 +25,9 @@ BOT_USERNAME=...        # the bot's @username without the @, needed by the Teleg
 PANDASCORE_TOKEN=...
 ```
 
-`docker-compose.yml` fixes the rest, so the env file cannot break them: `KALLBET_BIND=0.0.0.0:8095` (inside the container; the host side is loopback only), `DATABASE_URL=sqlite:///data/kallbet.db`, `KALLBET_DEV_LOGIN=false`.
+`docker-compose.yml` fixes the rest, so the env file cannot break them: `KALLBET_BIND=0.0.0.0:8095` (inside the container; the host side is loopback only), `DATABASE_URL=sqlite:///data/kallbet.db`, `KALLBET_DEV_LOGIN=false`, `KALLBET_CHROME_URL=http://chrome:9222`, `KALLBET_LOGO_DIR=/data/logos`.
 
-**Chrome endpoint for the HLTV adapter (ticket #8):** the variable is `KALLBET_CHROME_URL`, set by compose to `http://chrome:9222`. It is not read by `src/config.rs` yet; ticket #8 adds the field (and its `.env.example` line). Local development without Docker can point it at any local Chrome started with `--remote-debugging-port=9222`. Chrome's DevTools HTTP endpoint rejects requests whose `Host` header is neither `localhost` nor an IP address, so a client that connects to `chrome:9222` by service name must send a `Host: localhost` header or resolve the name to an IP first (see the notes in ticket #8).
+**Chrome endpoint for the HLTV adapter (ticket #8):** `KALLBET_CHROME_URL`, set by compose to `http://chrome:9222`. Chrome's DevTools HTTP endpoint rejects a `Host` header that is neither `localhost` nor an IP, so the adapter resolves the service name to an IP before connecting (`src/sources/hltv/chrome.rs`). Local development without Docker can point it at any local Chrome or Edge started with `--headless=new --remote-debugging-port=9222`. Team logos are downloaded once into `KALLBET_LOGO_DIR` (on the data volume; they are not in the database backups and are simply re-downloaded if lost).
 
 ## First-time setup (once)
 
