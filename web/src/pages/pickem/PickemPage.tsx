@@ -9,6 +9,7 @@ import { useLoad } from "../leagues/useLoad";
 import { getMatches } from "../matches/api";
 import { getLeaderboard } from "./api";
 import { PickemStage } from "./PickemStage";
+import { PlayoffsStage } from "./PlayoffsStage";
 
 /** The League's Pick'em: the Pick'em Leaderboard and one section per Swiss Stage. */
 export function PickemPage() {
@@ -53,11 +54,15 @@ export function PickemPage() {
       )}
       {stages.result.state === "ready" &&
         stages.result.data.stages
-          .filter((s) => s.kind === "swiss")
+          .filter((s) => s.kind === "swiss" || s.kind === "playoffs")
           .map((s) => (
             <section key={s.ordinal} className="flex flex-col gap-3">
               <h2 className="text-lg font-bold text-gold-gradient">{s.name}</h2>
-              <PickemStage league={league} stage={s.ordinal} onSaved={board.reload} />
+              {s.kind === "playoffs" ? (
+                <PlayoffsStage league={league} stage={s.ordinal} onSaved={board.reload} />
+              ) : (
+                <PickemStage league={league} stage={s.ordinal} onSaved={board.reload} />
+              )}
             </section>
           ))}
     </div>

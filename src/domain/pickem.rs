@@ -77,6 +77,8 @@ pub enum PickemError {
     WrongCount,
     DuplicateTeam,
     TeamNotInStage,
+    /// A Playoffs bracket whose first-round teams are not all known yet.
+    BracketNotReady,
 }
 
 impl PickemError {
@@ -85,6 +87,7 @@ impl PickemError {
             PickemError::WrongCount => "pickem_wrong_count",
             PickemError::DuplicateTeam => "pickem_duplicate_team",
             PickemError::TeamNotInStage => "pickem_team_not_in_stage",
+            PickemError::BracketNotReady => "pickem_bracket_not_ready",
         }
     }
 }
@@ -294,4 +297,210 @@ pub fn rank<T>(mut entries: Vec<(T, u32)>) -> Vec<(u32, T, u32)> {
         ranked.push((place, item, points));
     }
     ranked
+}
+
+// ---------------------------------------------------------------------------
+// The Playoffs bracket (#15)
+// ---------------------------------------------------------------------------
+
+/// The deepest bracket supported: 2^7 = 128 first-round slots. A slot's Pick
+/// `slot` number is its heap index `2^rounds_before_final + slot`, so the
+/// final is 1, the semifinals 2 and 3, the quarterfinals 4..=7, and it fits a
+/// `u8` up to this depth. The winners of slots `i * 2` and `i * 2 + 1` meet
+/// in slot `i`.
+pub const MAX_BRACKET_ROUNDS: u8 = 7;
+
+/// A slot's Pick number (see [`MAX_BRACKET_ROUNDS`]).
+pub fn slot_id(rounds_before_final: u8, slot: u8) -> u8 {
+    ((1u16 << rounds_before_final) + slot as u16) as u8
+}
+
+fn slot_in_bracket(rounds_before_final: u8, slot: u8) -> bool {
+    rounds_before_final <= MAX_BRACKET_ROUNDS && (slot as u16) < (1u16 << rounds_before_final)
+}
+
+/// A slot of the bracket as the effective view shows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BracketSlot {
+    pub rounds_before_final: u8,
+    pub slot: u8,
+    /// A first slot of the bracket: its teams come from the data, not from
+    /// earlier picks. Every slot of the deepest round is one, and so is any
+    /// shallower slot whose feeder slots have no Match (a bye).
+    pub leaf: bool,
+    /// The teams of the slot's Match, `None` while still to be decided.
+    pub teams: [Option<TeamId>; 2],
+    /// Who actually won the slot's Match (finished, not Void).
+    pub winner: Option<TeamId>,
+}
+
+impl BracketSlot {
+    pub fn id(&self) -> u8 {
+        slot_id(self.rounds_before_final, self.slot)
+    }
+}
+
+/// The shape of a Playoffs Stage, from its Matches' placements. The deepest
+/// round with a placed Match, `R` rounds before the final, has `2^R` slots;
+/// the bracket is the tree from the final down to there (so 4 teams are
+/// semifinals and a final, 16 teams start at the round of 16). A slot with no
+/// Match in the data is still a slot, with unknown teams.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Bracket {
+    /// Ordered from the first round to the final, each round top to bottom.
+    pub slots: Vec<BracketSlot>,
+}
+
+impl Bracket {
+    pub fn of(view: &EventView, stage: StageOrdinal) -> Bracket {
+        let placed: HashMap<(u8, u8), &crate::domain::Match> = view
+            .matches
+            .iter()
+            .filter(|m| m.data.stage == stage)
+            .filter_map(|m| match m.data.placement {
+                MatchPlacement::Playoffs {
+                    rounds_before_final: r,
+                    slot: s,
+                } if slot_in_bracket(r, s) => Some(((r, s), &m.data)),
+                _ => None,
+            })
+            .collect();
+        let Some(deepest) = placed.keys().map(|k| k.0).max() else {
+            return Bracket::default();
+        };
+        let mut slots = Vec::new();
+        let mut pending = vec![(0u8, 0u8)];
+        while let Some((r, s)) = pending.pop() {
+            let feeders = [(r + 1, 2 * s), (r + 1, 2 * s + 1)];
+            let leaf = r == deepest || !feeders.iter().any(|f| placed.contains_key(f));
+            let game = placed.get(&(r, s)).copied();
+            slots.push(BracketSlot {
+                rounds_before_final: r,
+                slot: s,
+                leaf,
+                teams: game.map(|g| g.teams()).unwrap_or([None, None]),
+                winner: game
+                    .filter(|g| g.status == MatchStatus::Finished && !g.is_void())
+                    .and_then(|g| g.winner),
+            });
+            if !leaf {
+                pending.extend(feeders);
+            }
+        }
+        slots.sort_by_key(|s| (std::cmp::Reverse(s.rounds_before_final), s.slot));
+        Bracket { slots }
+    }
+
+    /// The Pick'em can be filled once every first slot's teams are known.
+    pub fn ready(&self) -> bool {
+        !self.slots.is_empty()
+            && self
+                .slots
+                .iter()
+                .filter(|s| s.leaf)
+                .all(|s| s.teams.iter().all(Option::is_some))
+    }
+
+    /// The first slots' known teams, in id order: the teams a Member picks among.
+    pub fn teams(&self) -> Vec<TeamId> {
+        let mut teams: Vec<TeamId> = self
+            .slots
+            .iter()
+            .filter(|s| s.leaf)
+            .flat_map(|s| s.teams)
+            .flatten()
+            .collect();
+        teams.sort();
+        teams.dedup();
+        teams
+    }
+}
+
+/// A Playoffs Pick'em: the picked winner of every slot.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct BracketPickem {
+    /// `(rounds_before_final, slot, team)`.
+    pub winners: Vec<(u8, u8, TeamId)>,
+}
+
+impl BracketPickem {
+    pub fn to_picks(&self) -> Vec<Pick> {
+        self.winners
+            .iter()
+            .map(|&(r, s, team)| Pick {
+                kind: PickKind::Bracket,
+                slot: slot_id(r, s),
+                team,
+            })
+            .collect()
+    }
+
+    pub fn from_picks(picks: &[Pick], bracket: &Bracket) -> BracketPickem {
+        BracketPickem {
+            winners: bracket
+                .slots
+                .iter()
+                .filter_map(|s| {
+                    let p = picks
+                        .iter()
+                        .find(|p| p.kind == PickKind::Bracket && p.slot == s.id())?;
+                    Some((s.rounds_before_final, s.slot, p.team))
+                })
+                .collect(),
+        }
+    }
+
+    fn winner_of(&self, id: u8) -> Option<TeamId> {
+        self.winners
+            .iter()
+            .find(|&&(r, s, _)| slot_id(r, s) == id)
+            .map(|w| w.2)
+    }
+
+    /// Every slot picked exactly once, and each winner one of the slot's
+    /// participants: a first slot's two teams, otherwise the winners picked
+    /// in the two slots feeding it. A team may win several slots.
+    pub fn validate(&self, bracket: &Bracket) -> Result<(), PickemError> {
+        if !bracket.ready() {
+            return Err(PickemError::BracketNotReady);
+        }
+        let mut wanted: Vec<u8> = bracket.slots.iter().map(BracketSlot::id).collect();
+        let mut given: Vec<u8> = Vec::new();
+        for &(r, s, _) in &self.winners {
+            if !slot_in_bracket(r, s) {
+                return Err(PickemError::WrongCount);
+            }
+            given.push(slot_id(r, s));
+        }
+        wanted.sort();
+        given.sort();
+        if wanted != given {
+            return Err(PickemError::WrongCount);
+        }
+        for slot in &bracket.slots {
+            let participants = if slot.leaf {
+                slot.teams
+            } else {
+                [
+                    self.winner_of(slot.id() * 2),
+                    self.winner_of(slot.id() * 2 + 1),
+                ]
+            };
+            let picked = self.winner_of(slot.id());
+            if picked.is_none() || !participants.contains(&picked) {
+                return Err(PickemError::TeamNotInStage);
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Pick'em Points of a Playoffs Pick'em: 1 per slot whose picked winner
+/// actually won that slot's Match.
+pub fn score_bracket(pickem: &BracketPickem, bracket: &Bracket) -> u32 {
+    bracket
+        .slots
+        .iter()
+        .filter(|s| s.winner.is_some() && pickem.winner_of(s.id()) == s.winner)
+        .count() as u32
 }

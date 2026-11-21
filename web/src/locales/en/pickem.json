@@ -13,6 +13,16 @@
   "locksAt": "Locks when the first Match starts ({{time}})",
   "lockUnknown": "Locks when the first Match starts",
   "nobody": "Nobody made a Pick'em for this Stage.",
+  "bracketHelp": "Click the team you expect to win each Match. Your pick moves on to the next round; changing an earlier pick clears the picks that depended on it. You can change it until the first Playoffs Match starts.",
+  "bracketNotReady": "The bracket can be filled in once the first-round teams are known. It still Locks when the first Playoffs Match starts.",
+  "lockedBracket": "Locked: the Playoffs have started. Everyone's brackets are shown below.",
+  "tbd": "To be decided",
+  "round": {
+    "final": "Final",
+    "semifinal": "Semifinals",
+    "quarterfinal": "Quarterfinals",
+    "roundOf": "Round of {{teams}}"
+  },
   "points_one": "{{count}} Point",
   "points_other": "{{count}} Points",
   "errors": {
@@ -20,6 +30,7 @@
     "pickem_wrong_count": "Pick exactly two teams for 3-0, two for 0-3 and six to advance.",
     "pickem_duplicate_team": "A team can be picked only once.",
     "pickem_team_not_in_stage": "One of the teams does not play in this Stage.",
+    "pickem_bracket_not_ready": "The first-round teams are not known yet, so the bracket cannot be saved.",
     "not_found": "This League or Stage was not found."
   }
 }
