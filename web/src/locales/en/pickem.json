@@ -1,0 +1,25 @@
+{
+  "open": "Pick'em",
+  "title": "Pick'em",
+  "loading": "Loading…",
+  "backToLeague": "Back to the League",
+  "leaderboard": "Pick'em Leaderboard",
+  "help": "Pick two teams to go 3-0, two to go 0-3 and six to advance. You can change it until the Stage's first Match starts.",
+  "none": "Not picked",
+  "kind": { "three_nil": "3-0", "zero_three": "0-3", "advance": "Advance" },
+  "save": "Save Pick'em",
+  "saved": "Saved.",
+  "locked": "Locked: the Stage has started. Everyone's Pick'ems are shown below.",
+  "locksAt": "Locks when the first Match starts ({{time}})",
+  "lockUnknown": "Locks when the first Match starts",
+  "nobody": "Nobody made a Pick'em for this Stage.",
+  "points_one": "{{count}} Point",
+  "points_other": "{{count}} Points",
+  "errors": {
+    "pickem_locked": "This Pick'em is Locked: the Stage's first Match has started.",
+    "pickem_wrong_count": "Pick exactly two teams for 3-0, two for 0-3 and six to advance.",
+    "pickem_duplicate_team": "A team can be picked only once.",
+    "pickem_team_not_in_stage": "One of the teams does not play in this Stage.",
+    "not_found": "This League or Stage was not found."
+  }
+}
