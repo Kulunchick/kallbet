@@ -146,7 +146,8 @@ function AdminTools({
           ),
         )
       : [];
-  const all = [...visible, ...data.hidden];
+  const hiddenIds = new Set(data.hidden.map((m) => m.id));
+  const all = [...visible.filter((m) => !hiddenIds.has(m.id)), ...data.hidden];
 
   const run = async (action: () => Promise<unknown>) => {
     setError(null);
