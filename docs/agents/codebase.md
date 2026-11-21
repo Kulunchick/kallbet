@@ -163,6 +163,15 @@ Seam 2 (parser) tests keep fixtures under `tests/fixtures/<source>/` and feed th
 
 Tests: `tests/fallback_chain.rs` (fallback on failure, order, breaker open/half-open/close, unconfigured skipped, carried ids, unmatched flags, manual mapping, conflicts both ways, no rollback, local ids and adoption with Predictions, never-fetched Event, Stage link). Unit tests for names in `sources/fallback/names.rs`.
 
+## Liquipedia adapter (ticket #11)
+
+`sources/liquipedia/`: `LiquipediaSource::new(clock)` (production; `::with(wiki, pause, clock)` for tests), `parse.rs` (pure, Seam 2), `wikitext.rs` (template reader), `limiter.rs` (rate limits). Tests: `tests/liquipedia_parser.rs` (fixtures in `tests/fixtures/liquipedia/`, README has provenance), `tests/liquipedia_source.rs` (limits, headers, failures, and the adapter inside a `FallbackSource`), `tests/liquipedia_live.rs` (ignored, real API).
+
+- **API rules** (<https://liquipedia.net/api-terms-of-use>): at most 1 request per 2 s; `action=parse` at most 1 per 30 s (never used); custom User-Agent `KallBet/0.1 (https://kallbet.kulunchick.tech)`; gzip; cache. `limiter::RateLimiter` books slots from the injected `Clock`; the waiting goes through the `Pause` port (tests move a fake clock, nothing sleeps). `expandtemplates` is held to the 30 s class too. A wait over 60 s fails as `Unavailable`; a 429 backs off for `Retry-After` (default 2 min), a 403 for 10 min. `reqwest` gained the `gzip` feature.
+- **Event id** = the root page title (`Intel Extreme Masters/2026/Cologne`). `fetch_event` = `list=allpages` (Stage subpages) + one `action=query` for all pages + at most one `expandtemplates` for team keys not yet known (names are cached for the process). Stages come from `{{SwissStandings}}` (Swiss) and `{{Bracket|Bracket/N}}` with N a power of two (Playoffs); any other bracket (double elimination) is a `Groups` Stage with `Unplaced` Matches, like HLTV's. A Matchlist-only page yields no Stage.
+- **What is derived**: winner from map round totals (overtime included) or `score=W`; Swiss record from the High/Mid/Low Matchlist order of each Round (a different count of lists is a `Parse` error); format from the number of `mapN` slots; times from `{{Abbr/CEST}}`-style zones (unknown zone, e.g. `CST`, is a `Parse` error); `Live` = unfinished and started less than 12 h ago, or a map already played. `hltv=` goes to `ExternalMatch::canonical`. Empty TBD slots with no teams and no `hltv=` are left out. Team external id = template key; names via `{{Team|key}}` (not `{{TeamName}}`).
+- **Not done**: `list_events` answers `NotConfigured` (the lists are Lua-generated, only reachable through `action=parse`); `find_events` searches by the HLTV name and keeps pages with an `Infobox league`, so it needs a stored name. No cancelled/postponed state (never seen on a page). No `canonical` Event or team ids (Liquipedia pages carry no HLTV Event id).
+
 ## Frontend map (`web/`)
 
 | Path | Holds |

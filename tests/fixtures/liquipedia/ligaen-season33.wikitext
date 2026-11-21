@@ -1,0 +1,233 @@
+{{DISPLAYTITLE:Dust2.dk Ligaen Season 33}}
+{{Dust2.dk Navbox}}<br/>
+{{Tabs static
+|name1=Ligaen |link1=Dust2.dk/Ligaen/Season 33
+|name2=Division 1 |link2=Dust2.dk/Divisionerne/Season 33/Division 1
+}}
+{{Tabs static
+|name1=Overview & LAN Finals |link1=Dust2.dk/Ligaen/Season 33
+|name2=Regular Season |link2=Dust2.dk/Ligaen/Season 33/Regular Season
+}}
+{{Infobox league
+|name=Dust2.dk Ligaen Season 33
+|image=POWER Ligaen 2021 allmode.png
+|icon=POWER Ligaen 2021 allmode.png
+|organizer=Dust2.dk
+|series=Dust2.dk Ligaen
+|shortname=Season 33
+|type=Offline
+|prizepool=86,000
+|localcurrency=dkk
+|liquipediatier=C-Tier
+|publishertier=Tier 2
+|country=Denmark
+|city=Odense
+|venue=
+|sdate=2026-11-20
+|edate=2026-11-21
+|web=https://liga.dust2.dk/stilling/33
+|bracket=https://liga.dust2.dk/stilling/33/slutspil
+|rulebook=https://docs.dust2.org/s/d2dk-regler/doc/power-ligaen-regler-pa04rqYANw
+|twitter=Dust2dk
+|facebook=dust2dk
+|twitch=dust2tv
+|youtube=dust2dk
+|instagram=dust2dk
+|game=cs2
+|map1=Ancient
+|map2=Anubis
+|map3=Cache
+|map4=Dust II
+|map5=Inferno
+|map6=Mirage
+|map7=Nuke
+|team_number=4
+|previous=Dust2.dk/Ligaen/Season 32{{!}}Season 32
+|next=Dust2.dk/Ligaen/Season 34{{!}}Season 34
+}}
+
+==About==
+===Broadcast Talent===
+{{BroadcasterCard
+|position=Commentator
+|b1=Twisc
+|b2=Munk
+}}
+
+===Format===
+* '''Playoffs:'''
+** Double-Elimination bracket
+** All matches are {{Abbr/Bo3}}
+
+===Prize Pool===
+{{TeamPrizePool|prizesummary=true|exchangeinfo=true|autoexchange=true|localcurrency=dkk|playershare=true
+|{{Slot|localprize=46,000|playershare=30,000}}
+|{{Slot|localprize=20,000|playershare=10,000}}
+|{{Slot|localprize=12,000|playershare=7,000}}
+|{{Slot|localprize=8,000|playershare=5,000}}
+}}
+
+==Participants==
+{{TeamParticipants
+|{{Opponent|WOPA Esport
+|players={{Persons
+|{{Person|Zanto}}
+|{{Person|kwezz}}
+|{{Person|sL1m3}}
+|{{Person|Queenix}}
+|{{Person|Altekz}}
+|{{Person|role=Coach|Dengzoe}}
+}}
+|qualification={{Qualification|method=qual|page=/Regular Season|text=Regular Season|placement=1}}
+}}
+|{{Opponent|XI Esport
+|players={{Persons
+|{{Person|emili0|flag=dk}}
+|{{Person|Jiace|flag=dk}}
+|{{Person|Egelund|flag=dk}}
+|{{Person|Bakorino|flag=dk}}
+|{{Person|Avou|flag=dk}}
+|{{Person|role=Coach|ChrizMiz|flag=dk}}
+}}
+|qualification={{Qualification|method=qual|page=/Regular Season|text=Regular Season|placement=2}}
+}}
+|{{Opponent|EAC
+|players={{Persons
+|{{Person|Fallis|flag=dk}}
+|{{Person|ETYYY|flag=dk}}
+|{{Person|Viggo}}
+|{{Person|stesso|team=chicken coop}}
+|{{Person|qx}}
+|{{Person|role=Coach|redeye|link=redeye (Danish player)|flag=dk}}
+}}
+|qualification={{Qualification|method=qual|page=/Regular Season|text=Regular Season|placement=3}}
+}}
+|{{Opponent|MASONIC
+|players={{Persons
+|{{Person|Botman}}
+|{{Person|KralleJ|flag=dk}}
+|{{Person|b0RUP}}
+|{{Person|slexa|flag=dk}}
+|{{Person|Bukhavez|flag=dk}}
+|{{Person|role=Coach|R0nic}}
+}}
+|qualification={{Qualification|method=qual|page=/Regular Season|text=Regular Season|placement=4}}
+}}
+}}
+
+==Results==
+{{Bracket|Bracket/4U2L1D|id=L45fKYmtvM
+
+<!-- Upper Bracket Semifinals -->
+|R1M1={{Match
+	|opponent1={{TeamOpponent|wopa}}|opponent2={{TeamOpponent|masonic}}
+	|date=November 20, 2026 - 18:00 {{Abbr/CET}} |finished=true
+	|twitch=Dust2.dk
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=1|t1ct=5|t2t=7|t2ct=6
+		|stats=244745}}
+	|map2={{Map|map=Anubis|finished=true
+		|t1firstside=t|t1t=10|t1ct=3|t2t=7|t2ct=2
+		|stats=244754}}
+	|map3={{Map|map=Ancient|finished=true
+		|t1firstside=ct|t1t=4|t1ct=9|t2t=3|t2ct=0
+		|stats=244762}}
+	|hltv=2400551
+	|cstats=https://liga.dust2.dk/kampe/6af5e4703d97f0373dedf565/state-vs-masonic
+	}}
+|R1M2={{Match
+	|opponent1={{TeamOpponent|eac}}|opponent2={{TeamOpponent|xi esport}}
+	|date=November 20, 2026 - 21:10 {{Abbr/CET}} |finished=true
+	|twitch=Dust2.dk
+	|map1={{Map|map=Inferno|finished=true
+		|t1firstside=t|t1t=5|t1ct=0|t2t=6|t2ct=7
+		|stats=244767}}
+	|map2={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=3|t1ct=2|t2t=10|t2ct=3
+		|stats=244770}}
+	|map3={{Map|map=Ancient|finished=skip}}
+	|hltv=2400552
+	|cstats=https://liga.dust2.dk/kampe/6af5e4713d97f0373dedf56b/xi-esport-vs-eac-extra
+	}}
+
+<!-- Upper Bracket Final -->
+|R2M1={{Match
+	|opponent1={{TeamOpponent|wopa}}|opponent2={{TeamOpponent|xi esport}}
+	|date=November 21, 2026 - 13:30 {{Abbr/CET}} |finished=true
+	|twitch=Dust2.dk
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=4|t1ct=5|t2t=7|t2ct=6
+		|stats=244799}}
+	|map2={{Map|map=Anubis|finished=true
+		|t1firstside=t|t1t=7|t1ct=6|t2t=1|t2ct=5
+		|stats=244805}}
+	|map3={{Map|map=Ancient|finished=true
+		|t1firstside=ct|t1t=5|t1ct=8|t2t=4|t2ct=3
+		|stats=244810}}
+	|hltv=2400554
+	|cstats=https://liga.dust2.dk/kampe/6b00bffecf445ebe464ae524/state-vs-xi-esport
+	}}
+
+<!-- Lower Bracket Semifinal -->
+|R1M3={{Match
+	|opponent1={{TeamOpponent|masonic}}|opponent2={{TeamOpponent|eac}}
+	|date=November 21, 2026 - 10:00 {{Abbr/CET}} |finished=true
+	|twitch=Dust2.dk
+	|map1={{Map|map=Ancient|finished=true
+		|t1firstside=ct|t1t=2|t1ct=4|t2t=8|t2ct=5
+		|stats=244776}}
+	|map2={{Map|map=Nuke|finished=true
+		|t1firstside=t|t1t=4|t1ct=8|t2t=4|t2ct=8
+		|o1t1firstside=ct|o1t1t=2|o1t1ct=1|o1t2t=2|o1t2ct=1
+		|o2t1firstside=t|o2t1t=2|o2t1ct=2|o2t2t=0|o2t2ct=1
+		|stats=244785}}
+	|map3={{Map|map=Anubis|finished=true
+		|t1firstside=ct|t1t=3|t1ct=7|t2t=5|t2ct=8
+		|stats=244790}}
+	|hltv=2400553
+	|cstats=https://liga.dust2.dk/kampe/6b00bffdbfe8f871988feaee/eac-extra-vs-masonic
+	}}
+
+<!-- Lower Bracket Final -->
+|R2M2={{Match
+	|opponent1={{TeamOpponent|xi esport}}|opponent2={{TeamOpponent|eac}}
+	|date=November 21, 2026 - 16:50 {{Abbr/CET}} |finished=true
+	|twitch=Dust2.dk
+	|map1={{Map|map=Ancient|finished=true
+		|t1firstside=ct|t1t=0|t1ct=4|t2t=8|t2ct=5
+		|stats=244817}}
+	|map2={{Map|map=Nuke|finished=true
+		|t1firstside=t|t1t=3|t1ct=2|t2t=4|t2ct=9
+		|stats=244819}}
+	|map3={{Map|map=Inferno|finished=skip}}
+	|hltv=2400555
+	|cstats=https://liga.dust2.dk/kampe/6b01ba64990833be3aece99a/xi-esport-vs-eac-extra
+	}}
+
+<!-- Grand Final -->
+|R3M1={{Match
+	|opponent1={{TeamOpponent|wopa}}|opponent2={{TeamOpponent|eac}}
+	|date=November 21, 2026 - 19:00 {{Abbr/CET}} |finished=
+	|twitch=Dust2.dk
+	|map1={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|map2={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|map3={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|hltv=2400556
+	|cstats=https://liga.dust2.dk/kampe/6b01d2b642b1177a9ff48896/state-vs-eac-extra
+	}}
+}}
+
+==Additional Content==
+===Streams===
+{{Streams
+|lang1=dk|twitch1=dust2tv
+}}
+
+==References==
+{{Reflist}}
