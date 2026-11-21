@@ -257,3 +257,30 @@ async fn a_deleted_leagues_invite_link_stops_working_and_the_event_stays_usable(
         .await;
     assert_eq!(again.status, StatusCode::CREATED);
 }
+
+/// A4: a deleted League's id is never given to a new League, so nobody who
+/// held a role in the deleted one (a stale page, a request in flight) acts
+/// on someone else's League under that id.
+#[tokio::test]
+async fn a_deleted_leagues_id_is_not_reused_by_a_new_league() {
+    let s = setup().await;
+    let res = s
+        .owner
+        .post(&format!("/api/leagues/{}/delete", s.id), &json!({ "confirm_name": "Friends" }))
+        .await;
+    assert_eq!(res.status, StatusCode::NO_CONTENT);
+
+    let res = s
+        .stranger
+        .post("/api/leagues", &json!({ "event_id": EVENT, "name": "Strangers" }))
+        .await;
+    assert_eq!(res.status, StatusCode::CREATED);
+    let new_id = res.json()["id"].as_i64().unwrap();
+    assert_ne!(new_id, s.id, "the new League got the deleted League's id");
+
+    // The deleted League's admins have nothing under the old id.
+    for client in [&s.owner, &s.coadmin] {
+        let res = client.get(&format!("/api/leagues/{}", s.id)).await;
+        assert_eq!(res.status, StatusCode::NOT_FOUND);
+    }
+}

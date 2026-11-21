@@ -73,7 +73,9 @@ struct MemberProfileRow {
     joined_at: DateTime<Utc>,
 }
 
-/// Creates a League and makes `creator` its admin Member, atomically.
+/// Creates a League and makes `creator` its admin Member, atomically. The id
+/// is one above the highest ever used (`league_id_high_water`), so a deleted
+/// League's id is never given out again.
 pub async fn create(
     db: &SqlitePool,
     event_id: EventId,
@@ -84,8 +86,9 @@ pub async fn create(
 ) -> Result<League, sqlx::Error> {
     let mut tx = db.begin().await?;
     let league: League = sqlx::query_as(sqlx::AssertSqlSafe(format!(
-        "INSERT INTO leagues (event_id, name, creator_id, invite_token, created_at) \
-         VALUES (?, ?, ?, ?, ?) RETURNING {LEAGUE_COLUMNS}"
+        "INSERT INTO leagues (id, event_id, name, creator_id, invite_token, created_at) \
+         VALUES ((SELECT last + 1 FROM league_id_high_water), ?, ?, ?, ?, ?) \
+         RETURNING {LEAGUE_COLUMNS}"
     )))
     .bind(event_id)
     .bind(name)
@@ -179,6 +182,44 @@ pub async fn membership(
     .fetch_optional(db)
     .await?;
     Ok(row.map(Membership::from))
+}
+
+/// The League and `user`'s current membership in it, read in one query (so
+/// both come from the same League row); `None` when either is missing.
+pub async fn member_of(
+    db: &SqlitePool,
+    league: LeagueId,
+    user: UserId,
+) -> Result<Option<(League, Membership)>, sqlx::Error> {
+    #[derive(FromRow)]
+    struct Row {
+        #[sqlx(flatten)]
+        league: League,
+        user_id: UserId,
+        role: String,
+        joined_at: DateTime<Utc>,
+        left_at: Option<DateTime<Utc>>,
+    }
+    let row: Option<Row> = sqlx::query_as(
+        "SELECT l.id, l.event_id, l.name, l.creator_id, l.invite_token, l.archived_at, \
+           l.created_at, m.user_id, m.role, m.joined_at, m.left_at \
+         FROM leagues l JOIN memberships m ON m.league_id = l.id \
+         WHERE l.id = ? AND m.user_id = ? AND m.left_at IS NULL",
+    )
+    .bind(league)
+    .bind(user)
+    .fetch_optional(db)
+    .await?;
+    Ok(row.map(|r| {
+        let membership = Membership::from(MembershipRow {
+            league_id: r.league.id,
+            user_id: r.user_id,
+            role: r.role,
+            joined_at: r.joined_at,
+            left_at: r.left_at,
+        });
+        (r.league, membership)
+    }))
 }
 
 /// Every stretch of membership ever in `league`, including ended ones. The

@@ -41,13 +41,9 @@ pub async fn require_member(
     user: &User,
     id: LeagueId,
 ) -> ApiResult<(League, Membership)> {
-    let membership = leagues::membership(&state.db, id, user.id)
+    leagues::member_of(&state.db, id, user.id)
         .await?
-        .ok_or(ApiError::not_found())?;
-    let league = leagues::find(&state.db, id)
-        .await?
-        .ok_or(ApiError::not_found())?;
-    Ok((league, membership))
+        .ok_or(ApiError::not_found())
 }
 
 /// [`require_member`] that also demands the League Admin role (403 otherwise).
