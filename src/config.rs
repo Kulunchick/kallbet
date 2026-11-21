@@ -26,6 +26,13 @@ pub struct Config {
     pub bot_username: Option<String>,
     /// `PANDASCORE_TOKEN` (secret).
     pub pandascore_token: Option<String>,
+    /// `KALLBET_CHROME_URL`: the DevTools endpoint of the headless Chrome the
+    /// HLTV adapter loads pages with (`http://chrome:9222` in compose). Unset
+    /// means the HLTV adapter is skipped.
+    pub chrome_url: Option<String>,
+    /// `KALLBET_LOGO_DIR`: where downloaded team logos are kept, default
+    /// `logos`.
+    pub logo_dir: PathBuf,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -77,6 +84,10 @@ impl Config {
             bot_token: get("BOT_TOKEN"),
             bot_username: get("BOT_USERNAME").map(|u| u.trim_start_matches('@').to_string()),
             pandascore_token: get("PANDASCORE_TOKEN"),
+            chrome_url: get("KALLBET_CHROME_URL"),
+            logo_dir: get("KALLBET_LOGO_DIR")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from("logos")),
         })
     }
 
@@ -90,6 +101,8 @@ impl Config {
             bot_token: Some(crate::testing::TEST_BOT_TOKEN.into()),
             bot_username: None,
             pandascore_token: None,
+            chrome_url: None,
+            logo_dir: PathBuf::from("logos"),
         }
     }
 }
@@ -111,6 +124,8 @@ impl fmt::Debug for Config {
             .field("bot_token", &redact(&self.bot_token))
             .field("bot_username", &self.bot_username)
             .field("pandascore_token", &redact(&self.pandascore_token))
+            .field("chrome_url", &self.chrome_url)
+            .field("logo_dir", &self.logo_dir)
             .finish()
     }
 }
