@@ -14,7 +14,14 @@
     "nicknameHint": "3 to 20 characters. Other players see it. It must be unique.",
     "save": "Save",
     "saved": "Saved.",
-    "language": "Language"
+    "language": "Language",
+    "notifications": "Telegram notifications",
+    "notificationsHint": "The bot can only message you after you have started it in Telegram.",
+    "notify": {
+      "reminder": "Reminder 30 minutes before a Match locks, if I have not predicted",
+      "reveal": "Predictions revealed for a Match",
+      "digest": "Daily digest after a match day"
+    }
   },
   "errors": {
     "nickname_invalid": "A nickname must be 3 to 20 characters.",

@@ -23,6 +23,7 @@ use chrono::{DateTime, Duration, Utc};
 use crate::domain::league::final_decided;
 use crate::domain::{EventId, Match, MatchStatus};
 use crate::league_matches::{self, LeagueMatches};
+use crate::notifications;
 use crate::state::AppState;
 use crate::store::events;
 use crate::store::leagues::{self, League};
@@ -81,6 +82,7 @@ async fn after_poll(
     matches: &LeagueMatches,
     now: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
+    notifications::after_poll(state, league, matches, now).await?;
     archive_if_final_decided(state, league, matches, now).await?;
     Ok(())
 }

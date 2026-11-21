@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use crate::config::Config;
 use crate::poller;
-use crate::ports::{Clock, LogNotifier, MatchSource, Notifier, SystemClock};
+use crate::ports::{Clock, MatchSource, Notifier, SystemClock, TelegramNotifier};
 use crate::sources::fallback::{FallbackSettings, FallbackSource};
 use crate::sources::hltv::{ChromePages, HltvSource, LogoCache};
 use crate::sources::liquipedia::LiquipediaSource;
@@ -53,9 +53,9 @@ pub fn match_source(
     )
 }
 
-/// The Telegram notifier. Placeholder until #16 wires the bot.
-pub fn notifier(_config: &Config) -> Arc<dyn Notifier> {
-    Arc::new(LogNotifier)
+/// The Telegram bot (`sendMessage`). Without `BOT_TOKEN` it sends nothing.
+pub fn notifier(config: &Config) -> Arc<dyn Notifier> {
+    Arc::new(TelegramNotifier::new(config.bot_token.clone()))
 }
 
 /// Starts the background tasks: the poller, one [`poller::tick`] every

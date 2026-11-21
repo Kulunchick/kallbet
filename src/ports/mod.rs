@@ -5,7 +5,9 @@
 pub mod clock;
 pub mod match_source;
 pub mod notifier;
+pub mod telegram;
 
 pub use clock::{Clock, SystemClock};
 pub use match_source::{MatchSource, SourceError, UnconfiguredSource};
-pub use notifier::{LogNotifier, Notification, NotificationKind, Notifier, NotifyError};
+pub use notifier::{Delivery, LogNotifier, Notification, NotificationKind, Notifier, NotifyError};
+pub use telegram::TelegramNotifier;
