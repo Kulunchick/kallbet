@@ -158,6 +158,19 @@ impl TestClient {
         self.request(Method::DELETE, path, None::<&()>).await
     }
 
+    /// The value of a cookie this client holds.
+    pub fn cookie(&self, name: &str) -> Option<String> {
+        self.cookies.lock().unwrap().get(name).cloned()
+    }
+
+    /// Hands this client a cookie, as if the browser had received it.
+    pub fn set_cookie(&self, name: &str, value: &str) {
+        self.cookies
+            .lock()
+            .unwrap()
+            .insert(name.to_string(), value.to_string());
+    }
+
     pub async fn request(
         &self,
         method: Method,

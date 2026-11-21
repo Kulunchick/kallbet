@@ -9,12 +9,14 @@ mod clock;
 mod fixtures;
 mod notifier;
 mod source;
+mod telegram;
 
 pub use app::{TestApp, TestAppBuilder, TestClient, TestResponse};
 pub use clock::FakeClock;
 pub use fixtures::EventSnapshotBuilder;
 pub use notifier::RecordingNotifier;
 pub use source::ScriptedSource;
+pub use telegram::TelegramLogin;
 
 /// The bot token of the test configuration: sign Telegram login payloads
 /// with it to exercise the real HMAC verification.
