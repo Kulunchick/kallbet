@@ -79,6 +79,7 @@ Create `tests/api_<area>.rs` (its own file, so it conflicts with nobody). Model:
 ```rust
 use axum::http::StatusCode;
 use chrono::Duration;
+use kallbet::ports::Clock;                     // for app.clock.now()
 use kallbet::domain::{EventId, MatchId, StageKind};
 use kallbet::testing::{EventSnapshotBuilder, TestApp};
 use serde_json::json;
@@ -112,6 +113,8 @@ What the harness gives you (`src/testing/`):
 - `app.notifier` (`RecordingNotifier`): `sent()`, `sent_to(user_id)`, `clear()`, `fail_with` / `recover`.
 - `app.state`: the same `AppState` the router uses. Use it to drive non-HTTP entry points (a poller step) against the same database and fakes.
 - `TEST_BOT_TOKEN`: the bot token in the test config, for signing Telegram login payloads.
+- `TelegramLogin::new(app.clock.now(), telegram_id, "Name")` (+ `.username()`, `.photo_url()`, `.language()`): builds a signed `POST /api/auth/telegram` body via `.body()`; `.body_signed_with(token)` and `.body_tampered(field, value)` make forgeries. To act as a *Telegram-created* User (instead of `app.user(..)`, which uses the dev login), post that body with `app.anonymous()`.
+- `client.cookie(name)` / `client.set_cookie(name, value)`: read or hand a cookie to a client (e.g. replay a session cookie after logout).
 
 Test rules (spec, Testing Decisions):
 
@@ -170,9 +173,17 @@ Settings come from environment variables; `.env` is loaded for local development
 | `DATABASE_URL` | `sqlite://kallbet.db` | SQLite file. |
 | `KALLBET_WEB_DIR` | `web/dist` | The built SPA. |
 | `KALLBET_DEV_LOGIN` | off | `true` mounts `POST /api/dev/login`. Never set in production. |
-| `BOT_TOKEN` | unset | Telegram bot token (secret). |
+| `BOT_TOKEN` | unset | Telegram bot token (secret). Unset: `POST /api/auth/telegram` answers 503 `login_unavailable`. |
+| `BOT_USERNAME` | unset | The bot's @username (no @), needed by the Login Widget in the SPA (`GET /api/auth/config`). |
 | `PANDASCORE_TOKEN` | unset | PandaScore token (secret). Unset means the adapter is skipped. |
 
 A new setting needs a field in `Config`, a line in `Config::from_lookup`, a value in `Config::for_tests`, and an entry in `.env.example`. `Config`'s `Debug` output redacts secrets; keep it that way for new ones.
 
 Dev login, when enabled: `POST /api/dev/login` with `{"nickname": "alice"}` signs in as that User, creating it if needed. When disabled the route does not exist (404).
+
+## Accounts (ticket #3)
+
+- API: `POST /api/auth/telegram` (body `{auth: <widget payload>, language?}`; `language` only seeds a new User), `POST /api/auth/logout` (204), `GET /api/auth/config`, `GET|PATCH /api/me` (`{nickname?, language?}`). Error codes: `invalid_login`, `login_expired` (401), `login_unavailable` (503), `nickname_invalid`, `language_invalid` (422), `nickname_taken` (409). Payloads older than 10 minutes are rejected.
+- Nickname rules and the Telegram-name default live in `domain/user.rs` (`validate_nickname`, `nickname_from_name`, `nickname_attempt`). #16 adds its preference fields to the same `PATCH /api/me`.
+- SPA: `web/src/pages/account/session.ts` is the shared store of the signed-in User (`useSession()` gives `{loading, user}`); it applies the saved language to the UI and saves language switches made while signed in. Pages needing a User redirect to `/login` when `user` is null. `components/Avatar` shows a User's avatar. Strings of this area are in the `account` namespace.
+- Telegram Login Widget needs BotFather `/setdomain`; locally use the dev login form on `/login` (shown when `KALLBET_DEV_LOGIN=true`).
