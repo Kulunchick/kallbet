@@ -433,18 +433,24 @@ impl<'a> Merger<'a> {
         mapped
     }
 
-    /// Finds the stored Match an external one is, by teams and time.
+    /// Finds the stored Match an external one is, by teams and time, among
+    /// the stored Matches of the same Stage (a pair can meet again in a
+    /// later Stage, and bracket slots repeat across bracket Stages). A record
+    /// whose Stage is not stored yet matches nothing.
     fn find(
         &self,
+        ext_snapshot: &ExternalSnapshot,
         em: &ExternalMatch,
         claimed: &HashSet<MatchId>,
         taken: &HashSet<i64>,
     ) -> Option<MatchId> {
         let stored = self.ctx.stored?;
+        let stage = self.existing_stage(ext_snapshot, em.stage)?;
         let ext = [self.slot(&em.team_a), self.slot(&em.team_b)];
         stored
             .matches
             .iter()
+            .filter(|sm| sm.data.stage == stage)
             .filter(|sm| !claimed.contains(&sm.data.id) && !taken.contains(&sm.data.id.0))
             .filter_map(|sm| {
                 let (_, agree) = orient(ext, sm.data.teams(), &self.named)?;
@@ -518,7 +524,7 @@ pub fn merge(ctx: &Context<'_>, ext: &ExternalSnapshot, ids: &mut LocalIds) -> M
             Some(id)
         } else if let Some(id) = m.mapped(IdKind::Match, &em.external_id, None) {
             Some(MatchId(id))
-        } else if let Some(id) = m.find(em, &claimed, &taken) {
+        } else if let Some(id) = m.find(ext, em, &claimed, &taken) {
             m.map(IdKind::Match, &em.external_id, id.0, Origin::Auto);
             Some(id)
         } else {

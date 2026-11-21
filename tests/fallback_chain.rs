@@ -714,3 +714,51 @@ async fn a_linked_record_won_by_a_team_not_in_the_stored_match_is_flagged_not_me
         "{flags}"
     );
 }
+
+/// A8: a fallback record of one Stage never links to a stored Match of
+/// another Stage. NAVI and FaZe meet in Stage 1 (stored) and again in
+/// Stage 2, which HLTV has not shown yet; PandaScore's Stage 2 record has no
+/// Scheduled Start (postponed), so time cannot tell them apart.
+#[tokio::test]
+async fn a_record_of_one_stage_is_not_linked_to_a_match_of_another_stage() {
+    let c = chain().await;
+    let now = c.app.clock.now();
+    c.hltv.put_event(
+        hltv_major(now)
+            .stage(StageKind::Swiss, "Stage 2")
+            .build(now),
+    );
+    c.hltv.finish(EventId(EVENT), MatchId(101), "NAVI", (2, 1));
+    let alice = c.app.user("alice").await;
+    let league = create_league(&alice).await;
+    poller::tick(&c.app.state).await;
+    c.hltv.fail_with(SourceError::Unavailable("cloudflare".into()));
+    c.panda.put_event(
+        EventSnapshotBuilder::new(PS_EVENT, "Test Major 2026")
+            .stage(StageKind::Swiss, "Swiss Stage 1")
+            .swiss_match(9102, (1, 0, 0), "Team Vitality", "G2 Esports", now + Duration::minutes(210))
+            .stage(StageKind::Swiss, "Swiss Stage 2")
+            .swiss_match(9201, (1, 0, 0), "FaZe Clan", "NAVI", now + Duration::days(3))
+            .build(now),
+    );
+    c.panda.update_match(EventId(PS_EVENT), MatchId(9201), |m| m.scheduled_start = None);
+    c.panda.finish(EventId(PS_EVENT), MatchId(9201), "FaZe Clan", (2, 0));
+    poll_again(&c.app).await;
+
+    let view = matches(&alice, league).await;
+    let stage_one = find_match(&view, 101);
+    assert_eq!(stage_one["winner"], NAVI, "{stage_one}");
+    assert_eq!(stage_one["source"], "hltv", "{stage_one}");
+    let warned = warnings(&alice, league).await;
+    assert!(warned["conflicts"].as_array().unwrap().is_empty(), "{warned}");
+    let stage_two: Vec<Value> = view["stages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|s| s["ordinal"] == 2)
+        .flat_map(|s| s["groups"].as_array().unwrap().clone())
+        .flat_map(|g| g["matches"].as_array().unwrap().clone())
+        .collect();
+    assert_eq!(stage_two.len(), 1, "Stage 2's Match is added there: {view}");
+    assert_eq!(stage_two[0]["winner"], FAZE);
+}
