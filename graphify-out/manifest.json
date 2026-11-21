@@ -1,0 +1,68 @@
+{
+  "Cargo.toml": {
+    "mtime": 1795280280.0922573,
+    "seen": 1795284135.508046,
+    "ast_hash": "aaada9e9cc9481fb9e3e8c808ae42023",
+    "semantic_hash": "aaada9e9cc9481fb9e3e8c808ae42023"
+  },
+  "src/main.rs": {
+    "mtime": 1795280280.0922573,
+    "seen": 1795284135.5080526,
+    "ast_hash": "b64abcb167a8b9dd4f282813c31ad0da",
+    "semantic_hash": "b64abcb167a8b9dd4f282813c31ad0da"
+  },
+  "CLAUDE.md": {
+    "mtime": 1795280449.9873703,
+    "seen": 1795284135.508056,
+    "ast_hash": "82b2adf6f4dfd91ec40908c7e44bce90",
+    "semantic_hash": "82b2adf6f4dfd91ec40908c7e44bce90"
+  },
+  "GLOSSARY.md": {
+    "mtime": 1795283231.2981381,
+    "seen": 1795284135.5080576,
+    "ast_hash": "c8c9910637d3f16a4ba856597ce59230",
+    "semantic_hash": "c8c9910637d3f16a4ba856597ce59230"
+  },
+  "docs/adr/0001-data-sources-fallback-chain.md": {
+    "mtime": 1795283231.9989371,
+    "seen": 1795284135.5080595,
+    "ast_hash": "bccf8e9c139ee6e1e2fa19bec54ffffb",
+    "semantic_hash": "bccf8e9c139ee6e1e2fa19bec54ffffb"
+  },
+  "docs/adr/0002-sqlite.md": {
+    "mtime": 1795283232.0308924,
+    "seen": 1795284135.5080607,
+    "ast_hash": "6ce0604e806a5ad16723d0975fcad911",
+    "semantic_hash": "6ce0604e806a5ad16723d0975fcad911"
+  },
+  "docs/adr/0003-reveal-locks-the-match.md": {
+    "mtime": 1795283232.0650072,
+    "seen": 1795284135.5080621,
+    "ast_hash": "12354681a52e1d3a33c16d9c4288e08f",
+    "semantic_hash": "12354681a52e1d3a33c16d9c4288e08f"
+  },
+  "docs/adr/0004-telegram-login.md": {
+    "mtime": 1795283232.0978434,
+    "seen": 1795284135.5080636,
+    "ast_hash": "bfbb3a227fb5a9f2593b34c97a2bf804",
+    "semantic_hash": "bfbb3a227fb5a9f2593b34c97a2bf804"
+  },
+  "docs/agents/domain.md": {
+    "mtime": 1795280449.9343112,
+    "seen": 1795284135.5080647,
+    "ast_hash": "b20c849deb2944f6fa5365c51f9cd134",
+    "semantic_hash": "b20c849deb2944f6fa5365c51f9cd134"
+  },
+  "docs/agents/issue-tracker.md": {
+    "mtime": 1795280449.825949,
+    "seen": 1795284135.5080664,
+    "ast_hash": "d0de9e1744a9978a09191ee98f93d828",
+    "semantic_hash": "d0de9e1744a9978a09191ee98f93d828"
+  },
+  "docs/agents/triage-labels.md": {
+    "mtime": 1795280449.8809698,
+    "seen": 1795284135.5080676,
+    "ast_hash": "d7e50dac17098ccade780750b97517a1",
+    "semantic_hash": "d7e50dac17098ccade780750b97517a1"
+  }
+}

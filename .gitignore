@@ -1,3 +1,7 @@
 /target
 .env
 /.idea
+
+# graphify
+/graphify-out/cache/
+/graphify-out/.graphify_*
