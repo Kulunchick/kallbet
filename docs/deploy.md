@@ -21,6 +21,7 @@ The server's env file `kallbet.env` (in the deploy directory, never committed) h
 
 ```
 BOT_TOKEN=...
+BOT_USERNAME=...        # the bot's @username without the @, needed by the Telegram login button
 PANDASCORE_TOKEN=...
 ```
 
@@ -36,7 +37,7 @@ On the server (needs Docker with the compose plugin, and `ssh` access for you):
    ```sh
    sudo mkdir -p /opt/kallbet/backups && sudo chown -R "$USER" /opt/kallbet
    install -m 600 /dev/null /opt/kallbet/kallbet.env
-   $EDITOR /opt/kallbet/kallbet.env      # BOT_TOKEN=..., PANDASCORE_TOKEN=...
+   $EDITOR /opt/kallbet/kallbet.env      # BOT_TOKEN=..., BOT_USERNAME=..., PANDASCORE_TOKEN=...
    ```
    Use another directory if you prefer and set `KALLBET_DEPLOY_DIR` to match.
 2. Run the first deploy from your machine (next section). It copies the compose file and scripts into the directory.
@@ -91,7 +92,7 @@ ls backups/                                   # pick a file
 
 ## Manual steps left to the owner
 
-- Put `BOT_TOKEN` and `PANDASCORE_TOKEN` in the server's `kallbet.env`.
+- Put `BOT_TOKEN`, `BOT_USERNAME` and `PANDASCORE_TOKEN` in the server's `kallbet.env`.
 - Add the Caddy site block (with the Caddyfile backup first) and reload Caddy.
 - Make sure the DNS record for `kallbet.kulunchick.tech` exists and is proxied through Cloudflare.
 - Install the backup cron line.

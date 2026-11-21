@@ -1,5 +1,5 @@
 # Production stack. The deploy script ships this file next to `kallbet.env`
-# (the server's env file with BOT_TOKEN, PANDASCORE_TOKEN; never committed).
+# (the server's env file with BOT_TOKEN, BOT_USERNAME, PANDASCORE_TOKEN; never committed).
 # See docs/deploy.md.
 
 services:
