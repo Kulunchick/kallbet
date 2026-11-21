@@ -10,13 +10,19 @@
 //! - One page at a time, at least [`MIN_GAP`] apart: polling stays sparse.
 //! - Waits for Cloudflare's "Just a moment..." interstitial to clear; a
 //!   challenge that does not clear is `SourceError::Unavailable`.
-//! - Never closes the browser itself (it is shared): only its own tabs.
+//! - Each load runs in its own fresh browser context (see `load_page`).
+//! - Never closes the browser itself (it is shared): only its own tabs and
+//!   contexts.
 
 use std::net::IpAddr;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use chromiumoxide::Page;
 use chromiumoxide::browser::Browser;
+use chromiumoxide::cdp::browser_protocol::target::{
+    CreateBrowserContextParams, CreateTargetParams,
+};
 use futures::StreamExt;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -134,34 +140,53 @@ impl From<SourceError> for Failure {
 }
 
 async fn load_page(connected: &Connected, url: &str) -> Result<String, Failure> {
-    let page = connected.browser.new_page("about:blank").await.map_err(cdp)?;
-    let result = async {
-        if let Some(agent) = &connected.user_agent {
-            page.set_user_agent(agent.as_str()).await.map_err(cdp)?;
-        }
-        page.goto(url).await.map_err(cdp)?;
-        let deadline = Instant::now() + CHALLENGE_WAIT;
-        loop {
-            let title = page.get_title().await.map_err(cdp)?.unwrap_or_default();
-            if !title.is_empty() && !title.starts_with("Just a moment") {
-                break;
+    // A fresh browser context (no cookies) per load: headless-shell passes
+    // Cloudflare on a first visit but cannot solve the challenge Cloudflare
+    // sets on later visits of the same profile (observed 2026-11-21).
+    let browser = &connected.browser;
+    let context = browser
+        .create_browser_context(CreateBrowserContextParams::default())
+        .await
+        .map_err(cdp)?;
+    let mut target = CreateTargetParams::new("about:blank");
+    target.browser_context_id = Some(context.clone());
+    let result = match browser.new_page(target).await {
+        Ok(page) => {
+            let result = load_in(&page, connected, url).await;
+            if let Err(e) = page.close().await {
+                tracing::debug!("closing tab: {e}");
             }
-            if Instant::now() > deadline {
-                return Err(Failure::Page(unavailable(format!(
-                    "Cloudflare challenge on {url} did not clear"
-                ))));
-            }
-            sleep(Duration::from_millis(500)).await;
+            result
         }
-        // Let the page finish rendering after the challenge's redirect.
-        sleep(Duration::from_secs(1)).await;
-        Ok(page.content().await.map_err(cdp)?)
-    }
-    .await;
-    if let Err(e) = page.close().await {
-        tracing::debug!("closing tab: {e}");
+        Err(e) => Err(Failure::Browser(cdp(e))),
+    };
+    if let Err(e) = browser.dispose_browser_context(context).await {
+        tracing::debug!("disposing browser context: {e}");
     }
     result
+}
+
+async fn load_in(page: &Page, connected: &Connected, url: &str) -> Result<String, Failure> {
+    if let Some(agent) = &connected.user_agent {
+        page.set_user_agent(agent.as_str()).await.map_err(cdp)?;
+    }
+    page.goto(url).await.map_err(cdp)?;
+    let deadline = Instant::now() + CHALLENGE_WAIT;
+    loop {
+        let title = page.get_title().await.map_err(cdp)?.unwrap_or_default();
+        if !title.is_empty() && !title.starts_with("Just a moment") {
+            break;
+        }
+        if Instant::now() > deadline {
+            return Err(Failure::Page(unavailable(format!(
+                "Cloudflare challenge on {url} did not clear"
+            ))));
+        }
+        sleep(Duration::from_millis(500)).await;
+    }
+    // Let the page finish rendering after the challenge's redirect.
+    sleep(Duration::from_secs(1)).await;
+    Ok(page.content().await.map_err(cdp)?)
 }
 
 /// `http://chrome:9222` -> `http://172.18.0.2:9222`; IPs, `localhost` and
