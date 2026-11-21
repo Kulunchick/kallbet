@@ -36,14 +36,17 @@ A pro CS2 tournament as listed on HLTV (e.g. a Major), identified by its HLTV ev
 _Avoid_: Tournament, cup
 
 **Stage**:
-A phase of an Event, either a Swiss Stage or the Playoffs.
+A phase of an Event: a Swiss Stage, a Group Stage or the Playoffs.
+
+**Group Stage**:
+Any Stage of a non-Swiss Event that precedes the Playoffs (round-robin or double-elimination groups). Its Matches take Predictions, but it has no Pick'em.
 
 **Swiss Stage**:
 A Stage where teams with equal records are paired each round until each has 3 wins (advances) or 3 losses (eliminated).
-_Avoid_: Group stage
+_Avoid_: Group stage (that is a different Stage kind)
 
 **Playoffs**:
-The single-elimination bracket that follows the last Swiss Stage (or group phase) of an Event.
+The single-elimination bracket that follows the last Swiss Stage (or Group Stage) of an Event.
 
 **Match**:
 A series between two teams within an Event (Bo1, Bo3 or Bo5).
