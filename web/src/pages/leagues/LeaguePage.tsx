@@ -54,6 +54,9 @@ export function LeaguePage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-extrabold text-gold-gradient">{league.name}</h1>
         <p className="text-mute">{league.event.name}</p>
+        <Link to={`/leagues/${league.id}/matches`} className="btn-primary mt-3 self-start">
+          {t("matches:open")}
+        </Link>
       </header>
 
       {token && (

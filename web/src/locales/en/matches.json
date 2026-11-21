@@ -1,0 +1,32 @@
+{
+  "open": "Matches and Predictions",
+  "title": "Matches",
+  "loading": "Loading…",
+  "backToLeague": "Back to the League",
+  "empty": "No Matches yet. They appear here within a few minutes of the League being created.",
+  "startUnknown": "Start time to be announced",
+  "vs": "vs",
+  "tbd": "TBD",
+  "pick": "Predict the winner",
+  "freshness": "Updated {{ago}} · {{source}}",
+  "locked": "Locked",
+  "lockUnknown": "Lock time not set yet",
+  "locksIn": "Locks in {{time}}",
+  "format": { "bo1": "Bo1", "bo3": "Bo3", "bo5": "Bo5" },
+  "source": { "hltv": "HLTV", "pandascore": "PandaScore", "liquipedia": "Liquipedia" },
+  "status": { "live": "Live", "finished": "Finished", "cancelled": "Cancelled" },
+  "span": { "dh": "{{d}} d {{h}} h", "hm": "{{h}} h {{m}} min", "m": "{{m}} min" },
+  "group": {
+    "record": "Record {{wins}}-{{losses}}",
+    "final": "Final",
+    "semifinals": "Semifinals",
+    "quarterfinals": "Quarterfinals",
+    "roundOf": "Round of {{teams}}",
+    "matches": "Matches"
+  },
+  "errors": {
+    "match_locked": "This Match is Locked: Predictions can no longer be made or changed.",
+    "team_not_in_match": "That team does not play in this Match.",
+    "not_found": "This League or Match was not found."
+  }
+}

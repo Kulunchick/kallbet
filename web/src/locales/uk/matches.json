@@ -1,0 +1,32 @@
+{
+  "open": "Матчі та прогнози",
+  "title": "Матчі",
+  "loading": "Завантаження…",
+  "backToLeague": "До ліги",
+  "empty": "Матчів поки немає. Вони з'являться тут за кілька хвилин після створення ліги.",
+  "startUnknown": "Час початку поки невідомий",
+  "vs": "vs",
+  "tbd": "TBD",
+  "pick": "Обрати переможця",
+  "freshness": "Оновлено {{ago}} · {{source}}",
+  "locked": "Закрито",
+  "lockUnknown": "Час закриття поки невідомий",
+  "locksIn": "Закриється через {{time}}",
+  "format": { "bo1": "Bo1", "bo3": "Bo3", "bo5": "Bo5" },
+  "source": { "hltv": "HLTV", "pandascore": "PandaScore", "liquipedia": "Liquipedia" },
+  "status": { "live": "Триває", "finished": "Завершено", "cancelled": "Скасовано" },
+  "span": { "dh": "{{d}} д {{h}} год", "hm": "{{h}} год {{m}} хв", "m": "{{m}} хв" },
+  "group": {
+    "record": "Баланс {{wins}}-{{losses}}",
+    "final": "Фінал",
+    "semifinals": "Півфінали",
+    "quarterfinals": "Чвертьфінали",
+    "roundOf": "1/{{fraction}} фіналу",
+    "matches": "Матчі"
+  },
+  "errors": {
+    "match_locked": "Матч закрито: прогноз більше не можна зробити чи змінити.",
+    "team_not_in_match": "Ця команда не грає в цьому матчі.",
+    "not_found": "Лігу або матч не знайдено."
+  }
+}

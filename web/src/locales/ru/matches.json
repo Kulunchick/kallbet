@@ -1,0 +1,32 @@
+{
+  "open": "Матчи и прогнозы",
+  "title": "Матчи",
+  "loading": "Загрузка…",
+  "backToLeague": "К лиге",
+  "empty": "Матчей пока нет. Они появятся здесь в течение нескольких минут после создания лиги.",
+  "startUnknown": "Время начала пока неизвестно",
+  "vs": "vs",
+  "tbd": "TBD",
+  "pick": "Выбрать победителя",
+  "freshness": "Обновлено {{ago}} · {{source}}",
+  "locked": "Закрыт",
+  "lockUnknown": "Время закрытия пока неизвестно",
+  "locksIn": "Закроется через {{time}}",
+  "format": { "bo1": "Bo1", "bo3": "Bo3", "bo5": "Bo5" },
+  "source": { "hltv": "HLTV", "pandascore": "PandaScore", "liquipedia": "Liquipedia" },
+  "status": { "live": "Идёт", "finished": "Завершён", "cancelled": "Отменён" },
+  "span": { "dh": "{{d}} д {{h}} ч", "hm": "{{h}} ч {{m}} мин", "m": "{{m}} мин" },
+  "group": {
+    "record": "Баланс {{wins}}-{{losses}}",
+    "final": "Финал",
+    "semifinals": "Полуфиналы",
+    "quarterfinals": "Четвертьфиналы",
+    "roundOf": "1/{{fraction}} финала",
+    "matches": "Матчи"
+  },
+  "errors": {
+    "match_locked": "Матч закрыт: прогноз больше нельзя сделать или изменить.",
+    "team_not_in_match": "Эта команда не играет в этом матче.",
+    "not_found": "Лига или матч не найдены."
+  }
+}

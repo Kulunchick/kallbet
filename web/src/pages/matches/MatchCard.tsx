@@ -1,0 +1,137 @@
+import { useTranslation } from "react-i18next";
+
+import type { MatchCard as Card, TeamRef } from "./api";
+import { formatAgo, formatSpan, formatStart } from "./time";
+
+type Props = {
+  card: Card;
+  now: number;
+  /** Set while this Match's Prediction is being saved. */
+  saving: boolean;
+  onPredict: (team: TeamRef) => void;
+};
+
+/**
+ * One Match: teams (tap one to predict), format, Scheduled Start in local
+ * time, Lock countdown and data freshness. #6 adds the "N of M predicted"
+ * line and the revealed avatars in the marked slot; #7 adds the ✓/✗ next to
+ * the score.
+ */
+export function MatchCard({ card, now, saving, onPredict }: Props) {
+  const { t, i18n } = useTranslation("matches");
+  const language = i18n.resolvedLanguage ?? "en";
+  const locksAt = card.lock.locks_at ? new Date(card.lock.locks_at).getTime() : null;
+  const locked = card.lock.locked || (locksAt !== null && locksAt <= now);
+  const canPredict = !locked && card.team_a !== null && card.team_b !== null && !saving;
+
+  return (
+    <article
+      className={`card flex flex-col gap-3 p-4 ${card.my_prediction !== null && !locked ? "glow-emerald" : ""}`}
+    >
+      <header className="flex flex-wrap items-center justify-between gap-2 text-xs text-mute">
+        <span className="font-semibold uppercase tracking-wide">{t(`format.${card.format}`)}</span>
+        <span>
+          {card.scheduled_start ? formatStart(card.scheduled_start, language) : t("startUnknown")}
+        </span>
+      </header>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <TeamButton
+          team={card.team_a}
+          mine={card.my_prediction !== null && card.my_prediction === card.team_a?.id}
+          winner={card.winner !== null && card.winner === card.team_a?.id}
+          disabled={!canPredict}
+          onPick={onPredict}
+          label={t("pick")}
+        />
+        <span className="text-center text-sm font-bold text-mute">
+          {card.score ? `${card.score.team_a} : ${card.score.team_b}` : t("vs")}
+        </span>
+        <TeamButton
+          team={card.team_b}
+          mine={card.my_prediction !== null && card.my_prediction === card.team_b?.id}
+          winner={card.winner !== null && card.winner === card.team_b?.id}
+          disabled={!canPredict}
+          onPick={onPredict}
+          label={t("pick")}
+        />
+      </div>
+
+      {/* #6: "N of M predicted" and the revealed Predictions go here. */}
+
+      <footer className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <LockLine card={card} locked={locked} locksAt={locksAt} now={now} />
+        <span className="text-mute">
+          {t("freshness", {
+            ago: formatAgo(card.updated_at, now, language),
+            source: t(`source.${card.source}`),
+          })}
+        </span>
+      </footer>
+    </article>
+  );
+}
+
+function TeamButton({
+  team,
+  mine,
+  winner,
+  disabled,
+  onPick,
+  label,
+}: {
+  team: TeamRef | null;
+  mine: boolean;
+  winner: boolean;
+  disabled: boolean;
+  onPick: (team: TeamRef) => void;
+  label: string;
+}) {
+  const { t } = useTranslation("matches");
+  if (team === null) {
+    return (
+      <div className="rounded-xl border border-dashed border-line px-3 py-3 text-center text-mute">
+        {t("tbd")}
+      </div>
+    );
+  }
+  const look = mine
+    ? "bg-emerald-gradient text-[#04130d] glow-emerald border-transparent"
+    : "border-line bg-raised hover:border-emerald-a";
+  return (
+    <button
+      type="button"
+      aria-pressed={mine}
+      aria-label={`${label}: ${team.name}`}
+      disabled={disabled}
+      onClick={() => onPick(team)}
+      className={`min-w-0 truncate rounded-xl border px-3 py-3 text-center font-bold transition disabled:cursor-default disabled:hover:border-line ${look} ${winner ? "underline decoration-gold-a decoration-2 underline-offset-4" : ""}`}
+    >
+      {team.name}
+    </button>
+  );
+}
+
+function LockLine({
+  card,
+  locked,
+  locksAt,
+  now,
+}: {
+  card: Card;
+  locked: boolean;
+  locksAt: number | null;
+  now: number;
+}) {
+  const { t } = useTranslation("matches");
+  if (card.status === "live") return <span className="font-semibold text-danger">{t("status.live")}</span>;
+  if (card.status === "finished") return <span className="text-mute">{t("status.finished")}</span>;
+  if (card.status === "cancelled") return <span className="text-mute">{t("status.cancelled")}</span>;
+  if (locked) return <span className="font-semibold text-gold-a">{t("locked")}</span>;
+  if (locksAt === null) return <span className="text-mute">{t("lockUnknown")}</span>;
+  return (
+    <span className="font-semibold text-emerald-b">
+      {t("locksIn", { time: formatSpan(t, locksAt - now) })}
+    </span>
+  );
+}
