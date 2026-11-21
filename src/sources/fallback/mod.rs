@@ -72,7 +72,11 @@ impl FallbackSettings {
 struct Link<S: ?Sized> {
     kind: DataSourceKind,
     source: Arc<S>,
+    /// For `fetch_event`.
     breaker: Breaker,
+    /// For `list_events` and `find_events`: a working Event list says
+    /// nothing about failing Event pages, so it must not reset `breaker`.
+    lists: Breaker,
 }
 
 pub struct FallbackSource {
@@ -131,6 +135,7 @@ impl FallbackSource {
             kind: DataSourceKind::Hltv,
             source,
             breaker: self.breaker(),
+            lists: self.breaker(),
         });
         self
     }
@@ -141,6 +146,7 @@ impl FallbackSource {
             kind: source.kind(),
             source,
             breaker: self.breaker(),
+            lists: self.breaker(),
         });
         self.fallbacks.sort_by_key(|l| l.kind.priority());
         self
@@ -150,29 +156,48 @@ impl FallbackSource {
         Breaker::new(self.settings.breaker_failures, self.settings.breaker_open)
     }
 
-    /// Runs one call through a source's breaker.
+    /// Runs one `fetch_event` call through a source's breaker.
     async fn guarded<S: ?Sized, T>(
         link: &Link<S>,
         now: DateTime<Utc>,
         call: impl Future<Output = Result<T, SourceError>>,
     ) -> Result<T, SourceError> {
-        if !link.breaker.allows(now) {
+        Self::through(link.kind, &link.breaker, now, call).await
+    }
+
+    /// Runs one `list_events` / `find_events` call through a source's
+    /// breaker for lists.
+    async fn guarded_list<S: ?Sized, T>(
+        link: &Link<S>,
+        now: DateTime<Utc>,
+        call: impl Future<Output = Result<T, SourceError>>,
+    ) -> Result<T, SourceError> {
+        Self::through(link.kind, &link.lists, now, call).await
+    }
+
+    async fn through<T>(
+        kind: DataSourceKind,
+        breaker: &Breaker,
+        now: DateTime<Utc>,
+        call: impl Future<Output = Result<T, SourceError>>,
+    ) -> Result<T, SourceError> {
+        if !breaker.allows(now) {
             return Err(SourceError::Unavailable(format!(
                 "{}: circuit open",
-                link.kind.code()
+                kind.code()
             )));
         }
         let result = call.await;
         match &result {
-            Ok(_) | Err(SourceError::NotFound) => link.breaker.succeeded(),
-            Err(SourceError::Unavailable(_) | SourceError::Parse(_)) => link.breaker.failed(now),
-            Err(SourceError::NotConfigured) => {}
+            Ok(_) | Err(SourceError::NotFound) => breaker.succeeded(),
+            Err(SourceError::Unavailable(_) | SourceError::Parse(_)) => breaker.failed(now),
+            Err(SourceError::NotConfigured) => breaker.released(),
         }
         result.map_err(|e| match e {
             SourceError::Unavailable(m) => {
-                SourceError::Unavailable(format!("{}: {m}", link.kind.code()))
+                SourceError::Unavailable(format!("{}: {m}", kind.code()))
             }
-            SourceError::Parse(m) => SourceError::Parse(format!("{}: {m}", link.kind.code())),
+            SourceError::Parse(m) => SourceError::Parse(format!("{}: {m}", kind.code())),
             other => other,
         })
     }
@@ -268,7 +293,7 @@ impl FallbackSource {
             starts_at: event.as_ref().and_then(|e| e.starts_at),
             ends_at: event.as_ref().and_then(|e| e.ends_at),
         };
-        let candidates = Self::guarded(link, now, link.source.find_events(&hint)).await?;
+        let candidates = Self::guarded_list(link, now, link.source.find_events(&hint)).await?;
         let Some((external, origin)) = mapping::choose_event(&hint, &candidates) else {
             let flag = mapping::Unmatched {
                 kind: IdKind::Event,
@@ -426,13 +451,13 @@ impl MatchSource for FallbackSource {
         let now = self.clock.now();
         let mut errors = Vec::new();
         if let Some(link) = &self.primary {
-            match Self::guarded(link, now, link.source.list_events()).await {
+            match Self::guarded_list(link, now, link.source.list_events()).await {
                 Ok(events) => return Ok(events),
                 Err(e) => errors.push(e),
             }
         }
         for link in &self.fallbacks {
-            match Self::guarded(link, now, link.source.list_events()).await {
+            match Self::guarded_list(link, now, link.source.list_events()).await {
                 Ok(listed) => {
                     let stored = external_ids::all_events(&self.db).await.map_err(db_error)?;
                     let mut events = Vec::new();
