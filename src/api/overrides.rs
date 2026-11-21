@@ -418,7 +418,7 @@ async fn add_match(
     let league = writable_admin(&state, &user, id).await?;
     let body: NewMatch =
         serde_json::from_value(body).map_err(|_| ApiError::unprocessable("override_invalid"))?;
-    let (id, _) = in_write(&state, async |db, now| {
+    let (id, now) = in_write(&state, async |db, now| {
         let view = evaluated_admin_view(db, &league, None, now).await?;
         if view.stage(body.stage).is_none() {
             return Err(ApiError::unprocessable("stage_not_found"));
@@ -450,6 +450,10 @@ async fn add_match(
         Ok(id)
     })
     .await?;
+    // Like every Override write (an added Match is Upcoming, so today this
+    // never archives; it keeps the rule uniform).
+    let matches = league_matches::evaluate(&state.db, &league, now).await?;
+    poller::archive_if_final_decided(&state, &league, &matches, now).await?;
     Ok((StatusCode::CREATED, Json(Added { id })))
 }
 
