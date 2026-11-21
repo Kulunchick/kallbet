@@ -305,12 +305,15 @@ async fn hltv_then_panda(c: &Chain) -> (TestClient, i64) {
     (alice, league)
 }
 
-async fn unmatched(c: &Chain) -> Vec<(String, String, String)> {
-    kallbet::store::external_ids::unmatched(&c.app.state.db, EventId(EVENT))
-        .await
+/// The Event's unmatched records, as a League Admin sees them
+/// (`GET /api/leagues/{id}/data-warnings`): (source, kind, description).
+async fn unmatched(admin: &TestClient, league: i64) -> Vec<(String, String, String)> {
+    let text = |v: &Value| v.as_str().unwrap().to_string();
+    warnings(admin, league).await["unmatched"]
+        .as_array()
         .unwrap()
-        .into_iter()
-        .map(|f| (f.source, f.kind, f.description))
+        .iter()
+        .map(|f| (text(&f["source"]), text(&f["kind"]), text(&f["description"])))
         .collect()
 }
 
@@ -343,7 +346,7 @@ async fn a_record_that_cannot_be_linked_is_flagged_and_left_out() {
         2,
         "the unknown Match is not added: {view}"
     );
-    let flags = unmatched(&c).await;
+    let flags = unmatched(&alice, league).await;
     assert!(flagged(&flags, "pandascore", "team", "Spirit"), "{flags:?}");
     assert!(flagged(&flags, "pandascore", "team", "MOUZ"), "{flags:?}");
     assert!(
@@ -388,7 +391,7 @@ async fn a_manual_mapping_links_what_names_and_times_could_not() {
         "no second Spirit vs MOUZ: {view}"
     );
     assert_eq!(find_match(&view, 103)["source"], "hltv");
-    let flags = unmatched(&c).await;
+    let flags = unmatched(&alice, league).await;
     assert!(
         flagged(&flags, "pandascore", "match", "Team Spirit vs MOUZ"),
         "{flags:?}"
@@ -410,21 +413,27 @@ async fn a_manual_mapping_links_what_names_and_times_could_not() {
     let game = find_match(&view, 103);
     assert_eq!(game["source"], "pandascore");
     assert_eq!(game["scheduled_start"], json!(now + Duration::hours(54)));
-    assert!(unmatched(&c).await.is_empty(), "the flag clears");
+    assert!(unmatched(&alice, league).await.is_empty(), "the flag clears");
 }
 
-async fn conflicts(c: &Chain) -> Vec<(i64, String, Option<i64>, String, Option<i64>)> {
-    kallbet::store::external_ids::conflicts(&c.app.state.db, EventId(EVENT))
-        .await
+/// The Event's winner conflicts, as a League Admin sees them:
+/// (match, kept source, kept winner, other source, other winner).
+async fn conflicts(
+    admin: &TestClient,
+    league: i64,
+) -> Vec<(i64, String, Option<i64>, String, Option<i64>)> {
+    let text = |v: &Value| v.as_str().unwrap().to_string();
+    warnings(admin, league).await["conflicts"]
+        .as_array()
         .unwrap()
-        .into_iter()
+        .iter()
         .map(|f| {
             (
-                f.match_id.0,
-                f.kept_source,
-                f.kept_winner.map(|t| t.0),
-                f.other_source,
-                f.other_winner.map(|t| t.0),
+                f["match_id"].as_i64().unwrap(),
+                text(&f["kept_source"]),
+                f["kept_winner"]["id"].as_i64(),
+                text(&f["other_source"]),
+                f["other_winner"]["id"].as_i64(),
             )
         })
         .collect()
@@ -459,7 +468,7 @@ async fn a_lower_priority_source_never_overrules_or_rolls_back_a_higher_one() {
     assert_eq!(navi_faze["score"], json!({ "team_a": 2, "team_b": 1 }));
     assert_eq!(find_match(&view, 102)["status"], "live", "not rolled back");
     assert_eq!(
-        conflicts(&c).await,
+        conflicts(&alice, league).await,
         vec![(
             101,
             "hltv".into(),
@@ -657,7 +666,7 @@ async fn when_hltv_returns_its_result_wins_over_a_fallback_result_with_a_conflic
     assert_eq!(game["winner"], NAVI);
     assert_eq!(game["source"], "hltv");
     assert_eq!(
-        conflicts(&c).await,
+        conflicts(&alice, league).await,
         vec![(
             101,
             "hltv".into(),
