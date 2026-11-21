@@ -123,7 +123,14 @@ Test rules (spec, Testing Decisions):
 - Background work must be steppable. Give the poller a method that does one pass based on `clock.now()`; tests advance the clock and call it. Tests never sleep.
 - The in-memory database has a single connection. Do not hold a transaction open while awaiting another query on the pool: it deadlocks.
 
-Seam 2 (parser) tests keep fixtures under `tests/fixtures/<source>/` and feed them to the pure parser. No network.
+Seam 2 (parser) tests keep fixtures under `tests/fixtures/<source>/` and feed them to the pure parser. No network. Fixtures are real saved responses, never hand-written; list each one with its provenance in `tests/fixtures/<source>/README.md`. A test may derive a broken variant from a real fixture in code (e.g. a renamed class) to check that changed markup is an error.
+
+## Data Sources
+
+- Every adapter implements `MatchSource` and returns `SourceError::Parse` for anything it does not understand, never empty data. `Unavailable` is for network, browser, Cloudflare and HTTP failures.
+- `fetch_event(id)` may return a snapshot whose `event.id` differs from `id`: HLTV gives each Stage of a Major its own event id, and the canonical Event is the Major (the parent HLTV event). Store and key by `snapshot.event.id`.
+- Team logos are never sent to the SPA as Data Source URLs (`Team::logo_url`). The SPA shows `/api/teams/{id}/logo`; the HLTV adapter downloads each logo once (`sources::hltv::LogoCache`).
+- HLTV adapter: `sources::hltv::HltvSource::new(Arc::new(ChromePages::new(url)), clock).with_logos(LogoCache::new(dir))`. Its pure parser is `sources::hltv::parse`. `tests/hltv_live.rs` runs it against a real browser and HLTV (ignored by default; see the file for how to run it).
 
 ## Frontend map (`web/`)
 
@@ -176,6 +183,8 @@ Settings come from environment variables; `.env` is loaded for local development
 | `BOT_TOKEN` | unset | Telegram bot token (secret). Unset: `POST /api/auth/telegram` answers 503 `login_unavailable`. |
 | `BOT_USERNAME` | unset | The bot's @username (no @), needed by the Login Widget in the SPA (`GET /api/auth/config`). |
 | `PANDASCORE_TOKEN` | unset | PandaScore token (secret). Unset means the adapter is skipped. |
+| `KALLBET_CHROME_URL` | unset | DevTools endpoint of the headless Chrome the HLTV adapter uses (`http://chrome:9222` in compose; a hostname is resolved to an IP). Unset means the HLTV adapter is skipped. |
+| `KALLBET_LOGO_DIR` | `logos` | Downloaded team logos, served at `/api/teams/{id}/logo`. |
 
 A new setting needs a field in `Config`, a line in `Config::from_lookup`, a value in `Config::for_tests`, and an entry in `.env.example`. `Config`'s `Debug` output redacts secrets; keep it that way for new ones.
 
