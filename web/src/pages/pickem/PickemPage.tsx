@@ -3,6 +3,8 @@ import { Link, useParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
 import { Avatar } from "../../components/Avatar";
+import { Medal } from "../../components/Medal";
+import { getLeague } from "../leagues/api";
 import { useLoad } from "../leagues/useLoad";
 import { getMatches } from "../matches/api";
 import { getLeaderboard } from "./api";
@@ -15,6 +17,8 @@ export function PickemPage() {
   const league = Number(useParams().id);
   const stages = useLoad(() => getMatches(league), [league]);
   const board = useLoad(() => getLeaderboard(league), [league]);
+  const archived = useLoad(() => getLeague(league), [league]).result;
+  const isArchived = archived.state === "ready" && archived.data.archived_at !== null;
 
   return (
     <div className="flex flex-col gap-8 py-10">
@@ -35,6 +39,7 @@ export function PickemPage() {
             {board.result.data.entries.map((e) => (
               <li key={e.user_id} className="flex items-center gap-3 p-3">
                 <span className="w-6 text-center font-display text-gold-a">{e.place}</span>
+                {isArchived && <Medal place={e.place} />}
                 <Avatar url={e.avatar_url} nickname={e.nickname} className="size-8" />
                 <span className="font-semibold">{e.nickname}</span>
                 <span className="ml-auto font-display text-gold-a">{e.points}</span>

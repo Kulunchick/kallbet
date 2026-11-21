@@ -4,6 +4,8 @@ import { Link, useParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
 import { useSession } from "../account/session";
+import { Medal } from "../../components/Medal";
+import { getLeague } from "../leagues/api";
 import { Avatar } from "../leagues/Avatar";
 import { useLoad } from "../leagues/useLoad";
 import { getLeaderboard } from "./api";
@@ -15,6 +17,8 @@ export function LeaderboardPage() {
   const { t } = useTranslation("leaderboard");
   const league = Number(useParams().id);
   const { result, reload } = useLoad(() => getLeaderboard(league), [league]);
+  const archived = useLoad(() => getLeague(league), [league]).result;
+  const isArchived = archived.state === "ready" && archived.data.archived_at !== null;
   const me = useSession().user?.id;
 
   useEffect(() => {
@@ -79,7 +83,7 @@ export function LeaderboardPage() {
                   <td
                     className={`px-3 py-3 text-center font-display font-bold ${leader ? "text-gold-a text-glow-gold" : "text-mute"}`}
                   >
-                    {row.place}
+                    {isArchived && <Medal place={row.place} />} {row.place}
                   </td>
                   <td className="px-3 py-3">
                     <span className="flex items-center gap-3">

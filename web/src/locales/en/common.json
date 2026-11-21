@@ -14,12 +14,14 @@
     "online": "Server online",
     "offline": "Server unreachable"
   },
+  "medal": { "1": "Gold medal", "2": "Silver medal", "3": "Bronze medal" },
   "errors": {
     "unknown": "Something went wrong. Please try again.",
     "network": "No connection to the server. Check your internet and try again.",
     "internal": "The server ran into a problem. Please try again later.",
     "unauthorized": "Please sign in to continue.",
     "forbidden": "You are not allowed to do that.",
-    "not_found": "Not found."
+    "not_found": "Not found.",
+    "league_archived": "This League is archived: the final is over and it is read-only."
   }
 }

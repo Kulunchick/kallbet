@@ -24,7 +24,7 @@ use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::api::leagues::require_member;
+use crate::api::leagues::{require_member, require_writable};
 use crate::auth::session::CurrentUser;
 use crate::domain::effective_match::EventView;
 use std::collections::HashMap;
@@ -387,8 +387,7 @@ async fn save(
     Json(body): Json<serde_json::Value>,
 ) -> ApiResult<Json<PickemJson>> {
     let (league, _) = require_member(&state, &user, id).await?;
-    // #17: the archived (read-only) League check goes here, before anything
-    // is validated or written.
+    require_writable(&league)?;
     let now = state.clock.now();
     let matches = league_matches::evaluate(&state.db, &league, now).await?;
     let view = &matches.view;

@@ -20,6 +20,7 @@ use std::time::Duration as StdDuration;
 
 use chrono::{DateTime, Duration, Utc};
 
+use crate::domain::league::final_decided;
 use crate::domain::{EventId, Match, MatchStatus};
 use crate::league_matches::{self, LeagueMatches};
 use crate::state::AppState;
@@ -75,12 +76,29 @@ async fn run(state: &AppState, now: DateTime<Utc>) -> Result<(), sqlx::Error> {
 /// state is up to date. Each later ticket adds one call here:
 /// #7 scoring, #16 notifications, #17 archive.
 async fn after_poll(
-    _state: &AppState,
-    _league: &League,
-    _matches: &LeagueMatches,
-    _now: DateTime<Utc>,
+    state: &AppState,
+    league: &League,
+    matches: &LeagueMatches,
+    now: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
+    archive_if_final_decided(state, league, matches, now).await?;
     Ok(())
+}
+
+/// Archives the League once the final has a winner in its effective view
+/// (#17). Idempotent, so it may run on every tick; #13's Override endpoint
+/// that sets a winner calls it too, so the League archives at once. Returns
+/// whether this call archived it.
+pub async fn archive_if_final_decided(
+    state: &AppState,
+    league: &League,
+    matches: &LeagueMatches,
+    now: DateTime<Utc>,
+) -> Result<bool, sqlx::Error> {
+    if league.archived_at.is_some() || !final_decided(&matches.view) {
+        return Ok(false);
+    }
+    leagues::archive(&state.db, league.id, now).await
 }
 
 async fn poll_event_list(state: &AppState, now: DateTime<Utc>) -> Result<(), sqlx::Error> {

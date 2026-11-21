@@ -13,7 +13,7 @@ use axum::routing::put;
 use axum::{Json, Router};
 use serde::Deserialize;
 
-use crate::api::leagues::require_member;
+use crate::api::leagues::{require_member, require_writable};
 use crate::auth::session::CurrentUser;
 use crate::domain::{LeagueId, MatchId, TeamId};
 use crate::error::{ApiError, ApiResult};
@@ -37,6 +37,7 @@ async fn upsert(
     Json(body): Json<Body>,
 ) -> ApiResult<Json<Prediction>> {
     let (league, _) = require_member(&state, &user, id).await?;
+    require_writable(&league)?;
     let now = state.clock.now();
     let matches = league_matches::evaluate(&state.db, &league, now).await?;
     let game = matches
