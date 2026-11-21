@@ -28,6 +28,7 @@ pub struct ScriptedSource {
 struct Inner {
     events: BTreeMap<EventId, EventSnapshot>,
     failure: Option<SourceError>,
+    aliases: HashMap<EventId, EventId>,
     list_events_calls: usize,
     fetch_event_calls: HashMap<EventId, usize>,
 }
@@ -58,6 +59,12 @@ impl ScriptedSource {
             .unwrap()
             .events
             .insert(snapshot.event.id, snapshot);
+    }
+
+    /// `fetch_event(stage)` answers with the snapshot of `event`, like HLTV
+    /// does for the event id of one Stage of a Major.
+    pub fn alias(&self, stage: EventId, event: EventId) {
+        self.inner.lock().unwrap().aliases.insert(stage, event);
     }
 
     pub fn remove_event(&self, event: EventId) {
@@ -192,6 +199,7 @@ impl MatchSource for ScriptedSource {
         if let Some(error) = &inner.failure {
             return Err(error.clone());
         }
+        let id = inner.aliases.get(&id).copied().unwrap_or(id);
         inner.events.get(&id).cloned().ok_or(SourceError::NotFound)
     }
 }

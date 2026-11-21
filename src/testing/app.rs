@@ -16,7 +16,8 @@ use tower::ServiceExt;
 
 use super::{FakeClock, RecordingNotifier, ScriptedSource};
 use crate::config::Config;
-use crate::ports::MatchSource;
+use crate::ports::{Clock, MatchSource};
+use sqlx::SqlitePool;
 use crate::state::AppState;
 use crate::{app, db};
 
@@ -74,7 +75,14 @@ impl TestApp {
 
 pub struct TestAppBuilder {
     config: Config,
-    source: Option<Arc<dyn MatchSource>>,
+    source: Option<SourceChoice>,
+}
+
+type MakeSource = Box<dyn FnOnce(SqlitePool, Arc<dyn Clock>) -> Arc<dyn MatchSource>>;
+
+enum SourceChoice {
+    Ready(Arc<dyn MatchSource>),
+    Make(MakeSource),
 }
 
 impl TestAppBuilder {
@@ -98,7 +106,17 @@ impl TestAppBuilder {
     /// Put this behind the `MatchSource` port instead of `TestApp::source`
     /// (e.g. a `FallbackSource` composed of several `ScriptedSource`s).
     pub fn source(mut self, source: Arc<dyn MatchSource>) -> Self {
-        self.source = Some(source);
+        self.source = Some(SourceChoice::Ready(source));
+        self
+    }
+
+    /// Like [`source`](Self::source), for a source that needs the test's
+    /// database and clock (a `FallbackSource`).
+    pub fn source_with(
+        mut self,
+        make: impl FnOnce(SqlitePool, Arc<dyn Clock>) -> Arc<dyn MatchSource> + 'static,
+    ) -> Self {
+        self.source = Some(SourceChoice::Make(Box::new(make)));
         self
     }
 
@@ -106,12 +124,18 @@ impl TestAppBuilder {
         let clock = Arc::new(FakeClock::new());
         let source = Arc::new(ScriptedSource::new());
         let notifier = Arc::new(RecordingNotifier::new());
+        let db = db::connect_in_memory()
+            .await
+            .expect("in-memory database with migrations applied");
+        let chosen: Arc<dyn MatchSource> = match self.source {
+            None => source.clone(),
+            Some(SourceChoice::Ready(s)) => s,
+            Some(SourceChoice::Make(make)) => make(db.clone(), clock.clone()),
+        };
         let state = AppState {
-            db: db::connect_in_memory()
-                .await
-                .expect("in-memory database with migrations applied"),
+            db,
             clock: clock.clone(),
-            source: self.source.unwrap_or_else(|| source.clone()),
+            source: chosen,
             notifier: notifier.clone(),
             config: Arc::new(self.config),
         };

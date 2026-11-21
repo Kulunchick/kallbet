@@ -105,11 +105,11 @@ async fn a_prediction_is_rejected_after_lock() {
 
 What the harness gives you (`src/testing/`):
 
-- `TestApp::new()`, or `TestApp::builder()` with `.dev_login(false)`, `.web_dir(..)`, `.config(|c| ..)`, `.source(arc)` (to put a `FallbackSource` of fakes behind the port), then `.build()`.
+- `TestApp::new()`, or `TestApp::builder()` with `.dev_login(false)`, `.web_dir(..)`, `.config(|c| ..)`, `.source(arc)` (another source behind the port) or `.source_with(|db, clock| arc)` (one that needs the test's database and clock, e.g. a `FallbackSource` of fakes; model: `tests/fallback_chain.rs`), then `.build()`.
 - `app.user("nickname")`: a client signed in as that User (created on first use). `app.anonymous()`: a client with no session. Clients have `get`, `post`, `post_empty`, `put`, `patch`, `delete`. They keep cookies like a browser.
 - `TestResponse`: `status`, `json()`, `json_as::<T>()`, `text()`, `header(name)`, `error_code()`.
 - `app.clock` (`FakeClock`): `now()`, `advance(duration)`, `set(instant)`. It starts at 2026-01-10 12:00 UTC and only moves when told to.
-- `app.source` (`ScriptedSource`): `put_event`, `update_event`, `update_match`, `postpone`, `start`, `finish`, `finish_without_winner`, `cancel`, `fail_with` / `recover`, and the call counters `list_events_calls()`, `fetch_event_calls(id)`, `total_fetch_event_calls()`. `ScriptedSource::of(kind)` makes one that reports as another Data Source.
+- `app.source` (`ScriptedSource`): `put_event`, `update_event`, `update_match`, `postpone`, `start`, `finish`, `finish_without_winner`, `cancel`, `fail_with` / `recover`, `alias(stage_id, event_id)` (HLTV's Stage-of-a-Major behaviour), and the call counters `list_events_calls()`, `fetch_event_calls(id)`, `total_fetch_event_calls()`. `ScriptedSource::of(kind)` makes one that reports as another Data Source; wrap it in `ExternalFake::new(arc)` to use it as a fallback adapter (`ExternalSource`) in a `FallbackSource`.
 - `app.notifier` (`RecordingNotifier`): `sent()`, `sent_to(user_id)`, `clear()`, `fail_with` / `recover`.
 - `app.state`: the same `AppState` the router uses. Use it to drive non-HTTP entry points (a poller step) against the same database and fakes.
 - `TEST_BOT_TOKEN`: the bot token in the test config, for signing Telegram login payloads.
@@ -131,6 +131,37 @@ Seam 2 (parser) tests keep fixtures under `tests/fixtures/<source>/` and feed th
 - `fetch_event(id)` may return a snapshot whose `event.id` differs from `id`: HLTV gives each Stage of a Major its own event id, and the canonical Event is the Major (the parent HLTV event). Store and key by `snapshot.event.id`.
 - Team logos are never sent to the SPA as Data Source URLs (`Team::logo_url`). The SPA shows `/api/teams/{id}/logo`; the HLTV adapter downloads each logo once (`sources::hltv::LogoCache`).
 - HLTV adapter: `sources::hltv::HltvSource::new(Arc::new(ChromePages::new(url)), clock).with_logos(LogoCache::new(dir))`. Its pure parser is `sources::hltv::parse`. `tests/hltv_live.rs` runs it against a real browser and HLTV (ignored by default; see the file for how to run it).
+
+## Fallback chain (ticket #9) — read before #10, #11, #13
+
+`state.source` in production is `sources::fallback::FallbackSource` (`runtime::match_source`): HLTV → PandaScore → Liquipedia, one circuit breaker each. Callers just use `MatchSource`; nothing else changes.
+
+**Writing a fallback adapter (#10, #11).** Implement `sources::fallback::ExternalSource` in your own file (`sources/pandascore.rs`, `sources/liquipedia.rs`). Both already hold a placeholder type (`PandaScoreSource::new(token)`, `LiquipediaSource::new()`) that answers `NotConfigured` and is already wired into the chain in `runtime::match_source`: replace its body, keep the type (add constructor arguments if you need them, e.g. a `Clock` for rate limiting, and adjust that one call in `runtime.rs`). You never produce canonical ids yourself:
+
+- `kind()` → your `DataSourceKind`.
+- `list_events()` → `Vec<ExternalEvent { external_id, canonical: Option<EventId>, name, starts_at, ends_at }>`.
+- `find_events(&EventHint { id, name, starts_at, ends_at })` → candidates for the canonical Event (search by name/dates, return a few; empty if nothing is close). `name` is empty when the Event was never stored (HLTV was down when the League was created): then only a candidate with `canonical == Some(id)` is accepted, so search by HLTV id if your source can. Called only until the Event is mapped.
+- `fetch_event(external_id)` → `ExternalSnapshot { event, stages: Vec<Stage>, matches: Vec<ExternalMatch> }` for the **whole** Event (every Stage of a Major). `ExternalMatch { external_id, canonical: Option<MatchId>, stage (an ordinal of your own `stages`), placement, team_a/team_b: Option<ExternalTeam { external_id, name, canonical: Option<TeamId> }>, format, scheduled_start, actual_start, status, winner: Option<Side::A|B>, score }`, score in your record's team order.
+- Errors as for `MatchSource`: `NotConfigured` (skipped, not a failure), `Unavailable`, `Parse` (both count for the breaker), `NotFound`.
+- Put an id your data carries in `canonical` (Liquipedia: a Match template's `hltv=` → `ExternalMatch::canonical`, an infobox HLTV event link → `ExternalEvent::canonical`); it links directly, bypassing name/time matching.
+- Parser tests are Seam 2 as usual (fixture → `ExternalSnapshot`). "Records are mapped to canonical ids through the mapping table" is the chain's job and already tested in `tests/fallback_chain.rs`; to check your adapter end to end, compose it in a `FallbackSource` like that file does.
+
+**How the chain behaves** (`sources/fallback/mod.rs`, pure rules in `mapping.rs`):
+
+- `fetch_event(id)`: first resolve aliases (an HLTV Stage event id that HLTV once answered with its Major is stored as an `hltv`/`event` mapping, so a pasted Stage link keeps resolving to the Major while HLTV is down). HLTV answers → its snapshot is returned unchanged; `NotFound` from HLTV ends the search. Otherwise each fallback in order: find its Event (mapping, else `find_events` + `mapping::choose_event`: carried HLTV id, else best name similarity ≥ 0.4 with overlapping dates, ambiguous = none), fetch, link, merge. All fail → `Unavailable` if any source failed, else `NotFound`, else `NotConfigured`.
+- **Breaker**: `NotConfigured` never counts; `Unavailable` and `Parse` count; `NotFound` counts as a success. After `KALLBET_BREAKER_FAILURES` (3) in a row the source is skipped for `KALLBET_BREAKER_OPEN_MINUTES` (15), then tried once (half-open): success closes it, failure reopens it. Time comes from `Clock`. This is the poller's back-off. In-memory, per adapter, shared by `list_events` and `fetch_event`. An HLTV parse error (e.g. a live Swiss Match in the chart but not yet in the standings) is a failure like any other, so the chain falls through to fallbacks.
+- **Linking a record**, first hit wins: manual mapping → id carried by the record → earlier automatic mapping → matching. Teams match by normalised name (`fallback::names::team_key`: lowercase alphanumerics without "team", "esports", "gaming", "clan", ...), this Event's teams first, then all teams. A Match matches a stored Match of the Event by teams and Scheduled Start within ± `KALLBET_MATCH_WINDOW_HOURS` (6); one agreeing team plus the time suffices, and the other team is then inferred and mapped (unless another record of the same snapshot is that team). Every link is stored in `external_ids` (origin `auto` / `source`).
+- **Unmatched** (Event has HLTV data): a record with a team that cannot be linked, with no teams, or with a team pair that already meets in that Stage at another time, is left out and flagged in `unmatched_records` (kinds `match` and `team`; `event` with an empty external id when no Event fitted). Flags are replaced per (Event, source) on each fetch from that source, so a fix clears its flag on the next fetch. A Match whose two teams are linked but which is not stored yet (a new Swiss round while HLTV cannot parse it) is **added** with a local id.
+- **Merge rule** (lower priority never spoils higher priority): a fallback updates only the progress fields of a stored Match (Scheduled Start, actual start, status, winner, score), fills teams still TBD, and keeps Stage, placement, format and HLTV team names; it never moves a Match backwards (finished → live → upcoming); it never touches a Match a higher-priority source has settled (finished/cancelled) — a different winner there is recorded as a conflict and the stored result stands. A settled result from a lower-priority source is overwritten by a higher one (HLTV always overwrites), with a conflict when the winner differs. Stored Matches a source does not report are left as they are (`save_snapshot` never deletes). The merged snapshot contains only what that source may write, and its Matches get `source` = that source.
+- **Conflicts** (`source_conflicts`): `{match_id, kept_source, kept_winner, other_source, other_winner (NULL = Void), detected_at}`, keyed by (match, other source); kept even if the sources later agree.
+
+**Ids of Matches not on HLTV (decision; #13 uses it too).** Canonical ids stay HLTV's positive `i64`s; a Match or team with no known HLTV id gets a **negative local id** (-1, -2, ...) from `store::external_ids::allocate_local_ids(db, IdKind::Match | Team, count)` (returns the first; the rest count down). #13: take a hand-added Match's id from there. When a fresh HLTV snapshot shows a local Match (same teams by name, or one team plus the time, within the window), the chain re-keys it to the HLTV id before the poller saves the snapshot (`rekey_match` / `rekey_team`: matches, predictions, match_locks, picks, conflicts, mappings), so Predictions follow. **Any new table with a match or team id column must be added to `rekey_match` / `rekey_team`** (#13's Overrides). A hand-added Match (#13) may be re-keyed this way too if HLTV later lists the same Match, which is what you want; if #13 keeps hand-added Matches outside `matches`, it decides itself whether to adopt them.
+
+**HLTV down and the Event never fetched from HLTV**: if the Event row exists (from an earlier HLTV Event list, or a League), fallbacks find it by name and dates; its Matches and teams get local ids (nothing to link to), and are adopted when HLTV returns. If nothing is known but the id, only a fallback whose candidate carries that HLTV id can serve it; otherwise League creation answers 502 `source_unavailable` and the user retries. `list_events` falls back the same way but only returns Events it can link to a canonical id (mapping, carried HLTV id, or a stored Event matched by name); others are dropped.
+
+**For #13 (store functions, `store/external_ids.rs`)**: `unmatched(db, event) -> Vec<UnmatchedRecord { source, kind, external_id, description, seen_at }>`, `conflicts(db, event) -> Vec<SourceConflict>`, and the fix `set_manual(db, source, IdKind::Team | Match | Event, external_id, canonical_id, now)`: a manual row is never overwritten automatically and wins over every other link from the next fetch on. These are base-data fixes (they apply to every League on the Event), so gate them on League Admins as #13 sees fit; League-scoped Overrides stay in the effective Match view.
+
+Tests: `tests/fallback_chain.rs` (fallback on failure, order, breaker open/half-open/close, unconfigured skipped, carried ids, unmatched flags, manual mapping, conflicts both ways, no rollback, local ids and adoption with Predictions, never-fetched Event, Stage link). Unit tests for names in `sources/fallback/names.rs`.
 
 ## Frontend map (`web/`)
 
@@ -185,6 +216,9 @@ Settings come from environment variables; `.env` is loaded for local development
 | `PANDASCORE_TOKEN` | unset | PandaScore token (secret). Unset means the adapter is skipped. |
 | `KALLBET_CHROME_URL` | unset | DevTools endpoint of the headless Chrome the HLTV adapter uses (`http://chrome:9222` in compose; a hostname is resolved to an IP). Unset means the HLTV adapter is skipped. |
 | `KALLBET_LOGO_DIR` | `logos` | Downloaded team logos, served at `/api/teams/{id}/logo`. |
+| `KALLBET_BREAKER_FAILURES` | `3` | Consecutive failures that open a Data Source's circuit breaker. |
+| `KALLBET_BREAKER_OPEN_MINUTES` | `15` | How long an open breaker skips its Data Source before one more try. |
+| `KALLBET_MATCH_WINDOW_HOURS` | `6` | ± hours within which two sources' start times count as the same Match. |
 
 A new setting needs a field in `Config`, a line in `Config::from_lookup`, a value in `Config::for_tests`, and an entry in `.env.example`. `Config`'s `Debug` output redacts secrets; keep it that way for new ones.
 
@@ -220,7 +254,7 @@ How League logic gets its Matches — read this before #6, #7, #13, #14, #16, #1
 - `PUT /api/leagues/{id}/matches/{match_id}/prediction` `{team_id}` → `{match_id, user_id, team_id, updated_at}`; errors 404 `not_found`, 409 `match_locked`, 422 `team_not_in_match`. It evaluates before (reject if locked) and after the upsert (where #6's Reveal on the last Prediction fires). #17 adds the archived check here.
 - **Pick'em (#14)**: a Stage's Matches and its first start come from `LeagueMatches.view` (`EventView::matches` filtered by `data.stage`); its Lock is the first `actual_start`/live status in the Stage.
 - **SPA**: `/leagues/:id/matches` (`web/src/pages/matches/`). `MatchCard.tsx` renders `PredictionsLine.tsx` (#6); #7's ✓/✗ goes next to the score. Strings in the `matches` namespace. The League page links to it.
-- Local manual testing: the production `MatchSource` is still unconfigured until #9, so a fresh League shows no Matches unless the DB is seeded by hand.
+- Local manual testing: the production `MatchSource` is the fallback chain (#9). Without `KALLBET_CHROME_URL` (and until #10/#11 land) every source is skipped, so a fresh League shows no Matches unless the DB is seeded by hand.
 
 ## Reveal (ticket #6)
 

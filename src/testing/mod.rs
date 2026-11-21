@@ -6,6 +6,7 @@
 
 mod app;
 mod clock;
+mod external;
 mod fixtures;
 mod notifier;
 mod source;
@@ -13,6 +14,7 @@ mod telegram;
 
 pub use app::{TestApp, TestAppBuilder, TestClient, TestResponse};
 pub use clock::FakeClock;
+pub use external::ExternalFake;
 pub use fixtures::EventSnapshotBuilder;
 pub use notifier::RecordingNotifier;
 pub use source::ScriptedSource;

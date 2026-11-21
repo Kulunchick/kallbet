@@ -156,9 +156,11 @@ async fn create(
         clean_league_name(&body.name).ok_or(ApiError::unprocessable("league_name_invalid"))?;
     let snapshot = events::fetch(&state, body.event_id).await?;
     event_store::upsert(&state.db, &snapshot.event).await?;
+    // `body.event_id` may name one Stage of a Major; the League is on the
+    // Major (the snapshot's Event).
     let league = leagues::create(
         &state.db,
-        body.event_id,
+        snapshot.event.id,
         &name,
         user.id,
         &new_invite_token(),

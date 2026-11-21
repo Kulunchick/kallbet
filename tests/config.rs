@@ -47,3 +47,23 @@ fn missing_secrets_are_simply_absent() {
     assert_eq!(config.bot_token, None);
     assert_eq!(config.pandascore_token, None);
 }
+
+#[test]
+fn the_fallback_chain_settings_have_defaults_and_can_be_set() {
+    let defaults = config_from(&[]);
+    assert_eq!(
+        (defaults.breaker_failures, defaults.breaker_open_minutes, defaults.match_window_hours),
+        (3, 15, 6)
+    );
+    let set = config_from(&[
+        ("KALLBET_BREAKER_FAILURES", "5"),
+        ("KALLBET_BREAKER_OPEN_MINUTES", "30"),
+        ("KALLBET_MATCH_WINDOW_HOURS", "2"),
+    ]);
+    assert_eq!(
+        (set.breaker_failures, set.breaker_open_minutes, set.match_window_hours),
+        (5, 30, 2)
+    );
+    let zero = Config::from_lookup(|key| (key == "KALLBET_BREAKER_FAILURES").then(|| "0".into()));
+    assert!(zero.is_err());
+}

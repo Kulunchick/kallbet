@@ -28,10 +28,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let db = db::connect(&config.database_url).await?;
+    let clock = runtime::clock();
     let state = AppState {
+        source: runtime::match_source(&config, &db, clock.clone()),
         db,
-        clock: runtime::clock(),
-        source: runtime::match_source(&config),
+        clock,
         notifier: runtime::notifier(&config),
         config: Arc::new(config),
     };

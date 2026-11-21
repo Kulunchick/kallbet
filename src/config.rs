@@ -33,6 +33,16 @@ pub struct Config {
     /// `KALLBET_LOGO_DIR`: where downloaded team logos are kept, default
     /// `logos`.
     pub logo_dir: PathBuf,
+    /// `KALLBET_BREAKER_FAILURES`: consecutive failures after which a Data
+    /// Source's circuit breaker opens, default 3.
+    pub breaker_failures: u32,
+    /// `KALLBET_BREAKER_OPEN_MINUTES`: how long an open breaker skips its
+    /// Data Source before one more try (half-open), default 15.
+    pub breaker_open_minutes: i64,
+    /// `KALLBET_MATCH_WINDOW_HOURS`: how far apart (±) two Data Sources'
+    /// start times may be for their records to count as the same Match,
+    /// default 6.
+    pub match_window_hours: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -74,7 +84,31 @@ impl Config {
             }
         };
 
+        let positive = |key: &'static str, default: i64| -> Result<i64, ConfigError> {
+            match get(key) {
+                None => Ok(default),
+                Some(v) => match v.parse::<i64>() {
+                    Ok(n) if n > 0 => Ok(n),
+                    _ => Err(ConfigError {
+                        key,
+                        problem: format!("expected a positive whole number, got `{v}`"),
+                    }),
+                },
+            }
+        };
+        let breaker_failures = positive("KALLBET_BREAKER_FAILURES", 3)?
+            .try_into()
+            .map_err(|_| ConfigError {
+                key: "KALLBET_BREAKER_FAILURES",
+                problem: "too large".into(),
+            })?;
+        let breaker_open_minutes = positive("KALLBET_BREAKER_OPEN_MINUTES", 15)?;
+        let match_window_hours = positive("KALLBET_MATCH_WINDOW_HOURS", 6)?;
+
         Ok(Config {
+            breaker_failures,
+            breaker_open_minutes,
+            match_window_hours,
             bind_addr,
             database_url: get("DATABASE_URL").unwrap_or_else(|| "sqlite://kallbet.db".into()),
             web_dir: get("KALLBET_WEB_DIR")
@@ -103,6 +137,9 @@ impl Config {
             pandascore_token: None,
             chrome_url: None,
             logo_dir: PathBuf::from("logos"),
+            breaker_failures: 3,
+            breaker_open_minutes: 15,
+            match_window_hours: 6,
         }
     }
 }
@@ -126,6 +163,9 @@ impl fmt::Debug for Config {
             .field("pandascore_token", &redact(&self.pandascore_token))
             .field("chrome_url", &self.chrome_url)
             .field("logo_dir", &self.logo_dir)
+            .field("breaker_failures", &self.breaker_failures)
+            .field("breaker_open_minutes", &self.breaker_open_minutes)
+            .field("match_window_hours", &self.match_window_hours)
             .finish()
     }
 }
