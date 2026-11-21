@@ -1,0 +1,1098 @@
+{{DISPLAYTITLE:CCT Europe 2026 Series #14}}
+{{CCT Navbox}}<br>
+{{CCT 2026 Tabs|eu}}
+{{Infobox league
+|name=CCT Europe 2026 Series #14
+|image=CCT 2024 Europe allmode.png
+|icon=CCT 2024 Europe icon allmode.png
+|tickername=CCT EU 2026 Series #14
+|organizer=CCT
+|organizer-link=Champion of Champions Tour
+|series=Champion of Champions Tour
+|abbreviation=CCT Europe
+|shortname=Series #14
+|type=Online
+|country=Europe
+|prizepoolusd=25,000
+|liquipediatier=B-Tier
+|publishertier=Tier 2
+|sdate=2026-11-10
+|edate=2026-11-22
+|web=https://cctour.gg/cct-2026-europe/
+|rulebook=https://drive.google.com/file/d/1jwjc4U7bnwICaWGCoGTtlafeACh060Vy
+|twitter=CCT_CS
+|kick=cct_cs2
+|youtube=channel/UCrN2GuYzV7D8hcyMrq7ImUA
+|sponsor=[https://www.grid.gg/ GRID]<br/>[https://hellcase.com Hellcase]<br/>[https://skin.place/ Skin Place]<br/>[https://stake.com/ Stake]
+|game=cs2
+|map1=Ancient
+|map2=Anubis
+|map3=Cache
+|map4=Dust II
+|map5=Inferno
+|map6=Mirage
+|map7=Nuke
+|team_number=24
+}}
+
+==About==
+===Broadcast Talent===
+{{BroadcasterCard
+|position=Commentator
+|b1=Trav
+|b2=HAzE
+|b3=V1nson
+|b4=GETTHEBAGMARK
+|b5=ZolaSMH
+|b6=Cmd64
+|b7=BDog
+|b8=GrimyRannarr
+|b9=SneakyBeaky
+}}
+
+===Format===
+* '''Group Stage:'''
+** 16 Team Swiss System Format
+*** All matches are {{Abbr/Bo3}}
+*** Top 8 teams proceed to Playoffs
+** {{Swiss Explained/VRS}}
+
+* '''Playoffs:'''
+** Single-Elimination bracket
+** All matches are {{Abbr/Bo3}}
+
+===Prize Pool===
+{{TeamPrizePool|prizesummary=true
+|{{Slot|usdprize=10,000}}
+|{{Slot|usdprize=5,000}}
+|{{Slot|usdprize=2,500|count=2}}
+|{{Slot|usdprize=1,250|count=4}}
+|{{Slot|count=8}}
+|{{Slot|count=3}}
+|{{Slot|count=3}}
+|{{Slot|dq=true
+	|{{Opponent|6yubojlbl|date=2026-11-10}}
+	|{{Opponent|gothic|date=2026-11-10}}
+}}
+}}
+
+==Participants==
+===Playoffs Invites===
+{{TeamParticipantsControls}}
+{{TeamParticipants
+|{{Opponent|GenOne
+|players={{Persons
+|{{Person|Brooxsy}}
+|{{Person|Djoko}}
+|{{Person|Keoz}}
+|{{Person|bL4SEZ}}
+|{{Person|SIXER}}
+|{{Person|role=coach|JACKZ}}
+}}
+|qualification={{VRS|eu|20261005}}
+}}
+|{{Opponent|Nice Try
+|players={{Persons
+|{{Person|ta9z|flag=ua}}
+|{{Person|ryuzak1|flag=ua}}
+|{{Person|Woro2k}}
+|{{Person|fakerealityy}}
+|{{Person|zogeN}}
+|{{Person|role=coach|WOLF|flag=ua}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|33
+|players={{Persons
+|{{Person|executor}}
+|{{Person|z1Nny}}
+|{{Person|bluewh1te}}
+|{{Person|Raijin}}
+|{{Person|}}
+|{{Person|role=coach|Wierd_1k}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|Team ACES
+|players={{Persons
+|{{Person|4X1s}}
+|{{Person|Salazar|link=Salazar (Russian player)}}
+|{{Person|karnez}}
+|{{Person|topo-}}
+|{{Person|MRcreed}}
+|{{Person|role=coach|s0ft}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|Aimclub (Romanian team)
+|players={{Persons
+|{{Person|zewts}}
+|{{Person|ragga}}
+|{{Person|mhN1}}
+|{{Person|ADRON}}
+|{{Person|XELLOW}}
+|{{Person|role=coach|Danielovski|flag=ro}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|Lazer Cats
+|players={{Persons
+|{{Person|Magic|link=Magic (Ukrainian player)}}
+|{{Person|nikitea}}
+|{{Person|Kiy0o}}
+|{{Person|tripex17}}
+|{{Person|n0rths|flag=ua}}
+|{{Person|role=coach|monarrrh}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|Rune Eaters Esports
+|players={{Persons
+|{{Person|noni}}
+|{{Person|demente}}
+|{{Person|dukefissura}}
+|{{Person|nota}}
+|{{Person|tasman}}
+|{{Person|role=coach|sorrow}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|ex-INOX Division
+|players={{Persons
+|{{Person|k1slll}}
+|{{Person|k0s}}
+|{{Person|finW}}
+|{{Person|El1an}}
+|{{Person|m1QUSE}}
+}}
+|qualification={{VRS|eu}}
+}}
+}}
+
+===Group Stage Invites===
+{{TeamParticipants
+|{{Opponent|FORZE Reload
+|players={{Persons
+|{{Person|KusMe}}
+|{{Person|HeCkBNk}}
+|{{Person|YumsaN}}
+|{{Person|Lack1}}
+|{{Person|bl1x1}}
+|{{Person|role=coach|PASHANOJ}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|Butterfly
+|players={{Persons
+|{{Person|ayano}}
+|{{Person|Kurama}}
+|{{Person|nitzie}}
+|{{Person|Forester}}
+|{{Person|Krad}}
+|{{Person|role=coach|kinqie}}
+|{{Person|TRAVIS|status=sub|results=false}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|ex-RUSTEC
+|players={{Persons
+|{{Person|Brilliance}}
+|{{Person|youka}}
+|{{Person|yiksrezo}}
+|{{Person|Mokuj1n}}
+|{{Person|rehard|flag=ru}}
+|{{Person|role=coach|dEMA}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|Hype Tech
+|players={{Persons
+|{{Person|brutmonster}}
+|{{Person|Cjoffo}}
+|{{Person|Kind0}}
+|{{Person|Dragon}}
+|{{Person|VLDN}}
+|{{Person|role=coach|aVN}}
+}}
+|qualification={{VRS|eu}}
+|notes={{Notes
+|{{Notes|November 13th - '''[[ex-Zero Tenacity]]''' are signed by '''[[Hype Tech]]'''. <ref>{{cite web|url=https://x.com/hypeesportsoff/status/2121298791106289750|title=A NEW ERA BEGINS|date=2026-11-13|author=[[Hype Tech]]}}</ref>}}
+}}
+}}
+|{{Opponent|BAKS Esports
+|players={{Persons
+|{{Person|turbo}}
+|{{Person|whisper}}
+|{{Person|danistzz}}
+|{{Person|Norwi}}
+|{{Person|glowiing}}
+|{{Person|role=coach|XomA}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|Nexus Gaming
+|players={{Persons
+|{{Person|s0und}}
+|{{Person|fNk}}
+|{{Person|Nexius}}
+|{{Person|shield}}
+|{{Person|HOLY}}
+|{{Person|role=coach|H4rder|flag=ro}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|Leo Team
+|players={{Persons
+|{{Person|leen}}
+|{{Person|next1me}}
+|{{Person|aimy}}
+|{{Person|Tarkky}}
+|{{Person|drac}}
+|{{Person|role=coach|rjy}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|Walczaki
+|players={{Persons
+|{{Person|bajmi}}
+|{{Person|olimp}}
+|{{Person|reiko}}
+|{{Person|eskyy}}
+|{{Person|mrouZ|flag=pl}}
+|{{Person|Kizzzi|status=sub|flag=pl}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|The Last Resort
+|players={{Persons
+|{{Person|arTisT}}
+|{{Person|Extinct}}
+|{{Person|Vacancy}}
+|{{Person|bevve}}
+|{{Person|Girafffe}}
+|{{Person|role=coach|Dutchy}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|MINT
+|players={{Persons
+|{{Person|}}
+|{{Person|}}
+|{{Person|}}
+|{{Person|}}
+|{{Person|}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|MOUZ NXT
+|players={{Persons
+|{{Person|ay0k}}
+|{{Person|Nikodeon}}
+|{{Person|eSx-|flag=fr}}
+|{{Person|mixer|flag=cn}}
+|{{Person|deeN|flag=lv}}
+|{{Person|role=coach|TOBIZ}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|Azuolas
+|players={{Persons
+|{{Person|maty}}
+|{{Person|yakuza}}
+|{{Person|StreakN|flag=lt}}
+|{{Person|Sh1karee|flag=ua}}
+|{{Person|tooizera}}
+|{{Person|ledzh1t|status=sub|flag=lt}}
+}}
+|qualification={{VRS|eu}}
+}}
+|{{Opponent|Honvéd Esport
+|players={{Persons
+|{{Person|noleN}}
+|{{Person|esor|flag=hu}}
+|{{Person|1NSERT2}}
+|{{Person|marTineZ}}
+|{{Person|zs0lt1|flag=hu}}
+}}
+|qualification={{Qualification|method=qual|page=/Play-In|text=Play-In Stage}}
+}}
+|{{Opponent|MASONIC
+|players={{Persons
+|{{Person|Botman}}
+|{{Person|KralleJ|flag=dk}}
+|{{Person|b0RUP}}
+|{{Person|slexa|flag=dk}}
+|{{Person|Bukhavez|flag=dk}}
+|{{Person|role=coach|R0nic}}
+}}
+|qualification={{Qualification|method=qual|page=/Play-In|text=Play-In Stage}}
+}}
+|{{Opponent|Sökerorg
+|players={{Persons
+|{{Person|}}
+|{{Person|}}
+|{{Person|}}
+|{{Person|}}
+|{{Person|}}
+}}
+|qualification={{Qualification|method=qual|page=/Play-In|text=Play-In Stage}}
+}}
+|{{Opponent|ILLYRIANS
+|players={{Persons
+|{{Person|ammar}}
+|{{Person|BledarD}}
+|{{Person|cerber}}
+|{{Person|Lewis|flag=xk}}
+|{{Person|rosoneriii}}
+}}
+|qualification={{Qualification|method=qual|page=/Play-In|text=Play-In Stage}}
+}}
+}}
+
+==Results==
+===Group Stage===
+====Overview====
+{{SwissStandings|format=swiss3
+|tiebreakers={{Json|matchscore}}
+|bg=1-2=up,3-5=stayup,6-8=stay,9-16=down
+|placements=1-2;3-5;6-8;9-11;12-14;15-16
+|round1={{Round|matchgroups=4rZvCMRUtT}}
+|round2={{Round|matchgroups=S9AmHsnDap,cvmW4kaJ2F}}
+|round3={{Round|matchgroups=asiPo90CNQ,4m5N8tikf2,bIvfIYkKRw}}
+|round4={{Round|matchgroups=9atxWZ8d22,Ae1hn0SCVz}}
+|round5={{Round|matchgroups=NyEZmtthp5}}
+|{{TeamOpponent|forze reload|r3bg=up}}
+|{{TeamOpponent|butterfly|r3bg=up}}
+|{{TeamOpponent|ex-rustec|r5bg=stay}}
+|{{TeamOpponent|hype tech|aliases=ex-zero tenacity|r4bg=stayup}}
+|{{TeamOpponent|baks|r5bg=stay}}
+|{{TeamOpponent|nexus|r4bg=stayup}}
+|{{TeamOpponent|leo team}}
+|{{TeamOpponent|walczaki}}
+|{{TeamOpponent|tlr|r5bg=down}}
+|{{TeamOpponent|mint|dq=true}}
+|{{TeamOpponent|mnxt|r5bg=down}}
+|{{TeamOpponent|azuolas|r4bg=down}}
+|{{TeamOpponent|honved|r4bg=down}}
+|{{TeamOpponent|masonic|r4bg=down}}
+|{{TeamOpponent|sökerorg|dq=true}}
+|{{TeamOpponent|illyrians|r4bg=stayup}}
+}}
+
+====Detailed Results====
+{{Toggle group start|state=hide}}
+=====Round 1=====
+{{Matchlist|id=4rZvCMRUtT|width=380px|collapsed=false|title=Round 1 Matches|matchsection=Round 1
+|M1header=November 10, 2026
+|M5header=November 11, 2026
+|{{Match
+	|opponent1={{TeamOpponent|baks}}|opponent2={{TeamOpponent|azuolas}}
+	|date=November 10, 2026 - 10:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Inferno|finished=true
+		|t1firstside=ct|t1t=3|t1ct=10|t2t=2|t2ct=0
+		|stats=244009}}
+	|map2={{Map|map=Ancient|finished=true
+		|t1firstside=t|t1t=12|t1ct=1|t2t=0|t2ct=0
+		|stats=244010}}
+	|map3={{Map|map=Nuke|finished=skip}}
+	|hltv=2400233
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|ex-z10}}|opponent2={{TeamOpponent|illyrians}}
+	|date=November 10, 2026 - 13:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Inferno|finished=true
+		|t1firstside=t|t1t=10|t1ct=3|t2t=0|t2ct=2
+		|stats=244015}}
+	|map2={{Map|map=Mirage|finished=true
+		|t1firstside=ct|t1t=7|t1ct=6|t2t=6|t2ct=5
+		|stats=244018}}
+	|map3={{Map|map=Dust II|finished=skip}}
+	|hltv=2400234
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|butterfly}}|opponent2={{TeamOpponent|honved}}
+	|date=November 10, 2026 - 16:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=5|t1ct=8|t2t=4|t2ct=7
+		|stats=244020}}
+	|map2={{Map|map=Cache|finished=true
+		|t1firstside=ct|t1t=3|t1ct=8|t2t=4|t2ct=9
+		|stats=244025}}
+	|map3={{Map|map=Mirage|finished=true
+		|t1firstside=t|t1t=5|t1ct=8|t2t=2|t2ct=7
+		|stats=244030}}
+	|hltv=2400235
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|leo team|score=W}}|opponent2={{TeamOpponent|mint|score=FF}}
+	|date=November 10, 2026 - 19:00 {{Abbr/CET}} |finished=true
+	|map1={{Map}}|map2={{Map}}|map3={{Map}}|hltv=2400236
+	|comment='''[[MINT]]''' forfeit the match.
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|ex-rustec|score=W}}|opponent2={{TeamOpponent|sökerorg|score=FF}}
+	|date=November 11, 2026 - 10:00 {{Abbr/CET}} |finished=true
+	|map1={{Map}}|map2={{Map}}|map3={{Map}}|hltv=2400237
+	|comment='''[[Sökerorg]]''' forfeit the match as they are unable to field a complete lineup.
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|nexus}}|opponent2={{TeamOpponent|mnxt}}
+	|date=November 11, 2026 - 13:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Anubis|finished=true
+		|t1firstside=ct|t1t=4|t1ct=9|t2t=3|t2ct=6
+		|stats=244081}}
+	|map2={{Map|map=Mirage|finished=true
+		|t1firstside=ct|t1t=4|t1ct=9|t2t=3|t2ct=4
+		|stats=244085}}
+	|map3={{Map|map=Ancient|finished=skip}}
+	|hltv=2400238
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|forze reload}}|opponent2={{TeamOpponent|masonic}}
+	|date=November 11, 2026 - 16:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Ancient|finished=true
+		|t1firstside=t|t1t=4|t1ct=8|t2t=4|t2ct=8
+		|o1t1firstside=ct|o1t1t=1|o1t1ct=2|o1t2t=1|o1t2ct=2
+		|o2t1firstside=t|o2t1t=3|o2t1ct=1|o2t2t=1|o2t2ct=0
+		|stats=244089}}
+	|map2={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=4|t1ct=9|t2t=3|t2ct=1
+		|stats=244099}}
+	|map3={{Map|map=Cache|finished=skip}}
+	|hltv=2400239
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|walczaki}}|opponent2={{TeamOpponent|tlr}}
+	|date=November 11, 2026 - 19:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Inferno|finished=true
+		|t1firstside=ct|t1t=3|t1ct=7|t2t=5|t2ct=8
+		|stats=244108}}
+	|map2={{Map|map=Ancient|finished=true
+		|t1firstside=t|t1t=6|t1ct=7|t2t=5|t2ct=6
+		|stats=244112}}
+	|map3={{Map|map=Nuke|finished=true
+		|t1firstside=t|t1t=5|t1ct=8|t2t=4|t2ct=7
+		|stats=244119}}
+	|hltv=2400240
+	}}
+}}
+
+=====Round 2=====
+{{Toggle group start|state=hide}}
+{{box|start|padding=2em}}
+======High======
+{{Matchlist|id=S9AmHsnDap|width=380px|collapsed=false|title=Round 2 High Matches|matchsection=Round 2
+|M1header=November 13, 2026
+|{{Match
+	|opponent1={{TeamOpponent|butterfly}}|opponent2={{TeamOpponent|leo team}}
+	|date=November 13, 2026 - 10:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=7|t1ct=6|t2t=6|t2ct=4
+		|stats=244233}}
+	|map2={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=7|t1ct=5|t2t=7|t2ct=5
+		|o1t1firstside=ct|o1t1t=2|o1t1ct=2|o1t2t=1|o1t2ct=0
+		|stats=244238}}
+	|map3={{Map|map=Cache|finished=skip}}
+	|hltv=2400245
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|ex-z10}}|opponent2={{TeamOpponent|baks}}
+	|date=November 13, 2026 - 13:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Mirage|finished=true
+		|t1firstside=ct|t1t=6|t1ct=6|t2t=6|t2ct=6
+		|o1t1firstside=t|o1t1t=3|o1t1ct=0|o1t2t=3|o1t2ct=0
+		|o2t1firstside=ct|o2t1t=0|o2t1ct=2|o2t2t=1|o2t2ct=3
+		|stats=244248}}
+	|map2={{Map|map=Inferno|finished=true
+		|t1firstside=t|t1t=7|t1ct=6|t2t=6|t2ct=5
+		|stats=244259}}
+	|map3={{Map|map=Cache|finished=true
+		|t1firstside=ct|t1t=6|t1ct=6|t2t=6|t2ct=6
+		|o1t1firstside=t|o1t1t=1|o1t1ct=2|o1t2t=1|o1t2ct=2
+		|o2t1firstside=ct|o2t1t=1|o2t1ct=3|o2t2t=0|o2t2ct=1
+		|stats=244269}}
+	|hltv=2400246
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|forze reload|score=W}}|opponent2={{TeamOpponent|walczaki|score=FF}}
+	|date=November 13, 2026 - 16:00 {{Abbr/CET}} |finished=true
+	|map1={{Map}}|map2={{Map}}|map3={{Map}}|hltv=2400247
+	|comment='''[[Walczaki]]''' forfeit the match as they are unable to field an eligible roster.
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|ex-rustec}}|opponent2={{TeamOpponent|nexus}}
+	|date=November 13, 2026 - 19:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=3|t1ct=4|t2t=4|t2ct=9
+		|stats=244290}}
+	|map2={{Map|map=Ancient|finished=true
+		|t1firstside=ct|t1t=3|t1ct=3|t2t=9|t2ct=4
+		|stats=244302}}
+	|map3={{Map|map=Anubis|finished=skip}}
+	|hltv=2400248
+	}}
+}}
+{{box|break|padding=2em}}
+
+======Low======
+{{Matchlist|id=cvmW4kaJ2F|width=380px|collapsed=false|title=Round 2 Low Matches|matchsection=Round 2
+|M1header=November 12, 2026
+|{{Match
+	|opponent1={{TeamOpponent|tlr}}|opponent2={{TeamOpponent|masonic}}
+	|date=November 12, 2026 - 10:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Cache|finished=true
+		|t1firstside=ct|t1t=6|t1ct=6|t2t=6|t2ct=6
+		|o1t1firstside=t|o1t1t=3|o1t1ct=1|o1t2t=0|o1t2ct=0
+		|stats=244132}}
+	|map2={{Map|map=Ancient|finished=true
+		|t1firstside=t|t1t=5|t1ct=2|t2t=6|t2ct=7
+		|stats=244136}}
+	|map3={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=5|t1ct=8|t2t=4|t2ct=1
+		|stats=244141}}
+	|hltv=2400241
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|mnxt|score=W}}|opponent2={{TeamOpponent|sökerorg|score=FF}}
+	|date=November 12, 2026 - 13:00 {{Abbr/CET}} |finished=true
+	|map1={{Map}}|map2={{Map}}|map3={{Map}}|hltv=2400242
+	|comment='''[[Sökerorg]]''' forfeit the match as they are unable to field a complete lineup.
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|azuolas}}|opponent2={{TeamOpponent|illyrians}}
+	|date=November 12, 2026 - 16:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Mirage|finished=true
+		|t1firstside=t|t1t=2|t1ct=0|t2t=3|t2ct=10
+		|stats=244162}}
+	|map2={{Map|map=Cache|finished=true
+		|t1firstside=ct|t1t=0|t1ct=1|t2t=11|t2ct=2
+		|stats=244168}}
+	|map3={{Map|map=Ancient|finished=skip}}
+	|hltv=2400243
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|mint|score=FF}}|opponent2={{TeamOpponent|honved|score=W}}
+	|date=November 12, 2026 - 19:00 {{Abbr/CET}} |finished=true
+	|map1={{Map}}|map2={{Map}}|map3={{Map}}|hltv=2400244
+	|comment='''[[MINT]]''' forfeit the match.
+	}}
+}}
+{{box|end}}
+{{Toggle group end}}
+
+=====Round 3=====
+{{Toggle group start|state=hide}}
+{{box|start|padding=2em}}
+======High======
+{{Matchlist|id=asiPo90CNQ|width=380px|collapsed=false|title=Round 3 High Matches|matchsection=Round 3
+|M1header=November 15, 2026
+|{{Match
+	|opponent1={{TeamOpponent|forze reload}}|opponent2={{TeamOpponent|nexus}}
+	|date=November 15, 2026 - 16:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Anubis|finished=true
+		|t1firstside=ct|t1t=5|t1ct=7|t2t=5|t2ct=7
+		|o1t1firstside=t|o1t1t=2|o1t1ct=2|o1t2t=1|o1t2ct=1
+		|stats=244450}}
+	|map2={{Map|map=Cache|finished=true
+		|t1firstside=t|t1t=6|t1ct=4|t2t=7|t2ct=6
+		|stats=244465}}
+	|map3={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=8|t1ct=5|t2t=2|t2ct=4
+		|stats=244472}}
+	|hltv=2400255
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|butterfly}}|opponent2={{TeamOpponent|hype tech}}
+	|date=November 15, 2026 - 19:50 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Inferno|finished=true
+		|t1firstside=ct|t1t=4|t1ct=8|t2t=4|t2ct=8
+		|o1t1firstside=t|o1t1t=2|o1t1ct=2|o1t2t=0|o1t2ct=1
+		|stats=244479}}
+	|map2={{Map|map=Nuke|finished=true
+		|t1firstside=t|t1t=4|t1ct=8|t2t=4|t2ct=8
+		|o1t1firstside=ct|o1t1t=1|o1t1ct=3|o1t2t=0|o1t2ct=0
+		|stats=244489}}
+	|map3={{Map|map=Cache|finished=skip}}
+	|hltv=2400256
+	}}
+}}
+{{box|break|padding=2em}}
+
+======Mid======
+{{Matchlist|id=4m5N8tikf2|width=380px|collapsed=false|title=Round 3 Mid Matches|matchsection=Round 3
+|M1header=November 14, 2026
+|M3header=November 15, 2026
+|{{Match
+	|opponent1={{TeamOpponent|ex-rustec}}|opponent2={{TeamOpponent|honved}}
+	|date=November 14, 2026 - 16:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=t|t1t=8|t1ct=5|t2t=3|t2ct=4
+		|stats=244345}}
+	|map2={{Map|map=Mirage|finished=true
+		|t1firstside=ct|t1t=7|t1ct=5|t2t=7|t2ct=5
+		|o1t1firstside=t|o1t1t=1|o1t1ct=3|o1t2t=0|o1t2ct=2
+		|stats=244354}}
+	|map3={{Map|map=Dust II|finished=skip}}
+	|hltv=2400251
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|baks}}|opponent2={{TeamOpponent|illyrians}}
+	|date=November 14, 2026 - 19:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Ancient|finished=true
+		|t1firstside=t|t1t=8|t1ct=2|t2t=9|t2ct=4
+		|stats=244364}}
+	|map2={{Map|map=Dust II|finished=true
+		|t1firstside=ct|t1t=5|t1ct=8|t2t=4|t2ct=5
+		|stats=244373}}
+	|map3={{Map|map=Mirage|finished=true
+		|t1firstside=t|t1t=4|t1ct=6|t2t=5|t2ct=8
+		|stats=244380}}
+	|hltv=2400252
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|walczaki}}|opponent2={{TeamOpponent|mnxt}}
+	|date=November 15, 2026 - 10:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Mirage|finished=true
+		|t1firstside=ct|t1t=5|t1ct=8|t2t=4|t2ct=5
+		|stats=244401}}
+	|map2={{Map|map=Ancient|finished=true
+		|t1firstside=ct|t1t=5|t1ct=6|t2t=6|t2ct=7
+		|stats=244413}}
+	|map3={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=5|t1ct=8|t2t=4|t2ct=7
+		|stats=244420}}
+	|hltv=2400253
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|leo team}}|opponent2={{TeamOpponent|tlr}}
+	|date=November 15, 2026 - 13:00 {{Abbr/CET}} |finished=
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=t|t1t=3|t1ct=8|t2t=4|t2ct=9
+		|stats=244426}}
+	|map2={{Map|map=Cache|finished=true
+		|t1firstside=ct|t1t=1|t1ct=9|t2t=3|t2ct=10
+		|stats=244436}}
+	|map3={{Map|map=Ancient|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|hltv=2400254
+	}}
+}}
+{{box|break|padding=2em}}
+
+======Low======
+{{Matchlist|id=bIvfIYkKRw|width=380px|collapsed=false|title=Round 3 Low Matches|matchsection=Round 3
+|M1header=November 14, 2026
+|{{Match
+	|opponent1={{TeamOpponent|mint|score=FF}}|opponent2={{TeamOpponent|masonic|score=W}}
+	|date=November 14, 2026 - 10:00 {{Abbr/CET}} |finished=true
+	|map1={{Map}}|map2={{Map}}|map3={{Map}}|hltv=2400249
+	|comment='''[[MINT]]''' forfeit the match.
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|azuolas|score=W}}|opponent2={{TeamOpponent|sokerorg|score=FF}}
+	|date=November 14, 2026 - 13:00 {{Abbr/CET}} |finished=true
+	|map1={{Map}}|map2={{Map}}|map3={{Map}}|hltv=2400250
+	|comment='''[[Sökerorg]]''' forfeit the match as they are unable to field a complete lineup.
+	}}
+}}
+{{box|end}}
+{{Toggle group end}}
+
+=====Round 4=====
+{{Toggle group start|state=hide}}
+{{box|start|padding=2em}}
+======High======
+{{Matchlist|id=9atxWZ8d22|width=380px|collapsed=false|title=Round 4 High Matches|matchsection=Round 4
+|M1header=November 17, 2026
+|{{Match
+	|opponent1={{TeamOpponent|ex-rustec}}|opponent2={{TeamOpponent|illyrians}}
+	|date=November 17, 2026 - 13:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Mirage|finished=true
+		|t1firstside=ct|t1t=1|t1ct=7|t2t=5|t2ct=8
+		|stats=244552}}
+	|map2={{Map|map=Anubis|finished=true
+		|t1firstside=t|t1t=6|t1ct=7|t2t=3|t2ct=6
+		|stats=244557}}
+	|map3={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=5|t1ct=6|t2t=6|t2ct=7
+		|stats=244571}}
+	|hltv=2400260
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|hype tech}}|opponent2={{TeamOpponent|tlr}}
+	|date=November 17, 2026 - 16:25 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=6|t1ct=7|t2t=5|t2ct=6
+		|stats=244576}}
+	|map2={{Map|map=Cache|finished=true
+		|t1firstside=t|t1t=5|t1ct=8|t2t=2|t2ct=7
+		|stats=244580}}
+	|map3={{Map|map=Inferno|finished=skip}}
+	|hltv=2400261
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|nexus}}|opponent2={{TeamOpponent|walczaki}}
+	|date=November 17, 2026 - 19:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Ancient|finished=true
+		|t1firstside=ct|t1t=8|t1ct=5|t2t=7|t2ct=2
+		|stats=244588}}
+	|map2={{Map|map=Anubis|finished=true
+		|t1firstside=ct|t1t=4|t1ct=9|t2t=3|t2ct=3
+		|stats=244589}}
+	|map3={{Map|map=Inferno|finished=skip}}
+	|hltv=2400262
+	}}
+}}
+{{box|break|padding=2em}}
+
+======Low======
+{{Matchlist|id=Ae1hn0SCVz|width=380px|collapsed=false|title=Round 4 Low Matches|matchsection=Round 4
+|M1header=November 16, 2026
+|{{Match
+	|opponent1={{TeamOpponent|mnxt}}|opponent2={{TeamOpponent|azuolas}}
+	|date=November 16, 2026 - 13:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=t|t1t=9|t1ct=4|t2t=0|t2ct=3
+		|stats=244517}}
+	|map2={{Map|map=Mirage|finished=true
+		|t1firstside=ct|t1t=3|t1ct=10|t2t=2|t2ct=0
+		|stats=244520}}
+	|map3={{Map|map=Dust II|finished=skip}}
+	|hltv=2400257
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|baks}}|opponent2={{TeamOpponent|masonic}}
+	|date=November 16, 2026 - 16:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Mirage|finished=true
+		|t1firstside=t|t1t=6|t1ct=7|t2t=3|t2ct=6
+		|stats=244529}}
+	|map2={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=5|t1ct=8|t2t=4|t2ct=6
+		|stats=244534}}
+	|map3={{Map|map=Ancient|finished=skip}}
+	|hltv=2400258
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|leo team|score=W}}|opponent2={{TeamOpponent|honved|score=FF}}
+	|date=November 16, 2026 - 19:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map}}|map2={{Map}}|map3={{Map}}
+	|hltv=2400259
+	|comment='''[[Honvéd Esport]]''' forfeit the match as they are unable to field an eligible roster.
+	}}
+}}
+{{box|end}}
+{{Toggle group end}}
+
+=====Round 5=====
+{{Matchlist|id=NyEZmtthp5|width=380px|collapsed=false|title=Round 5 Matches|matchsection=Round 5
+|M1header=November 18, 2026
+|{{Match
+	|opponent1={{TeamOpponent|ex-rustec}}|opponent2={{TeamOpponent|mnxt}}
+	|date=November 18, 2026 - 13:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=5|t1ct=8|t2t=4|t2ct=7
+		|stats=244607}}
+	|map2={{Map|map=Anubis|finished=true
+		|t1firstside=t|t1t=5|t1ct=8|t2t=2|t2ct=7
+		|stats=244616}}
+	|map3={{Map|map=Mirage|finished=skip}}
+	|hltv=2400263
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|baks}}|opponent2={{TeamOpponent|tlr}}
+	|date=November 18, 2026 - 13:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=3|t1ct=10|t2t=2|t2ct=1
+		|stats=244624}}
+	|map2={{Map|map=Cache|finished=true
+		|t1firstside=t|t1t=11|t1ct=2|t2t=3|t2ct=1
+		|stats=244628}}
+	|map3={{Map|map=Ancient|finished=skip}}
+	|hltv=2400264
+	}}
+|{{Match
+	|opponent1={{TeamOpponent|leo team}}|opponent2={{TeamOpponent|walczaki}}
+	|date=November 18, 2026 - 19:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Anubis|finished=true
+		|t1firstside=ct|t1t=3|t1ct=2|t2t=10|t2ct=3
+		|stats=244635}}
+	|map2={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=4|t1ct=9|t2t=0|t2ct=8
+		|stats=244639}}
+	|map3={{Map|map=Ancient|finished=true
+		|t1firstside=t|t1t=10|t1ct=3|t2t=0|t2ct=2
+		|stats=244640}}
+	|hltv=2400265
+	}}
+}}
+{{Toggle group end}}
+
+===Playoffs===
+{{Bracket|Bracket/16|id=We88N8HZLr
+|R1M1header=Round of 16
+<!-- Round 1 -->
+|R1M1={{Match
+	|opponent1={{TeamOpponent|genone}}|opponent2={{TeamOpponent|leo team}}
+	|date=November 20, 2026 - 19:30 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=ct|t1t=3|t1ct=6|t2t=6|t2ct=7
+		|stats=244759}}
+	|map2={{Map|map=Anubis|finished=true
+		|t1firstside=t|t1t=2|t1ct=6|t2t=3|t2ct=10
+		|stats=244765}}
+	|map3={{Map|map=Ancient|finished=skip}}
+	|hltv=2400273
+	}}
+|R1M2={{Match
+	|opponent1={{TeamOpponent|ex-inox}}|opponent2={{TeamOpponent|forze reload}}
+	|date=November 19, 2026 - 16:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=5|t1ct=8|t2t=2|t2ct=7
+		|stats=244670}}
+	|map2={{Map|map=Cache|finished=true
+		|t1firstside=ct|t1t=5|t1ct=3|t2t=9|t2ct=4
+		|stats=244676}}
+	|map3={{Map|map=Ancient|finished=true
+		|t1firstside=ct|t1t=5|t1ct=5|t2t=7|t2ct=6
+		|stats=244678}}
+	|hltv=2400268
+	}}
+|R1M3={{Match
+	|opponent1={{TeamOpponent|team aces}}|opponent2={{TeamOpponent|illyrians}}
+	|date=November 19, 2026 - 13:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=6|t1ct=7|t2t=1|t2ct=6
+		|stats=244661}}
+	|map2={{Map|map=Cache|finished=true
+		|t1firstside=ct|t1t=4|t1ct=9|t2t=3|t2ct=3
+		|stats=244664}}
+	|map3={{Map|map=Mirage|finished=skip}}
+	|hltv=2400267
+	}}
+|R1M4={{Match
+	|opponent1={{TeamOpponent|aimclub.ro}}|opponent2={{TeamOpponent|nexus}}
+	|date=November 19, 2026 - 19:40 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Inferno|finished=true
+		|t1firstside=t|t1t=6|t1ct=5|t2t=7|t2ct=6
+		|stats=244682}}
+	|map2={{Map|map=Ancient|finished=true
+		|t1firstside=ct|t1t=6|t1ct=3|t2t=9|t2ct=4
+		|stats=244685}}
+		|map3={{Map|map=Cache|finished=skip}}
+	|hltv=2400269
+	}}
+|R1M5={{Match
+	|opponent1={{TeamOpponent|nice try}}|opponent2={{TeamOpponent|baks}}
+	|date=November 20, 2026 - 10:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Mirage|finished=true
+		|t1firstside=t|t1t=2|t1ct=0|t2t=3|t2ct=10
+		|stats=244705}}
+	|map2={{Map|map=Cache|finished=true
+		|t1firstside=ct|t1t=5|t1ct=3|t2t=9|t2ct=4
+		|stats=244710}}
+	|map3={{Map|map=Ancient|finished=skip}}
+	|hltv=2400270
+	}}
+|R1M6={{Match
+	|opponent1={{TeamOpponent|rune eaters}}|opponent2={{TeamOpponent|butterfly}}
+	|date=November 20, 2026 - 16:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=8|t1ct=5|t2t=5|t2ct=4
+		|stats=244734}}
+	|map2={{Map|map=Inferno|finished=true
+		|t1firstside=ct|t1t=5|t1ct=4|t2t=8|t2ct=5
+		|stats=244740}}
+	|map3={{Map|map=Ancient|finished=true
+		|t1firstside=t|t1t=9|t1ct=3|t2t=9|t2ct=3
+		|o1t1firstside=ct|o1t1t=0|o1t1ct=1|o1t2t=2|o1t2ct=2
+		|stats=244747}}
+	|hltv=2400272
+	}}
+|R1M7={{Match
+	|opponent1={{TeamOpponent|33}}|opponent2={{TeamOpponent|ex-rustec}}
+	|date=November 19, 2026 - 10:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Anubis|finished=true
+		|t1firstside=ct|t1t=7|t1ct=6|t2t=6|t2ct=3
+		|stats=244649}}
+	|map2={{Map|map=Nuke|finished=true
+		|t1firstside=t|t1t=3|t1ct=2|t2t=4|t2ct=9
+		|stats=244653}}
+	|map3={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=3|t1ct=0|t2t=4|t2ct=9
+		|stats=244656}}
+	|hltv=2400266
+	}}
+|R1M8={{Match
+	|opponent1={{TeamOpponent|lazer cats}}|opponent2={{TeamOpponent|hype tech}}
+	|date=November 20, 2026 - 13:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=3|t1ct=1|t2t=4|t2ct=9
+		|stats=244715}}
+	|map2={{Map|map=Inferno|finished=true
+		|t1firstside=ct|t1t=1|t1ct=6|t2t=6|t2ct=7
+		|stats=244722}}
+	|map3={{Map|map=Mirage|finished=skip}}
+	|hltv=2400271
+	}}
+
+<!-- Quarterfinals -->
+|R2M1={{Match
+	|opponent1={{TeamOpponent|leo team}}|opponent2={{TeamOpponent|forze reload}}
+	|date=November 21, 2026 - 10:00 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=t|t1t=6|t1ct=6|t2t=6|t2ct=6
+		|o1t1firstside=ct|o1t1t=2|o1t1ct=2|o1t2t=1|o1t2ct=0
+		|stats=244780}}
+	|map2={{Map|map=Cache|finished=true
+		|t1firstside=ct|t1t=1|t1ct=5|t2t=7|t2ct=6
+		|stats=244789}}
+	|map3={{Map|map=Dust II|finished=true
+		|t1firstside=ct|t1t=3|t1ct=6|t2t=6|t2ct=7
+		|stats=244791}}
+	|hltv=2400274
+	}}
+|R2M2={{Match
+	|opponent1={{TeamOpponent|team aces}}|opponent2={{TeamOpponent|nexus
+	|substitutes={{PlayerSubstitutions
+		|{{Substitution|in=H4rder|out=Nexius}}
+		}}
+	}}
+	|date=November 21, 2026 - 13:30 {{Abbr/CET}} |finished=true
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Anubis|finished=true|score1=FF|score2=W}}
+	|map2={{Map|map=Dust II|finished=true
+		|t1firstside=t|t1t=10|t1ct=3|t2t=0|t2ct=2
+		|stats=244798}}
+	|map3={{Map|map=Mirage|finished=true
+		|t1firstside=ct|t1t=6|t1ct=7|t2t=5|t2ct=6
+		|stats=244806}}
+	|hltv=2400275
+	|comment='''[[Team ACES]]''' forfeit map 1.
+	}}
+|R2M3={{Match
+	|opponent1={{TeamOpponent|baks}}|opponent2={{TeamOpponent|butterfly}}
+	|date=November 21, 2026 - 19:00 {{Abbr/CET}} |finished=
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|map2={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|map3={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|hltv=2400277
+	}}
+|R2M4={{Match
+	|opponent1={{TeamOpponent|ex-rustec}}|opponent2={{TeamOpponent|hype tech}}
+	|date=November 21, 2026 - 16:00 {{Abbr/CET}} |finished=
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=Nuke|finished=true
+		|t1firstside=t|t1t=7|t1ct=3|t2t=8|t2ct=5
+		|stats=244811}}
+	|map2={{Map|map=Inferno|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|map3={{Map|map=Dust II|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|hltv=2400276
+	}}
+
+<!-- Semifinals -->
+|R3M1={{Match
+	|opponent1={{TeamOpponent|forze reload}}|opponent2={{TeamOpponent|team aces}}
+	|date= |finished=
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|map2={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|map3={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|hltv=
+	}}
+|R3M2={{Match
+	|opponent1={{TeamOpponent|}}|opponent2={{TeamOpponent|}}
+	|date= |finished=
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|map2={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|map3={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|hltv=
+	}}
+
+<!-- Grand Final -->
+|R4M1={{Match
+	|opponent1={{TeamOpponent|}}|opponent2={{TeamOpponent|}}
+	|date=November 22, 2026 - 18:00 {{Abbr/CET}} |finished=
+	|kick=CCT Counter-Strike 2
+	|map1={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|map2={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|map3={{Map|map=|finished=
+		|t1firstside=|t1t=|t1ct=|t2t=|t2ct=
+		|stats=}}
+	|hltv=2400280
+	}}
+}}
+
+==Additional Content==
+===Streams===
+{{Streams
+|lang1=usuk|kick1=cct_cs2
+|lang2=ru|twitch2=jester_andrew
+}}
+
+==References==
+{{Reflist}}

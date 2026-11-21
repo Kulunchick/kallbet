@@ -15,7 +15,7 @@ hex = "0.4.3"
 hmac = "0.13.0"
 http-body-util = "0.1.5"
 rand = "0.10.4"
-reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls-no-provider"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "gzip", "rustls-no-provider"] }
 # ring, not aws-lc-rs: builds on the musl image without cmake.
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 scraper = "0.29.0"

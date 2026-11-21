@@ -38,7 +38,7 @@ pub fn match_source(
     );
     match &config.chrome_url {
         Some(url) => {
-            let hltv = HltvSource::new(Arc::new(ChromePages::new(url.clone())), clock)
+            let hltv = HltvSource::new(Arc::new(ChromePages::new(url.clone())), clock.clone())
                 .with_logos(LogoCache::new(config.logo_dir.clone()));
             chain = chain.with_primary(Arc::new(hltv));
         }
@@ -49,7 +49,7 @@ pub fn match_source(
             .with_fallback(Arc::new(PandaScoreSource::new(
                 config.pandascore_token.clone(),
             )))
-            .with_fallback(Arc::new(LiquipediaSource::new())),
+            .with_fallback(Arc::new(LiquipediaSource::new(clock))),
     )
 }
 
