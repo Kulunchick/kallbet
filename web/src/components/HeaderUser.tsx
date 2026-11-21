@@ -24,6 +24,12 @@ export function HeaderUser() {
   return (
     <div className="flex items-center gap-2">
       <Link
+        to="/leagues"
+        className="rounded-xl px-2 py-2 text-sm font-semibold transition-colors hover:bg-raised"
+      >
+        {t("myLeagues")}
+      </Link>
+      <Link
         to="/profile"
         className="flex items-center gap-2 rounded-xl py-1 pl-1 pr-2 transition-colors hover:bg-raised"
       >

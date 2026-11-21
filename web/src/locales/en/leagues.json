@@ -32,7 +32,23 @@
     "button": "Leave League",
     "confirm": "Leave this League?"
   },
+  "manage": {
+    "kick": "Kick",
+    "kickConfirm": "Kick {{name}} from this League?",
+    "makeAdmin": "Make League Admin",
+    "removeAdmin": "Remove League Admin"
+  },
+  "delete": {
+    "title": "Delete League",
+    "hint": "This permanently deletes the League for every Member. Type the League name to confirm.",
+    "open": "Delete League…",
+    "confirmLabel": "League name",
+    "button": "Delete this League",
+    "cancel": "Cancel"
+  },
   "join": {
+    "signInNeeded": "Sign in to open this Invite Link and join the League.",
+    "signIn": "Sign in",
     "invited": "You are invited to join",
     "button": "Join League",
     "open": "Open League",
@@ -44,6 +60,11 @@
     "source_unavailable": "The Event data is unavailable right now. Please try again later.",
     "league_name_invalid": "Give the League a name of 1 to 60 characters.",
     "invite_invalid": "This Invite Link is invalid or has been reissued. Ask a League Admin for a new one.",
-    "creator_cannot_leave": "The League creator cannot leave the League."
+    "creator_cannot_leave": "The League creator cannot leave the League.",
+    "creator_protected": "The League creator cannot be kicked or demoted.",
+    "use_leave": "To remove yourself, use Leave League.",
+    "confirmation_mismatch": "The name you typed does not match the League name.",
+    "forbidden": "You are not allowed to do that.",
+    "not_found": "This League or Member no longer exists."
   }
 }

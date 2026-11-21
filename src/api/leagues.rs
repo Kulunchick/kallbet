@@ -1,12 +1,12 @@
 //! Leagues API: create, list mine, get, Invite Link, join, leave.
-//! Kick, roles and delete belong to #12.
+//! League management (#12): kick, co-admin roles, delete.
 //!
 //! Other areas that act inside a League call [`require_member`]: a User who
 //! is not a Member gets the same 404 as for a League that does not exist.
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::routing::{get, post};
+use axum::routing::{delete as http_delete, get, post, put};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,9 @@ pub fn router() -> Router<AppState> {
         .route("/leagues/{id}", get(show))
         .route("/leagues/{id}/invite/reissue", post(reissue_invite))
         .route("/leagues/{id}/leave", post(leave))
+        .route("/leagues/{id}/delete", post(delete_league))
+        .route("/leagues/{id}/members/{user_id}", http_delete(kick))
+        .route("/leagues/{id}/members/{user_id}/role", put(set_role))
         .route("/invites/{token}", get(preview_invite))
         .route("/invites/{token}/join", post(join))
 }
@@ -210,6 +213,68 @@ async fn leave(
         return Err(ApiError::conflict("creator_cannot_leave"));
     }
     leagues::end_membership(&state.db, id, user.id, state.clock.now()).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn kick(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, target)): Path<(LeagueId, UserId)>,
+) -> ApiResult<StatusCode> {
+    let (league, _) = require_admin(&state, &user, id).await?;
+    if target == league.creator_id {
+        return Err(ApiError::conflict("creator_protected"));
+    }
+    if target == user.id {
+        return Err(ApiError::conflict("use_leave"));
+    }
+    if !leagues::end_membership(&state.db, id, target, state.clock.now()).await? {
+        return Err(ApiError::not_found());
+    }
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+struct NewRole {
+    role: Role,
+}
+
+async fn set_role(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, target)): Path<(LeagueId, UserId)>,
+    Json(body): Json<NewRole>,
+) -> ApiResult<StatusCode> {
+    let (league, _) = require_admin(&state, &user, id).await?;
+    if target == league.creator_id {
+        return Err(ApiError::conflict("creator_protected"));
+    }
+    if !leagues::set_role(&state.db, id, target, body.role).await? {
+        return Err(ApiError::not_found());
+    }
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+struct ConfirmDelete {
+    confirm_name: String,
+}
+
+/// Creator only, and only with the League's name typed back as confirmation.
+async fn delete_league(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<LeagueId>,
+    Json(body): Json<ConfirmDelete>,
+) -> ApiResult<StatusCode> {
+    let (league, _) = require_member(&state, &user, id).await?;
+    if league.creator_id != user.id {
+        return Err(ApiError::forbidden());
+    }
+    if body.confirm_name.trim() != league.name {
+        return Err(ApiError::unprocessable("confirmation_mismatch"));
+    }
+    leagues::delete(&state.db, id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

@@ -270,6 +270,34 @@ pub async fn set_invite_token(
     Ok(())
 }
 
+/// Sets the role of the current membership. Returns whether there was one.
+pub async fn set_role(
+    db: &SqlitePool,
+    league: LeagueId,
+    user: UserId,
+    role: Role,
+) -> Result<bool, sqlx::Error> {
+    let done = sqlx::query(
+        "UPDATE memberships SET role = ? WHERE league_id = ? AND user_id = ? AND left_at IS NULL",
+    )
+    .bind(role.code())
+    .bind(league)
+    .bind(user)
+    .execute(db)
+    .await?;
+    Ok(done.rows_affected() > 0)
+}
+
+/// Deletes a League. Everything that hangs off it goes through
+/// `ON DELETE CASCADE` foreign keys, so this is the only statement needed.
+pub async fn delete(db: &SqlitePool, league: LeagueId) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM leagues WHERE id = ?")
+        .bind(league)
+        .execute(db)
+        .await?;
+    Ok(())
+}
+
 pub async fn member_count(db: &SqlitePool, league: LeagueId) -> Result<i64, sqlx::Error> {
     let (n,): (i64,) =
         sqlx::query_as("SELECT COUNT(*) FROM memberships WHERE league_id = ? AND left_at IS NULL")

@@ -3,8 +3,17 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
+import { useSession } from "../account/session";
 import { Avatar } from "./Avatar";
-import { getLeague, inviteUrl, leaveLeague, reissueInvite } from "./api";
+import {
+  deleteLeague,
+  getLeague,
+  inviteUrl,
+  kickMember,
+  leaveLeague,
+  reissueInvite,
+  setMemberRole,
+} from "./api";
 import { useLoad } from "./useLoad";
 
 export function LeaguePage() {
@@ -14,6 +23,9 @@ export function LeaguePage() {
   const { result, reload } = useLoad(() => getLeague(id), [id]);
   const [error, setError] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteName, setDeleteName] = useState("");
+  const me = useSession().user?.id;
 
   async function run(action: () => Promise<unknown>, then: () => void) {
     setError(null);
@@ -105,12 +117,91 @@ export function LeaguePage() {
                   {t("role.admin")}
                 </span>
               )}
+              {league.my_role === "admin" && m.user_id !== league.creator_id && (
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    className="rounded-lg px-2 py-1 text-xs text-mute transition-colors hover:text-fg"
+                    onClick={() =>
+                      run(
+                        () =>
+                          setMemberRole(league.id, m.user_id, m.role === "admin" ? "member" : "admin"),
+                        reload,
+                      )
+                    }
+                  >
+                    {m.role === "admin" ? t("manage.removeAdmin") : t("manage.makeAdmin")}
+                  </button>
+                  {m.user_id !== me && (
+                    <button
+                      type="button"
+                      className="rounded-lg px-2 py-1 text-xs text-danger transition-colors hover:bg-raised"
+                      onClick={() => {
+                        if (window.confirm(t("manage.kickConfirm", { name: m.nickname }))) {
+                          void run(() => kickMember(league.id, m.user_id), reload);
+                        }
+                      }}
+                    >
+                      {t("manage.kick")}
+                    </button>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
       </section>
 
       {error !== null && <p className="text-danger">{errorMessage(t, error)}</p>}
+
+      {league.is_creator && (
+        <section className="card flex flex-col gap-3 border-danger/40 p-5">
+          <h2 className="font-bold text-danger">{t("delete.title")}</h2>
+          {!confirmingDelete ? (
+            <div>
+              <button type="button" className="btn-ghost" onClick={() => setConfirmingDelete(true)}>
+                {t("delete.open")}
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-mute">{t("delete.hint")}</p>
+              <input
+                aria-label={t("delete.confirmLabel")}
+                placeholder={league.name}
+                value={deleteName}
+                onChange={(e) => setDeleteName(e.target.value)}
+                className="rounded-xl border border-line bg-raised px-4 py-2.5 text-sm"
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={deleteName.trim() !== league.name}
+                  onClick={() =>
+                    run(
+                      () => deleteLeague(league.id, deleteName),
+                      () => navigate("/leagues"),
+                    )
+                  }
+                >
+                  {t("delete.button")}
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => {
+                    setConfirmingDelete(false);
+                    setDeleteName("");
+                  }}
+                >
+                  {t("delete.cancel")}
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       {!league.is_creator && (
         <div>

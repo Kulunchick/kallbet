@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate, useNavigate } from "react-router";
+import { Navigate, useNavigate, useSearchParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
 import {
@@ -43,10 +43,16 @@ function TelegramButton({ bot, onAuth }: { bot: string; onAuth: (auth: TelegramA
   return <div ref={holder} className="flex min-h-12 justify-center" />;
 }
 
+/** Where to go after signing in: `?next=` when it is a path on this site, else the start page. */
+function safeNext(raw: string | null): string {
+  return raw && /^\/(?![/\\])/.test(raw) ? raw : "/";
+}
+
 export function LoginPage() {
   const { t, i18n } = useTranslation("account");
   const navigate = useNavigate();
   const { user } = useSession();
+  const next = safeNext(useSearchParams()[0].get("next"));
   const [options, setOptions] = useState<SignInOptions | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [nickname, setNickname] = useState("");
@@ -55,11 +61,11 @@ export function LoginPage() {
     getSignInOptions().then(setOptions).catch(setError);
   }, []);
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={next} replace />;
 
   const done = (signedIn: User) => {
     setUser(signedIn);
-    navigate("/");
+    navigate(next, { replace: true });
   };
   const onAuth = (auth: TelegramAuth) => {
     setError(null);

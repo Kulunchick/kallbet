@@ -46,6 +46,12 @@ export const getLeague = (id: number) => api<LeagueDetail>(`/leagues/${id}`);
 export const reissueInvite = (id: number) =>
   api<{ invite_token: string }>(`/leagues/${id}/invite/reissue`, { method: "POST" });
 export const leaveLeague = (id: number) => api<void>(`/leagues/${id}/leave`, { method: "POST" });
+export const kickMember = (league: number, user: number) =>
+  api<void>(`/leagues/${league}/members/${user}`, { method: "DELETE" });
+export const setMemberRole = (league: number, user: number, role: Role) =>
+  api<void>(`/leagues/${league}/members/${user}/role`, { method: "PUT", body: { role } });
+export const deleteLeague = (league: number, confirm_name: string) =>
+  api<void>(`/leagues/${league}/delete`, { method: "POST", body: { confirm_name } });
 export const previewInvite = (token: string) =>
   api<InvitePreview>(`/invites/${encodeURIComponent(token)}`);
 export const joinLeague = (token: string) =>

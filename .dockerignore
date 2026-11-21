@@ -1,0 +1,17 @@
+.git
+.claude
+.idea
+.env
+*.env
+!*.env.example
+target
+graphify-out
+docs
+deploy
+web/node_modules
+web/dist
+*.db
+*.db-shm
+*.db-wal
+Dockerfile
+docker-compose.yml

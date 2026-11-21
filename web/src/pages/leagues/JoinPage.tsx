@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
+import { useSession } from "../account/session";
 import { joinLeague, previewInvite } from "./api";
 import { useLoad } from "./useLoad";
 
@@ -11,7 +12,8 @@ export function JoinPage() {
   const { t } = useTranslation("leagues");
   const token = useParams().token ?? "";
   const navigate = useNavigate();
-  const { result } = useLoad(() => previewInvite(token), [token]);
+  const session = useSession();
+  const { result } = useLoad(() => previewInvite(token), [token, session.user?.id]);
   const [error, setError] = useState<unknown>(null);
 
   async function join() {
@@ -26,8 +28,18 @@ export function JoinPage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 py-16">
-      {result.state === "loading" && <p className="text-mute">{t("loading")}</p>}
-      {result.state === "error" && (
+      {!session.loading && !session.user && (
+        <div className="card flex flex-col gap-4 p-6">
+          <p>{t("join.signInNeeded")}</p>
+          <Link to={`/login?next=${encodeURIComponent(`/join/${token}`)}`} className="btn-primary self-start">
+            {t("join.signIn")}
+          </Link>
+        </div>
+      )}
+      {(session.loading || session.user) && result.state === "loading" && (
+        <p className="text-mute">{t("loading")}</p>
+      )}
+      {session.user && result.state === "error" && (
         <div className="card flex flex-col gap-4 p-6">
           <p className="text-danger">{errorMessage(t, result.error)}</p>
           <Link to="/" className="btn-ghost self-start">
@@ -35,7 +47,7 @@ export function JoinPage() {
           </Link>
         </div>
       )}
-      {result.state === "ready" && (
+      {session.user && result.state === "ready" && (
         <div className="card flex flex-col gap-4 p-6">
           <p className="text-sm text-mute">{t("join.invited")}</p>
           <h1 className="text-2xl font-extrabold text-gold-gradient">{result.data.name}</h1>
