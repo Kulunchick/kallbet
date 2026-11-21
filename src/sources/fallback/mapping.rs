@@ -42,7 +42,8 @@ use crate::domain::{
     Stage, StageOrdinal, Team, TeamId,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum IdKind {
     Event,
     Match,

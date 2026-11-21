@@ -60,6 +60,42 @@ pub enum ResultOverride {
     Void,
 }
 
+/// What an Override changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Field {
+    ScheduledStart,
+    Result,
+    Teams,
+    Hidden,
+    /// The Match was added by hand. Never cleared (hide it instead).
+    Added,
+}
+
+impl Field {
+    pub fn code(self) -> &'static str {
+        match self {
+            Field::ScheduledStart => "scheduled_start",
+            Field::Result => "result",
+            Field::Teams => "teams",
+            Field::Hidden => "hidden",
+            Field::Added => "added",
+        }
+    }
+
+    pub fn from_code(code: &str) -> Option<Field> {
+        [
+            Field::ScheduledStart,
+            Field::Result,
+            Field::Teams,
+            Field::Hidden,
+            Field::Added,
+        ]
+        .into_iter()
+        .find(|f| f.code() == code)
+    }
+}
+
 /// The Overrides in force on one Match of one League. `None` / `false`
 /// means the Data Sources' value applies.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -76,20 +112,20 @@ impl MatchOverrides {
         *self == MatchOverrides::default()
     }
 
-    /// The overridden fields' names, as the API spells them.
-    pub fn fields(&self) -> Vec<&'static str> {
+    /// The overridden fields.
+    pub fn fields(&self) -> Vec<Field> {
         let mut fields = Vec::new();
         if self.scheduled_start.is_some() {
-            fields.push("scheduled_start");
+            fields.push(Field::ScheduledStart);
         }
         if self.result.is_some() {
-            fields.push("result");
+            fields.push(Field::Result);
         }
         if self.teams.is_some() {
-            fields.push("teams");
+            fields.push(Field::Teams);
         }
         if self.hidden {
-            fields.push("hidden");
+            fields.push(Field::Hidden);
         }
         fields
     }

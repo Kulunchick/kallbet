@@ -101,7 +101,8 @@ pub struct GroupView {
     pub matches: Vec<MatchCard>,
 }
 
-#[derive(Serialize)]
+/// A team as every API area shows it.
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct TeamView {
     pub id: TeamId,
     pub name: String,
@@ -195,7 +196,7 @@ pub struct MatchCard {
     pub updated_at: DateTime<Utc>,
     /// #13: the fields a League Override sets on this Match
     /// (`scheduled_start`, `result`, `teams`), and whether it was added by hand.
-    pub overridden: Vec<&'static str>,
+    pub overridden: Vec<crate::domain::effective_match::Field>,
     pub added_by_hand: bool,
 }
 

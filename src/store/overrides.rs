@@ -7,48 +7,12 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use serde::Serialize;
 use sqlx::{Executor, FromRow, Sqlite, SqliteConnection};
 
+pub use crate::domain::effective_match::Field;
 use crate::domain::effective_match::{LeagueOverrides, MatchOverrides, ResultOverride};
 use crate::domain::{LeagueId, MatchId, TeamId, UserId};
 use crate::store::events;
-
-/// What an Override changes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Field {
-    ScheduledStart,
-    Result,
-    Teams,
-    Hidden,
-    /// The Match was added by hand. Never cleared (hide it instead).
-    Added,
-}
-
-impl Field {
-    pub fn code(self) -> &'static str {
-        match self {
-            Field::ScheduledStart => "scheduled_start",
-            Field::Result => "result",
-            Field::Teams => "teams",
-            Field::Hidden => "hidden",
-            Field::Added => "added",
-        }
-    }
-
-    pub fn from_code(code: &str) -> Option<Field> {
-        [
-            Field::ScheduledStart,
-            Field::Result,
-            Field::Teams,
-            Field::Hidden,
-            Field::Added,
-        ]
-        .into_iter()
-        .find(|f| f.code() == code)
-    }
-}
 
 /// One action in a League's Override history.
 #[derive(Debug, Clone, PartialEq, Eq)]

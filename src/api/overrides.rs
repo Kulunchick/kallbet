@@ -36,11 +36,13 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqliteConnection;
 
 use crate::api::leagues::{require_admin, require_member, require_writable};
+use crate::api::matches::TeamView;
 use crate::auth::session::CurrentUser;
 use crate::db;
 use crate::domain::effective_match::EventView;
 use crate::domain::{
-    LeagueId, Match, MatchFormat, MatchId, MatchPlacement, MatchStatus, StageKind, StageOrdinal,
+    DataSourceKind, LeagueId, Match, MatchFormat, MatchId, MatchPlacement, MatchStatus, StageKind,
+    StageOrdinal,
     TeamId, UserId,
 };
 use crate::error::{ApiError, ApiResult};
@@ -62,12 +64,6 @@ pub fn router() -> Router<AppState> {
             "/leagues/{id}/matches/{match_id}/overrides/{field}",
             delete(remove),
         )
-}
-
-#[derive(Serialize, Clone)]
-pub struct TeamView {
-    pub id: TeamId,
-    pub name: String,
 }
 
 #[derive(Serialize)]
@@ -347,7 +343,7 @@ async fn remove(
         let history = overrides::history(&mut *db, league.id).await?;
         let in_force = overrides::in_force(&history)
             .get(&match_id)
-            .is_some_and(|o| o.fields().contains(&field.code()));
+            .is_some_and(|o| o.fields().contains(&field));
         if !in_force {
             return Err(ApiError::not_found());
         }
@@ -462,9 +458,9 @@ struct Conflict {
     match_id: MatchId,
     #[serde(rename = "match")]
     game: Option<MatchRef>,
-    kept_source: String,
+    kept_source: DataSourceKind,
     kept_winner: Option<TeamView>,
-    other_source: String,
+    other_source: DataSourceKind,
     /// `null`: the other source reported the Match as Void.
     other_winner: Option<TeamView>,
     detected_at: DateTime<Utc>,
@@ -472,8 +468,8 @@ struct Conflict {
 
 #[derive(Serialize)]
 struct Unmatched {
-    source: String,
-    kind: String,
+    source: DataSourceKind,
+    kind: IdKind,
     external_id: String,
     description: String,
     seen_at: DateTime<Utc>,
@@ -498,31 +494,41 @@ async fn warnings(
     let conflicts = external_ids::conflicts(&state.db, league.event_id)
         .await?
         .into_iter()
-        .map(|c| Conflict {
+        .map(|c| -> ApiResult<Conflict> {
+            Ok(Conflict {
             match_id: c.match_id,
             game: view
                 .match_by_id(c.match_id)
                 .map(|m| match_ref(&view, &m.data)),
-            kept_source: c.kept_source,
+            kept_source: source_kind(&c.kept_source)?,
             kept_winner: c.kept_winner.map(|t| team_view(&view, t)),
-            other_source: c.other_source,
+            other_source: source_kind(&c.other_source)?,
             other_winner: c.other_winner.map(|t| team_view(&view, t)),
             detected_at: c.detected_at,
+            })
         })
-        .collect();
+        .collect::<ApiResult<_>>()?;
     let unmatched = external_ids::unmatched(&state.db, league.event_id)
         .await?
         .into_iter()
-        .map(|u| Unmatched {
-            source: u.source,
-            kind: u.kind,
-            external_id: u.external_id,
-            description: u.description,
-            seen_at: u.seen_at,
+        .map(|u| -> ApiResult<Unmatched> {
+            Ok(Unmatched {
+                source: source_kind(&u.source)?,
+                kind: IdKind::from_code(&u.kind)
+                    .ok_or_else(|| ApiError::internal("unknown unmatched kind"))?,
+                external_id: u.external_id,
+                description: u.description,
+                seen_at: u.seen_at,
+            })
         })
-        .collect();
+        .collect::<ApiResult<_>>()?;
     Ok(Json(Warnings {
         conflicts,
         unmatched,
     }))
+}
+
+/// A stored Data Source code as its kind.
+fn source_kind(code: &str) -> ApiResult<DataSourceKind> {
+    DataSourceKind::from_code(code).ok_or_else(|| ApiError::internal("unknown data source"))
 }

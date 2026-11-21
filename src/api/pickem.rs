@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqliteConnection;
 
 use crate::api::leagues::{require_member, require_writable};
+use crate::api::matches::TeamView;
 use crate::auth::session::CurrentUser;
 use crate::db;
 use crate::domain::effective_match::EventView;
@@ -175,12 +176,6 @@ enum PickemJson {
 }
 
 #[derive(Serialize)]
-struct TeamRef {
-    id: TeamId,
-    name: String,
-}
-
-#[derive(Serialize)]
 struct StageInfo {
     ordinal: StageOrdinal,
     kind: StageKind,
@@ -233,7 +228,7 @@ struct BracketJson {
 struct PickemView {
     stage: StageInfo,
     /// Swiss: the Stage's teams. Playoffs: the teams of the first slots.
-    teams: Vec<TeamRef>,
+    teams: Vec<TeamView>,
     lock: LockJson,
     my_pickem: Option<PickemJson>,
     /// Every current Member's Pick'em: `null` until the Stage's Lock.
@@ -354,7 +349,7 @@ async fn show(
     let teams = team_ids
         .into_iter()
         .filter_map(|id| view.team(id))
-        .map(|t| TeamRef {
+        .map(|t| TeamView {
             id: t.id,
             name: t.name.clone(),
         })
