@@ -277,7 +277,7 @@ async fn set_role(
     if target == league.creator_id {
         return Err(ApiError::conflict("creator_protected"));
     }
-    if !leagues::set_role(&state.db, id, target, body.role).await? {
+    if !leagues::set_role(&state.db, id, user.id, target, body.role).await? {
         return Err(ApiError::not_found());
     }
     Ok(StatusCode::NO_CONTENT)

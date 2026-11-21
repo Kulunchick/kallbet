@@ -1,5 +1,6 @@
 use axum::http::StatusCode;
-use kallbet::domain::StageKind;
+use kallbet::domain::{LeagueId, Role, StageKind, UserId};
+use kallbet::store::leagues;
 use kallbet::ports::Clock;
 use kallbet::testing::{EventSnapshotBuilder, TestApp, TestClient};
 use serde_json::{Value, json};
@@ -15,6 +16,7 @@ struct Setup {
     other: TestClient,
     stranger: TestClient,
     ids: Ids,
+    app: TestApp,
 }
 
 struct Ids {
@@ -64,7 +66,7 @@ async fn setup() -> Setup {
         )
         .await;
     assert_eq!(res.status, StatusCode::NO_CONTENT, "{}", res.text());
-    Setup { id, owner, coadmin, member, other, stranger, ids }
+    Setup { id, owner, coadmin, member, other, stranger, ids, app }
 }
 
 fn kick_path(s: &Setup, user: i64) -> String {
@@ -283,4 +285,28 @@ async fn a_deleted_leagues_id_is_not_reused_by_a_new_league() {
         let res = client.get(&format!("/api/leagues/{}", s.id)).await;
         assert_eq!(res.status, StatusCode::NOT_FOUND);
     }
+}
+
+/// A5: a role change authorised while the caller was an admin does not land
+/// once the caller has been demoted in between (driven through the store
+/// write that the handler runs after its check).
+#[tokio::test]
+async fn a_role_change_by_an_admin_demoted_in_between_does_not_land() {
+    let s = setup().await;
+    // coadmin's request has passed require_admin; then the owner demotes them.
+    let res = s.owner.put(&role_path(&s, s.ids.coadmin), &json!({ "role": "member" })).await;
+    assert_eq!(res.status, StatusCode::NO_CONTENT);
+
+    let written = leagues::set_role(
+        &s.app.state.db,
+        LeagueId(s.id),
+        UserId(s.ids.coadmin),
+        UserId(s.ids.member),
+        Role::Admin,
+    )
+    .await
+    .unwrap();
+    assert!(!written, "refused: the caller is no longer an admin");
+    let league: Value = s.member.get(&format!("/api/leagues/{}", s.id)).await.json();
+    assert_eq!(league["my_role"], "member");
 }

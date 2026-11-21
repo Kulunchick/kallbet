@@ -333,19 +333,26 @@ pub async fn set_invite_token(
     Ok(())
 }
 
-/// Sets the role of the current membership. Returns whether there was one.
+/// Sets the role of `user`'s current membership, on behalf of `by`, who must
+/// still be a current admin Member at the moment of the write (checked in
+/// the same statement). Returns whether it was written.
 pub async fn set_role(
     db: &SqlitePool,
     league: LeagueId,
+    by: UserId,
     user: UserId,
     role: Role,
 ) -> Result<bool, sqlx::Error> {
     let done = sqlx::query(
-        "UPDATE memberships SET role = ? WHERE league_id = ? AND user_id = ? AND left_at IS NULL",
+        "UPDATE memberships SET role = ?1 \
+         WHERE league_id = ?2 AND user_id = ?3 AND left_at IS NULL \
+           AND EXISTS (SELECT 1 FROM memberships a WHERE a.league_id = ?2 AND a.user_id = ?4 \
+                       AND a.left_at IS NULL AND a.role = 'admin')",
     )
     .bind(role.code())
     .bind(league)
     .bind(user)
+    .bind(by)
     .execute(db)
     .await?;
     Ok(done.rows_affected() > 0)
