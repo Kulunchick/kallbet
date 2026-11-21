@@ -21,6 +21,9 @@ pub struct Config {
     pub dev_login: bool,
     /// `BOT_TOKEN`: the Telegram bot token (secret).
     pub bot_token: Option<String>,
+    /// `BOT_USERNAME`: the bot's @username (without the @), which the
+    /// Telegram Login Widget needs to render.
+    pub bot_username: Option<String>,
     /// `PANDASCORE_TOKEN` (secret).
     pub pandascore_token: Option<String>,
 }
@@ -72,6 +75,7 @@ impl Config {
                 .unwrap_or_else(|| PathBuf::from("web/dist")),
             dev_login,
             bot_token: get("BOT_TOKEN"),
+            bot_username: get("BOT_USERNAME").map(|u| u.trim_start_matches('@').to_string()),
             pandascore_token: get("PANDASCORE_TOKEN"),
         })
     }
@@ -84,6 +88,7 @@ impl Config {
             web_dir: PathBuf::from("web/dist"),
             dev_login: true,
             bot_token: Some(crate::testing::TEST_BOT_TOKEN.into()),
+            bot_username: None,
             pandascore_token: None,
         }
     }
@@ -104,6 +109,7 @@ impl fmt::Debug for Config {
             .field("web_dir", &self.web_dir)
             .field("dev_login", &self.dev_login)
             .field("bot_token", &redact(&self.bot_token))
+            .field("bot_username", &self.bot_username)
             .field("pandascore_token", &redact(&self.pandascore_token))
             .finish()
     }

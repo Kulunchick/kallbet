@@ -1,0 +1,46 @@
+# Production stack. The deploy script ships this file next to `kallbet.env`
+# (the server's env file with BOT_TOKEN, BOT_USERNAME, PANDASCORE_TOKEN; never committed).
+# See docs/deploy.md.
+
+services:
+  kallbet:
+    image: kallbet:latest
+    restart: unless-stopped
+    env_file: kallbet.env
+    environment:
+      # Fixed here so that the env file cannot get these wrong.
+      KALLBET_BIND: 0.0.0.0:8095
+      DATABASE_URL: sqlite:///data/kallbet.db
+      KALLBET_DEV_LOGIN: "false"
+      # Where the HLTV adapter (ticket #8) finds Chrome.
+      KALLBET_CHROME_URL: http://chrome:9222
+    ports:
+      # Host loopback only: Caddy is the sole way in from outside.
+      - "127.0.0.1:8095:8095"
+    volumes:
+      - kallbet-data:/data
+    depends_on:
+      - chrome
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8095/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks: [internal]
+
+  chrome:
+    # Headless Chrome with the DevTools port on 9222. No `ports:`; only the
+    # app, on the `internal` network, can reach it.
+    image: chromedp/headless-shell:stable
+    restart: unless-stopped
+    init: true
+    shm_size: 256m
+    mem_limit: 768m
+    networks: [internal]
+
+volumes:
+  kallbet-data:
+
+networks:
+  internal:

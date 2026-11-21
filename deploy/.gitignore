@@ -1,0 +1,2 @@
+# Local deploy settings: they name the server, so they stay out of git.
+deploy.env

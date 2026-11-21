@@ -101,3 +101,49 @@ pub async fn next_dev_telegram_id(db: &SqlitePool) -> Result<TelegramId, sqlx::E
         .await?;
     Ok(TelegramId(lowest.unwrap_or(0).min(0) - 1))
 }
+
+/// Whether a database error is a unique-constraint violation (a taken
+/// Nickname or Telegram id).
+pub fn is_unique_violation(error: &sqlx::Error) -> bool {
+    error
+        .as_database_error()
+        .is_some_and(|e| e.is_unique_violation())
+}
+
+/// Changes the given fields in one statement; `None` leaves a field alone.
+/// A taken Nickname surfaces as a unique violation.
+pub async fn update_profile(
+    db: &SqlitePool,
+    id: UserId,
+    nickname: Option<&str>,
+    language: Option<Language>,
+) -> Result<User, sqlx::Error> {
+    let row: UserRow = sqlx::query_as(
+        "UPDATE users SET nickname = COALESCE(?, nickname), language = COALESCE(?, language) \
+         WHERE id = ? \
+         RETURNING id, telegram_id, nickname, avatar_url, language",
+    )
+    .bind(nickname)
+    .bind(language.map(Language::code))
+    .bind(id)
+    .fetch_one(db)
+    .await?;
+    Ok(row.into())
+}
+
+/// Refreshes the avatar from Telegram (kept as is when Telegram sends none).
+pub async fn update_avatar(
+    db: &SqlitePool,
+    id: UserId,
+    avatar_url: Option<&str>,
+) -> Result<User, sqlx::Error> {
+    let row: UserRow = sqlx::query_as(
+        "UPDATE users SET avatar_url = COALESCE(?, avatar_url) WHERE id = ? \
+         RETURNING id, telegram_id, nickname, avatar_url, language",
+    )
+    .bind(avatar_url)
+    .bind(id)
+    .fetch_one(db)
+    .await?;
+    Ok(row.into())
+}

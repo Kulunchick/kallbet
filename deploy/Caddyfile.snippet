@@ -1,0 +1,8 @@
+# Site block for the existing Caddy on the server. Append it to the Caddyfile
+# (back the file up first; see docs/deploy.md). The domain is behind
+# Cloudflare and the server's Caddy already trusts CF-Connecting-IP, so no
+# trusted_proxies setting is needed here.
+kallbet.kulunchick.tech {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8095
+}

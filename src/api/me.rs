@@ -1,19 +1,53 @@
 //! Me API: the signed-in User's own profile.
 //!
-//! The skeleton (#2) only reads it. #3 adds editing the Nickname and the
-//! language; #16 adds the notification preferences.
+//! #3 reads it and edits the Nickname and the language; #16 adds the
+//! notification preferences.
 
+use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
+use serde::Deserialize;
 
 use crate::auth::CurrentUser;
-use crate::domain::User;
+use crate::domain::user::validate_nickname;
+use crate::domain::{Language, User};
+use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;
+use crate::store::users;
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/me", get(get_me))
+    Router::new().route("/me", get(get_me).patch(update_me))
 }
 
 async fn get_me(CurrentUser(user): CurrentUser) -> Json<User> {
     Json(user)
+}
+
+#[derive(Deserialize)]
+struct UpdateMe {
+    nickname: Option<String>,
+    language: Option<String>,
+}
+
+async fn update_me(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Json(body): Json<UpdateMe>,
+) -> ApiResult<Json<User>> {
+    let nickname = body
+        .nickname
+        .as_deref()
+        .map(|n| validate_nickname(n).map_err(|_| ApiError::unprocessable("nickname_invalid")))
+        .transpose()?;
+    let language = body
+        .language
+        .as_deref()
+        .map(|l| Language::from_code(l).ok_or(ApiError::unprocessable("language_invalid")))
+        .transpose()?;
+
+    match users::update_profile(&state.db, user.id, nickname.as_deref(), language).await {
+        Ok(updated) => Ok(Json(updated)),
+        Err(e) if users::is_unique_violation(&e) => Err(ApiError::conflict("nickname_taken")),
+        Err(e) => Err(e.into()),
+    }
 }

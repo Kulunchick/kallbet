@@ -12,3 +12,6 @@
 *.db-wal
 /web/node_modules/
 /web/dist/
+
+# server env file (deploy)
+kallbet.env

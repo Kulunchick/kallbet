@@ -33,6 +33,11 @@ impl ApiError {
         ApiError::new(StatusCode::UNAUTHORIZED, "unauthorized")
     }
 
+    /// 401 with a specific code, e.g. `invalid_login`.
+    pub const fn unauthorized_with(code: &'static str) -> ApiError {
+        ApiError::new(StatusCode::UNAUTHORIZED, code)
+    }
+
     /// 403: signed in, but not allowed.
     pub const fn forbidden() -> ApiError {
         ApiError::new(StatusCode::FORBIDDEN, "forbidden")

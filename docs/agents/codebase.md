@@ -79,6 +79,7 @@ Create `tests/api_<area>.rs` (its own file, so it conflicts with nobody). Model:
 ```rust
 use axum::http::StatusCode;
 use chrono::Duration;
+use kallbet::ports::Clock;                     // for app.clock.now()
 use kallbet::domain::{EventId, MatchId, StageKind};
 use kallbet::testing::{EventSnapshotBuilder, TestApp};
 use serde_json::json;
@@ -112,6 +113,8 @@ What the harness gives you (`src/testing/`):
 - `app.notifier` (`RecordingNotifier`): `sent()`, `sent_to(user_id)`, `clear()`, `fail_with` / `recover`.
 - `app.state`: the same `AppState` the router uses. Use it to drive non-HTTP entry points (a poller step) against the same database and fakes.
 - `TEST_BOT_TOKEN`: the bot token in the test config, for signing Telegram login payloads.
+- `TelegramLogin::new(app.clock.now(), telegram_id, "Name")` (+ `.username()`, `.photo_url()`, `.language()`): builds a signed `POST /api/auth/telegram` body via `.body()`; `.body_signed_with(token)` and `.body_tampered(field, value)` make forgeries. To act as a *Telegram-created* User (instead of `app.user(..)`, which uses the dev login), post that body with `app.anonymous()`.
+- `client.cookie(name)` / `client.set_cookie(name, value)`: read or hand a cookie to a client (e.g. replay a session cookie after logout).
 
 Test rules (spec, Testing Decisions):
 
@@ -170,9 +173,34 @@ Settings come from environment variables; `.env` is loaded for local development
 | `DATABASE_URL` | `sqlite://kallbet.db` | SQLite file. |
 | `KALLBET_WEB_DIR` | `web/dist` | The built SPA. |
 | `KALLBET_DEV_LOGIN` | off | `true` mounts `POST /api/dev/login`. Never set in production. |
-| `BOT_TOKEN` | unset | Telegram bot token (secret). |
+| `BOT_TOKEN` | unset | Telegram bot token (secret). Unset: `POST /api/auth/telegram` answers 503 `login_unavailable`. |
+| `BOT_USERNAME` | unset | The bot's @username (no @), needed by the Login Widget in the SPA (`GET /api/auth/config`). |
 | `PANDASCORE_TOKEN` | unset | PandaScore token (secret). Unset means the adapter is skipped. |
 
 A new setting needs a field in `Config`, a line in `Config::from_lookup`, a value in `Config::for_tests`, and an entry in `.env.example`. `Config`'s `Debug` output redacts secrets; keep it that way for new ones.
 
 Dev login, when enabled: `POST /api/dev/login` with `{"nickname": "alice"}` signs in as that User, creating it if needed. When disabled the route does not exist (404).
+
+## Leagues and membership (ticket #4)
+
+- **Gate every League-scoped endpoint** with `api::leagues::require_member(&state, &user, league_id)` (404 `not_found` for non-Members and missing Leagues) or `require_admin` (adds 403 `forbidden`). Both return the `store::leagues::League` and the caller's `Membership`.
+- **Membership is a stretch of time**: table `memberships` has `joined_at` and `left_at` (NULL while current). Leaving sets `left_at`; joining again inserts a new row. `store::leagues::all_memberships(db, league)` returns every stretch, for the Eligible Member rule. `store::leagues::members` lists current Members only. At most one current row per User per League (partial unique index). #12's kick should call `end_membership`.
+- Roles are `domain::Role` (`member`, `admin`). The creator is `leagues.creator_id` and also an admin Member; the creator cannot leave (409 `creator_cannot_leave`).
+- The `events` table (0400) holds only id, name and dates, upserted from `MatchSource::fetch_event` when a League is created. #5 adds Stages, teams and Matches in its own migration and fills `store/events.rs`.
+- Invite Link: the secret is `leagues.invite_token`; the SPA link is `/join/<token>`. API: `GET /api/invites/{token}` (preview) and `POST /api/invites/{token}/join`; an unknown or reissued token is 404 `invite_invalid`. Only admins receive `invite_token` in the League JSON.
+- Data Source failures reach clients as 502 `source_unavailable` (`api::events::source_error`).
+- Frontend: the header (`HeaderUser`) links to `/leagues`. `/join/<token>` signed out shows a sign-in prompt linking to `/login?next=/join/<token>`; `LoginPage` honours `?next=` (same-site paths only) after any sign-in, so pages can send visitors through login and back the same way.
+
+## League management (ticket #12)
+
+- Endpoints (all gated by `require_admin` unless noted): `DELETE /api/leagues/{id}/members/{user_id}` (kick = `end_membership`; 409 `creator_protected` for the creator, 409 `use_leave` for yourself, 404 when the target is not a current Member), `PUT /api/leagues/{id}/members/{user_id}/role` (`{"role": "member"|"admin"}`, 204; creator is 409 `creator_protected`), `POST /api/leagues/{id}/delete` (creator only: 403 for other Members, 422 `confirmation_mismatch` unless `{"confirm_name"}` equals the League name).
+- A kicked Member has a `left_at` like a Member who left, so they stop being Eligible from that moment by the same rule. They can rejoin through a valid Invite Link; an admin who wants them gone for good reissues the link.
+- **Deleting a League must keep working as tables grow.** `store::leagues::delete` is a single `DELETE FROM leagues`. Every later table that references a League (directly, or through `memberships`) must declare `REFERENCES leagues (id) ON DELETE CASCADE` (or cascade from another table that does), as `memberships` does. Never reference `leagues` without a cascade, and do not add a hand-written delete step per table. Tests: delete a League that has your rows and check they are gone through the API.
+- **Rule for #5 and #13 reviewers: no API path lets anyone create or change another Member's Prediction.** A Prediction handler takes the User only from `CurrentUser`, never from the path or body, and writes only for that User. No admin/creator override exists. #5 must add the test (an admin and a creator trying to write for another Member get no way to do so); it could not be written in #12 because Predictions did not exist.
+
+## Accounts (ticket #3)
+
+- API: `POST /api/auth/telegram` (body `{auth: <widget payload>, language?}`; `language` only seeds a new User), `POST /api/auth/logout` (204), `GET /api/auth/config`, `GET|PATCH /api/me` (`{nickname?, language?}`). Error codes: `invalid_login`, `login_expired` (401), `login_unavailable` (503), `nickname_invalid`, `language_invalid` (422), `nickname_taken` (409). Payloads older than 10 minutes are rejected.
+- Nickname rules and the Telegram-name default live in `domain/user.rs` (`validate_nickname`, `nickname_from_name`, `nickname_attempt`). #16 adds its preference fields to the same `PATCH /api/me`.
+- SPA: `web/src/pages/account/session.ts` is the shared store of the signed-in User (`useSession()` gives `{loading, user}`); it applies the saved language to the UI and saves language switches made while signed in. Pages needing a User redirect to `/login` when `user` is null. `components/Avatar` shows a User's avatar. Strings of this area are in the `account` namespace.
+- Telegram Login Widget needs BotFather `/setdomain`; locally use the dev login form on `/login` (shown when `KALLBET_DEV_LOGIN=true`).
