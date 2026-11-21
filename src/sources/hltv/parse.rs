@@ -335,9 +335,15 @@ fn swiss_stage(doc: &Html, teams: &mut Vec<Team>) -> Result<Option<PageStage>, S
                 let Some(json) = matchup.value().attr("data-match-details-popup-json") else {
                     continue;
                 };
+                if rows.is_empty() {
+                    // Matches in the chart but not one standings row: the
+                    // rows' markup changed.
+                    return Err(parse_error("Swiss standings rows list no Match".into()));
+                }
                 let (wins, losses) = record(&title)?;
-                let m = swiss_match(json, matchup, round, wins, losses, &rows)?;
-                matches.push(m);
+                if let Some(m) = swiss_match(json, matchup, round, wins, losses, &rows)? {
+                    matches.push(m);
+                }
             }
         }
     }
@@ -351,7 +357,7 @@ fn swiss_match(
     wins: u8,
     losses: u8,
     rows: &HashMap<MatchId, Vec<SwissRow>>,
-) -> Result<Match, SourceError> {
+) -> Result<Option<Match>, SourceError> {
     let json: Value = serde_json::from_str(json)
         .map_err(|e| parse_error(format!("Swiss matchup JSON: {e}")))?;
     let id = json
@@ -368,6 +374,11 @@ fn swiss_match(
 
     let (a, b) = match rows.get(&id).map(Vec::as_slice) {
         Some([a, b]) if a.team != b.team => (a, b),
+        // In the chart but in neither team's rows: HLTV shows a Match of a
+        // live round in the chart first. Its teams, time and format are only
+        // in the rows, so it is left out of this snapshot (the stored
+        // Match, if any, stays as it was).
+        None => return Ok(None),
         _ => {
             return Err(parse_error(format!(
                 "match {id} is not in the rows of both its teams"
@@ -426,7 +437,7 @@ fn swiss_match(
         (MatchStatus::Upcoming, None, None)
     };
 
-    Ok(Match {
+    Ok(Some(Match {
         id,
         stage: StageOrdinal(0),
         placement: MatchPlacement::Swiss { round, wins, losses },
@@ -438,7 +449,7 @@ fn swiss_match(
         status,
         winner,
         score,
-    })
+    }))
 }
 
 /// `"1:0"` -> (1, 0).

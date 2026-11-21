@@ -205,6 +205,33 @@ fn an_upcoming_swiss_round_has_its_pairings_scheduled_starts_and_bo1_format() {
     assert_eq!((name(m.team_a), name(m.team_b)), ("HEROIC".into(), "Imperial".into()));
 }
 
+/// A13: during a live Swiss round HLTV draws a Match in the chart before (or
+/// while) the standings rows of its teams list it. Derived from a real page
+/// by taking the Match out of both teams' rows: the page still parses, and
+/// that Match is left out (the snapshot never deletes stored Matches, so
+/// what was stored for it stays).
+#[test]
+fn a_swiss_match_in_the_chart_but_in_no_standings_row_is_left_out_not_an_error() {
+    let real = fixture("event-9303-stage1-swiss.html");
+    let derived = real.replace("/matches/2400494/", "/matches/1/");
+    assert_ne!(derived, real);
+
+    let page = parse::event_page(&derived).unwrap();
+
+    let [swiss] = page.stages.as_slice() else { panic!("{:?}", page.stages) };
+    assert_eq!(swiss.matches.len(), 7);
+    assert!(swiss.matches.iter().all(|m| m.id != MatchId(2400494)));
+    assert!(swiss.matches.iter().all(|m| m.id != MatchId(1)), "rows alone make no Match");
+}
+
+#[test]
+fn a_swiss_match_in_only_one_teams_rows_is_still_a_parse_error() {
+    let real = fixture("event-9303-stage1-swiss.html");
+    let derived = real.replacen("/matches/2400494/", "/matches/1/", 1);
+
+    assert!(matches!(parse::event_page(&derived), Err(SourceError::Parse(_))));
+}
+
 #[test]
 fn an_event_without_a_swiss_stage_has_its_double_elimination_bracket_as_a_group_stage() {
     let event = page("event-9496-double-elim-nonswiss.html");
