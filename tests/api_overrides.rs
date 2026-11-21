@@ -297,6 +297,44 @@ async fn result_and_void_overrides_recalculate_the_leaderboard_of_their_league_o
     );
 }
 
+/// A7: a winner is always one of the effective Match's two teams. A result
+/// Override whose winner a later teams Override took out of the Match is not
+/// applied: the result is absent, not a win for a team that did not play.
+#[tokio::test]
+async fn a_result_override_for_a_team_a_teams_override_removed_is_not_applied() {
+    let s = setup().await;
+    let bob = s.member("bob").await;
+    s.set(&s.alice, s.league, 201, json!({ "field": "result", "winner": SPIRIT })).await;
+    s.set(
+        &s.alice,
+        s.league,
+        201,
+        json!({ "field": "teams", "team_a": NAVI, "team_b": FAZE }),
+    )
+    .await;
+
+    let game = card(&bob, s.league, 201).await;
+    assert_eq!(game["team_b"]["id"], FAZE);
+    assert_eq!(game["winner"], Value::Null, "Spirit does not play this Match: {game}");
+    assert_ne!(game["status"], "finished", "{game}");
+}
+
+/// A7: the same holds for base data: a stored winner who is not one of the
+/// Match's teams (inconsistent source data) is an absent result.
+#[tokio::test]
+async fn a_source_winner_who_does_not_play_the_match_is_an_absent_result() {
+    let s = setup().await;
+    s.app.source.update_match(EventId(EVENT), MatchId(101), |m| {
+        m.status = kallbet::domain::MatchStatus::Finished;
+        m.winner = Some(kallbet::domain::TeamId(SPIRIT));
+    });
+    s.poll().await;
+
+    let game = card(&s.alice, s.league, 101).await;
+    assert_eq!(game["winner"], Value::Null, "{game}");
+    assert_ne!(game["my_result"], "void", "{game}");
+}
+
 #[tokio::test]
 async fn a_winner_override_on_the_final_archives_that_league_at_once() {
     let s = setup().await;

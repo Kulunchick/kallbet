@@ -138,7 +138,9 @@ pub fn apply(base: &Match, overrides: &MatchOverrides) -> Match {
         game.team_b = Some(b);
     }
     match overrides.result {
-        Some(ResultOverride::Winner(team)) => {
+        // A winner must play the Match: a result Override whose winner a
+        // later teams Override (or source update) took out is not applied.
+        Some(ResultOverride::Winner(team)) if game.teams().contains(&Some(team)) => {
             if game.winner != Some(team) || game.status != MatchStatus::Finished {
                 game.score = None;
             }
@@ -150,7 +152,16 @@ pub fn apply(base: &Match, overrides: &MatchOverrides) -> Match {
             game.winner = None;
             game.score = None;
         }
-        None => {}
+        Some(ResultOverride::Winner(_)) | None => {}
+    }
+    // The same rule for a source winner (inconsistent data): the result is
+    // absent, so the Match is undecided rather than won by a non-player.
+    if game.winner.is_some_and(|w| !game.teams().contains(&Some(w))) {
+        game.winner = None;
+        game.score = None;
+        if game.status == MatchStatus::Finished {
+            game.status = MatchStatus::Live;
+        }
     }
     game
 }
