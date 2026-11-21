@@ -762,3 +762,50 @@ async fn a_record_of_one_stage_is_not_linked_to_a_match_of_another_stage() {
     assert_eq!(stage_two.len(), 1, "Stage 2's Match is added there: {view}");
     assert_eq!(stage_two[0]["winner"], FAZE);
 }
+
+/// A9: when HLTV adopts a local Match whose fallback result differs from
+/// HLTV's, the winner conflict is recorded (under the HLTV id).
+#[tokio::test]
+async fn a_winner_conflict_is_recorded_when_hltv_adopts_a_local_match() {
+    let c = chain().await;
+    let (alice, league) = hltv_then_panda(&c).await;
+    let now = c.app.clock.now();
+    c.panda.put_event(
+        panda_major(now)
+            .swiss_match(9201, (2, 1, 0), "Natus Vincere", "Team Vitality", now + Duration::hours(26))
+            .build(now),
+    );
+    c.panda.finish(EventId(PS_EVENT), MatchId(9201), "Team Vitality", (0, 2));
+    poll_again(&c.app).await;
+    assert!(
+        all_matches(&matches(&alice, league).await)
+            .iter()
+            .any(|m| m["id"].as_i64().unwrap() < 0 && m["winner"] == 3),
+        "a local Match won by Vitality"
+    );
+
+    c.hltv.recover();
+    c.hltv.update_event(EventId(EVENT), |s| {
+        let round2 = EventSnapshotBuilder::new(EVENT, "Test Major")
+            .stage(StageKind::Swiss, "Stage 1")
+            .swiss_match(101, (1, 0, 0), "NAVI", "FaZe", now + Duration::hours(2))
+            .swiss_match(102, (1, 0, 0), "Vitality", "G2", now + Duration::hours(3))
+            .swiss_match(201, (2, 1, 0), "Vitality", "NAVI", now + Duration::hours(25))
+            .build(now);
+        s.matches = round2.matches;
+        s.teams = round2.teams;
+    });
+    c.hltv.finish(EventId(EVENT), MatchId(201), "NAVI", (2, 1));
+    poll_again(&c.app).await;
+
+    let game = find_match(&matches(&alice, league).await, 201);
+    assert_eq!(game["winner"], NAVI, "HLTV's result stands: {game}");
+    let warned = warnings(&alice, league).await;
+    let conflicts = warned["conflicts"].as_array().unwrap();
+    assert_eq!(conflicts.len(), 1, "{warned}");
+    assert_eq!(conflicts[0]["match_id"], 201);
+    assert_eq!(conflicts[0]["kept_source"], "hltv");
+    assert_eq!(conflicts[0]["kept_winner"]["id"], NAVI);
+    assert_eq!(conflicts[0]["other_source"], "pandascore");
+    assert_eq!(conflicts[0]["other_winner"]["id"], 3);
+}

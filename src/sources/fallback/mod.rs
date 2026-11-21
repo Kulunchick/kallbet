@@ -217,11 +217,10 @@ impl FallbackSource {
         let Some(stored) = events::base_view(&mut *self.db.acquire().await?, id).await? else {
             return Ok(());
         };
-        let conflicts = mapping::primary_conflicts(&stored, snapshot);
-        external_ids::record_conflicts(&self.db, id, &conflicts, now).await?;
 
         let _guard = self.mapping.lock().await;
         let adopt = mapping::adoptions(&stored, snapshot, self.settings.match_window);
+        let adopted = !adopt.teams.is_empty() || !adopt.matches.is_empty();
         for (from, to) in adopt.teams {
             external_ids::rekey_team(&self.db, from, to).await?;
         }
@@ -230,6 +229,18 @@ impl FallbackSource {
                 tracing::warn!("local Match {from} is HLTV Match {to}, which is already stored");
             }
         }
+        // Conflicts are looked up by id, so only after adoption: a local
+        // Match's fallback result is compared under its HLTV id.
+        let stored = if adopted {
+            match events::base_view(&mut *self.db.acquire().await?, id).await? {
+                Some(view) => view,
+                None => return Ok(()),
+            }
+        } else {
+            stored
+        };
+        let conflicts = mapping::primary_conflicts(&stored, snapshot);
+        external_ids::record_conflicts(&self.db, id, &conflicts, now).await?;
         Ok(())
     }
 
