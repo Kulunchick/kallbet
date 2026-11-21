@@ -17,6 +17,7 @@ use serde::Serialize;
 
 use crate::api::leagues::require_member;
 use crate::auth::session::CurrentUser;
+use crate::domain::scoring::{self, Verdict};
 use crate::domain::{
     DataSourceKind, Event, LeagueId, MatchFormat, MatchId, MatchPlacement, MatchScore, MatchStatus,
     StageKind, StageOrdinal, TeamId, UserId,
@@ -132,7 +133,10 @@ pub struct MatchCard {
     /// The team the caller picked, if any.
     pub my_prediction: Option<TeamId>,
     // #6: `predictions: { count, eligible, revealed: [...] }` goes here.
-    // #7: the caller's Points / correctness for a finished Match goes here.
+    /// #7: how my Prediction scored: `pending` until the result is in, then
+    /// `correct`, `wrong`, `missing` or `void`.
+    pub my_result: Verdict,
+    pub my_points: u32,
     /// Data freshness: where the data came from and when it was fetched.
     pub source: DataSourceKind,
     pub updated_at: DateTime<Utc>,
@@ -174,6 +178,10 @@ pub fn view_for(matches: &LeagueMatches, viewer: UserId) -> MatchesView {
             let game = &m.data;
             let key = GroupKey::of(game.placement);
             let outcome = matches.outcome(game.id).cloned().unwrap_or_default();
+            let verdict = scoring::judge(
+                game,
+                matches.prediction_of(game.id, viewer).map(|p| p.team_id),
+            );
             groups
                 .entry((key.order(), key))
                 .or_default()
@@ -193,6 +201,8 @@ pub fn view_for(matches: &LeagueMatches, viewer: UserId) -> MatchesView {
                         locked: outcome.is_locked(),
                     },
                     my_prediction: matches.prediction_of(game.id, viewer).map(|p| p.team_id),
+                    my_result: verdict,
+                    my_points: verdict.points(),
                     source: m.source,
                     updated_at: m.updated_at,
                 });
