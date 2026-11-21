@@ -608,6 +608,13 @@ pub fn merge(ctx: &Context<'_>, ext: &ExternalSnapshot, ids: &mut LocalIds) -> M
             ext.as_ref()
                 .and_then(|t| m.teams.get(&t.external_id).copied().flatten())
         });
+        // The record's winner must play the stored Match. When the record's
+        // teams differ from the stored ones (a mapped record whose source
+        // changed a team), its result is not this Match's: flag it.
+        if em.winner.is_some() && !winner.is_some_and(|w| [team_a, team_b].contains(&Some(w))) {
+            flag_match(&mut m, em);
+            continue;
+        }
         let score = em.score.map(|s| {
             if swapped {
                 MatchScore {

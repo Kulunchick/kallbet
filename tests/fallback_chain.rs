@@ -667,3 +667,50 @@ async fn when_hltv_returns_its_result_wins_over_a_fallback_result_with_a_conflic
         )]
     );
 }
+
+/// The Event's data warnings as a League Admin sees them.
+async fn warnings(admin: &TestClient, league: i64) -> Value {
+    let res = admin
+        .get(&format!("/api/leagues/{league}/data-warnings"))
+        .await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.text());
+    res.json()
+}
+
+/// A7: a fallback record already linked to a stored Match, whose teams then
+/// change at the source (one team agrees, the other is a different known
+/// team), is not merged when its winner does not play the stored Match: it
+/// is flagged instead.
+#[tokio::test]
+async fn a_linked_record_won_by_a_team_not_in_the_stored_match_is_flagged_not_merged() {
+    let c = chain().await;
+    let (alice, league) = hltv_then_panda(&c).await;
+    poll_again(&c.app).await; // PandaScore's records are linked to 101 and 102.
+    let now = c.app.clock.now();
+    // PandaScore now has Vitality vs FaZe where HLTV has Vitality vs G2.
+    c.panda.put_event(
+        EventSnapshotBuilder::new(PS_EVENT, "Test Major 2026")
+            .stage(StageKind::Swiss, "Swiss Stage")
+            .swiss_match(9101, (1, 0, 0), "FaZe Clan", "Natus Vincere", now + Duration::minutes(150))
+            .swiss_match(9102, (1, 0, 0), "Team Vitality", "FaZe Clan", now + Duration::minutes(210))
+            .build(now),
+    );
+    c.panda
+        .finish(EventId(PS_EVENT), MatchId(9102), "FaZe Clan", (0, 2));
+    poll_again(&c.app).await;
+
+    let view = matches(&alice, league).await;
+    let game = find_match(&view, 102);
+    assert_eq!(game["status"], "upcoming", "FaZe's win is not Vitality vs G2's result: {game}");
+    assert_eq!(game["winner"], Value::Null, "{game}");
+    assert_eq!(all_matches(&view).len(), 2, "{view}");
+    let flags = warnings(&alice, league).await;
+    assert!(
+        flags["unmatched"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["source"] == "pandascore" && f["kind"] == "match"),
+        "{flags}"
+    );
+}
