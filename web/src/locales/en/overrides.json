@@ -1,0 +1,74 @@
+{
+  "open": "Overrides",
+  "title": "Overrides",
+  "intro": "League Admins can correct this League's Matches. Overrides apply in this League only and win over every Data Source until removed.",
+  "loading": "Loading…",
+  "backToLeague": "Back to the League",
+  "history": "History",
+  "noHistory": "No Overrides yet.",
+  "by": "by {{author}}, {{time}}",
+  "unknownAuthor": "a former User",
+  "tbd": "TBD",
+  "void": "Void",
+  "field": {
+    "scheduled_start": "start time",
+    "result": "result",
+    "teams": "teams",
+    "hidden": "hidden",
+    "added": "added by hand"
+  },
+  "describe": {
+    "scheduled_start": "start time set to {{time}}",
+    "winner": "{{team}} set as the winner",
+    "void": "marked Void",
+    "teams": "teams set to {{a}} vs {{b}}",
+    "hidden": "hidden",
+    "added": "added by hand",
+    "cleared": "{{field}} Override removed"
+  },
+  "inForce": "Overrides in force",
+  "noneInForce": "None.",
+  "remove": "Remove",
+  "unhide": "Show again",
+  "action": {
+    "scheduled_start": "Change the start time",
+    "winner": "Set the winner",
+    "void": "Mark Void",
+    "teams": "Fix the teams",
+    "hidden": "Hide the Match"
+  },
+  "form": {
+    "title": "Correct a Match",
+    "match": "Match",
+    "action": "Change",
+    "choose": "Choose…",
+    "start": "Start time (your time zone)",
+    "winner": "Winner",
+    "teamA": "Team A",
+    "teamB": "Team B",
+    "teamsHint": "Predictions for a team that no longer plays this Match stop counting; those Members can predict again while it is open.",
+    "save": "Save Override"
+  },
+  "add": {
+    "title": "Add a Match by hand",
+    "stage": "Stage",
+    "format": "Format",
+    "save": "Add Match"
+  },
+  "warnings": {
+    "title": "Data Source warnings",
+    "hint": "Visible to League Admins only. Fix your League's view with an Override if needed.",
+    "none": "No warnings.",
+    "conflict": "{{match}}: {{kept}} says {{keptWinner}}, {{other}} says {{otherWinner}} ({{kept}} is used).",
+    "unmatched": "{{source}}: {{kind}} not recognised: {{description}}",
+    "kind": { "event": "Event", "match": "Match", "team": "team" }
+  },
+  "errors": {
+    "team_not_in_match": "That team does not play in this Match.",
+    "team_not_in_event": "That team is not part of this Event.",
+    "same_team": "Choose two different teams.",
+    "stage_not_found": "That Stage does not exist.",
+    "override_invalid": "This Override is incomplete.",
+    "not_found": "This Override or Match was not found."
+  }
+}

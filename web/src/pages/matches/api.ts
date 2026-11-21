@@ -38,8 +38,12 @@ export type MatchCard = {
   predictions: Predictions;
   my_result: "pending" | "correct" | "wrong" | "missing" | "void";
   my_points: number;
-  source: DataSource;
+  /** `null` for a Match a League Admin added by hand. */
+  source: DataSource | null;
   updated_at: string;
+  /** League Overrides in force on this Match (#13). */
+  overridden: ("scheduled_start" | "result" | "teams")[];
+  added_by_hand: boolean;
 };
 
 export type MatchGroup =

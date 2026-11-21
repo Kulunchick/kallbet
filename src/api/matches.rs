@@ -190,8 +190,13 @@ pub struct MatchCard {
     pub my_result: Verdict,
     pub my_points: u32,
     /// Data freshness: where the data came from and when it was fetched.
-    pub source: DataSourceKind,
+    /// `null` for a Match a League Admin added by hand (#13).
+    pub source: Option<DataSourceKind>,
     pub updated_at: DateTime<Utc>,
+    /// #13: the fields a League Override sets on this Match
+    /// (`scheduled_start`, `result`, `teams`), and whether it was added by hand.
+    pub overridden: Vec<&'static str>,
+    pub added_by_hand: bool,
 }
 
 async fn list(
@@ -229,6 +234,7 @@ pub fn view_for(matches: &LeagueMatches, viewer: UserId) -> MatchesView {
         for m in in_stage {
             let game = &m.data;
             let key = GroupKey::of(game.placement);
+            let added = matches.overrides.is_added(game.id);
             let outcome = matches.outcome(game.id).cloned().unwrap_or_default();
             let verdict = scoring::judge(
                 game,
@@ -256,8 +262,10 @@ pub fn view_for(matches: &LeagueMatches, viewer: UserId) -> MatchesView {
                     predictions: predictions_view(matches, game.id, &outcome),
                     my_result: verdict,
                     my_points: verdict.points(),
-                    source: m.source,
+                    source: (!added).then_some(m.source),
                     updated_at: m.updated_at,
+                    overridden: matches.overrides.of(game.id).fields(),
+                    added_by_hand: added,
                 });
         }
         if groups.is_empty() {

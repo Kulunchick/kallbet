@@ -11,11 +11,12 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
 
-use crate::domain::effective_match::{self, EventView};
+use crate::domain::effective_match::{self, EventView, LeagueOverrides};
 use crate::domain::lock_reveal::{self, MemberSpan, Outcome};
 use crate::domain::{MatchId, StageKind, UserId};
 use crate::store::events;
 use crate::store::leagues::{self, League, MemberProfile};
+use crate::store::overrides as store_overrides;
 use crate::store::pickems;
 use crate::store::predictions::{self, Prediction};
 
@@ -32,6 +33,9 @@ pub struct LeagueMatches {
     pub members: Vec<MemberSpan>,
     /// Current Members with Nickname and avatar, for the revealed Predictions.
     pub profiles: Vec<MemberProfile>,
+    /// The League's hand-added Matches and Overrides in force (#13), already
+    /// applied in `view`; for showing which fields are overridden.
+    pub overrides: LeagueOverrides,
 }
 
 impl LeagueMatches {
@@ -46,13 +50,36 @@ impl LeagueMatches {
     }
 }
 
-/// The League's effective Match view. #13 loads the League's Overrides here
-/// and passes them to [`effective_match::effective_view`].
+/// The League's effective Match view: the base data, the League's
+/// hand-added Matches and its Overrides in force (#13), merged by
+/// [`effective_match::effective_view`].
 pub async fn effective_view(db: &SqlitePool, league: &League) -> Result<EventView, sqlx::Error> {
+    Ok(effective_view_and_overrides(db, league).await?.0)
+}
+
+/// The League Admins' working view (#13): [`effective_view`] including the
+/// hidden Matches, and the Overrides in force.
+pub async fn admin_view(
+    db: &SqlitePool,
+    league: &League,
+) -> Result<(EventView, LeagueOverrides), sqlx::Error> {
     let base = events::base_view(db, league.event_id)
         .await?
         .ok_or_else(|| sqlx::Error::RowNotFound)?;
-    Ok(effective_match::effective_view(base))
+    let overrides = store_overrides::for_league(db, league.id).await?;
+    Ok((effective_match::with_hidden(base, &overrides), overrides))
+}
+
+/// [`effective_view`] and the Overrides it was built with.
+pub async fn effective_view_and_overrides(
+    db: &SqlitePool,
+    league: &League,
+) -> Result<(EventView, LeagueOverrides), sqlx::Error> {
+    let base = events::base_view(db, league.event_id)
+        .await?
+        .ok_or_else(|| sqlx::Error::RowNotFound)?;
+    let overrides = store_overrides::for_league(db, league.id).await?;
+    Ok((effective_match::effective_view(base, &overrides), overrides))
 }
 
 /// Loads the League's Matches, evaluates Lock/Reveal for each at `now`, and
@@ -62,7 +89,7 @@ pub async fn evaluate(
     league: &League,
     now: DateTime<Utc>,
 ) -> Result<LeagueMatches, sqlx::Error> {
-    let view = effective_view(db, league).await?;
+    let (view, overrides) = effective_view_and_overrides(db, league).await?;
     let members: Vec<MemberSpan> = leagues::all_memberships(db, league.id)
         .await?
         .into_iter()
@@ -72,7 +99,18 @@ pub async fn evaluate(
             left_at: m.left_at,
         })
         .collect();
-    let predictions = predictions::for_league(db, league.id).await?;
+    // A Prediction counts only while its team plays the Match in the
+    // effective view (#13): after a teams Override, a pick of a team that no
+    // longer plays it is as good as none (it does not count toward Reveal and
+    // scores nothing). The row is kept, so clearing the Override restores it.
+    let predictions: Vec<Prediction> = predictions::for_league(db, league.id)
+        .await?
+        .into_iter()
+        .filter(|p| {
+            view.match_by_id(p.match_id)
+                .is_some_and(|m| m.data.teams().contains(&Some(p.team_id)))
+        })
+        .collect();
     let stored = predictions::stamps(db, league.id).await?;
 
     let mut outcomes = HashMap::new();
@@ -112,5 +150,6 @@ pub async fn evaluate(
         predictions,
         members,
         profiles: leagues::members(db, league.id).await?,
+        overrides,
     })
 }

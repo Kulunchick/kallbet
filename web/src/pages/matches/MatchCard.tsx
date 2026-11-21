@@ -63,10 +63,19 @@ export function MatchCard({ card, now, saving, onPredict }: Props) {
       <footer className="flex flex-wrap items-center justify-between gap-2 text-xs">
         <LockLine card={card} locked={locked} locksAt={locksAt} now={now} />
         <span className="text-mute">
-          {t("freshness", {
-            ago: formatAgo(card.updated_at, now, language),
-            source: t(`source.${card.source}`),
-          })}
+          {card.source === null
+            ? t("addedByHand")
+            : t("freshness", {
+                ago: formatAgo(card.updated_at, now, language),
+                source: t(`source.${card.source}`),
+              })}
+          {card.overridden.length > 0 && (
+            <span className="ml-2 font-semibold text-gold-a">
+              {t("overridden", {
+                fields: card.overridden.map((f) => t(`overriddenField.${f}`)).join(", "),
+              })}
+            </span>
+          )}
         </span>
       </footer>
     </article>

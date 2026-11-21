@@ -214,7 +214,8 @@ pub async fn base_view(db: &SqlitePool, id: EventId) -> Result<Option<EventView>
 
     let teams: Vec<(TeamId, String, Option<String>)> = sqlx::query_as(
         "SELECT DISTINCT t.id, t.name, t.logo_url FROM teams t \
-         JOIN matches m ON t.id IN (m.team_a, m.team_b) WHERE m.event_id = ? ORDER BY t.id",
+         JOIN matches m ON t.id IN (m.team_a, m.team_b) \
+         WHERE m.event_id = ? AND m.league_id IS NULL ORDER BY t.id",
     )
     .bind(id)
     .fetch_all(db)
@@ -228,7 +229,7 @@ pub async fn base_view(db: &SqlitePool, id: EventId) -> Result<Option<EventView>
         "SELECT id, stage_ordinal, placement_kind, swiss_round, swiss_wins, swiss_losses, \
            playoff_rounds_before_final, playoff_slot, team_a, team_b, format, scheduled_start, \
            actual_start, status, winner, score_a, score_b, source, updated_at \
-         FROM matches WHERE event_id = ? ORDER BY id",
+         FROM matches WHERE event_id = ? AND league_id IS NULL ORDER BY id",
     )
     .bind(id)
     .fetch_all(db)
@@ -241,6 +242,62 @@ pub async fn base_view(db: &SqlitePool, id: EventId) -> Result<Option<EventView>
         teams,
         matches,
     }))
+}
+
+/// The Matches League Admins of `league` added by hand (#13): League data,
+/// never part of [`base_view`].
+pub async fn added_matches(
+    db: &SqlitePool,
+    league: crate::domain::LeagueId,
+) -> Result<Vec<SourcedMatch>, sqlx::Error> {
+    let rows: Vec<MatchRow> = sqlx::query_as(
+        "SELECT id, stage_ordinal, placement_kind, swiss_round, swiss_wins, swiss_losses, \
+           playoff_rounds_before_final, playoff_slot, team_a, team_b, format, scheduled_start, \
+           actual_start, status, winner, score_a, score_b, source, updated_at \
+         FROM matches WHERE league_id = ? ORDER BY id",
+    )
+    .bind(league)
+    .fetch_all(db)
+    .await?;
+    Ok(rows.into_iter().map(SourcedMatch::from).collect())
+}
+
+/// Stores a Match added by hand to `league` (#13). `game.id` is a local id
+/// (`store::external_ids::allocate_local_ids`).
+pub async fn insert_added_match(
+    db: &SqlitePool,
+    league: crate::domain::LeagueId,
+    event: EventId,
+    game: &Match,
+    now: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    let placement = PlacementColumns::of(game.placement);
+    sqlx::query(
+        "INSERT INTO matches (id, event_id, stage_ordinal, placement_kind, swiss_round, \
+           swiss_wins, swiss_losses, playoff_rounds_before_final, playoff_slot, team_a, team_b, \
+           format, scheduled_start, actual_start, status, winner, score_a, score_b, source, \
+           updated_at, league_id) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, NULL, 'manual', ?, ?)",
+    )
+    .bind(game.id)
+    .bind(event)
+    .bind(game.stage.0)
+    .bind(placement.kind)
+    .bind(placement.swiss_round)
+    .bind(placement.swiss_wins)
+    .bind(placement.swiss_losses)
+    .bind(placement.playoff_rounds_before_final)
+    .bind(placement.playoff_slot)
+    .bind(game.team_a)
+    .bind(game.team_b)
+    .bind(format_code(game.format))
+    .bind(game.scheduled_start)
+    .bind(status_code(game.status))
+    .bind(now)
+    .bind(league)
+    .execute(db)
+    .await?;
+    Ok(())
 }
 
 #[derive(FromRow)]

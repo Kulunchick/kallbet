@@ -326,6 +326,9 @@ pub async fn rekey_team(db: &SqlitePool, from: TeamId, to: TeamId) -> Result<(),
         "UPDATE source_conflicts SET kept_winner = ? WHERE kept_winner = ?",
         "UPDATE source_conflicts SET other_winner = ? WHERE other_winner = ?",
         "UPDATE external_ids SET canonical_id = ? WHERE kind = 'team' AND canonical_id = ?",
+        "UPDATE overrides SET winner = ? WHERE winner = ?",
+        "UPDATE overrides SET team_a = ? WHERE team_a = ?",
+        "UPDATE overrides SET team_b = ? WHERE team_b = ?",
     ] {
         sqlx::query(sql)
             .bind(to)
@@ -363,12 +366,28 @@ pub async fn rekey_match(db: &SqlitePool, from: MatchId, to: MatchId) -> Result<
         "UPDATE match_locks SET match_id = ? WHERE match_id = ?",
         "UPDATE source_conflicts SET match_id = ? WHERE match_id = ?",
         "UPDATE external_ids SET canonical_id = ? WHERE kind = 'match' AND canonical_id = ?",
+        "UPDATE overrides SET match_id = ? WHERE match_id = ?",
     ] {
         sqlx::query(sql)
             .bind(to)
             .bind(from)
             .execute(&mut *tx)
             .await?;
+    }
+    // The notification log (#16): the per-Match dedupe keys
+    // `<kind>:<league>:<match>:<user>` follow the Match, so a Reveal (or
+    // reminder) already handled under the local id is not sent again.
+    for kind in ["reminder", "reveal"] {
+        sqlx::query(
+            "UPDATE notification_log \
+             SET key = ?1 || ':' || league_id || ':' || ?2 || ':' || user_id \
+             WHERE key = ?1 || ':' || league_id || ':' || ?3 || ':' || user_id",
+        )
+        .bind(kind)
+        .bind(to.0)
+        .bind(from.0)
+        .execute(&mut *tx)
+        .await?;
     }
     tx.commit().await?;
     Ok(true)

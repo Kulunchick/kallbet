@@ -79,6 +79,9 @@ export function LeaguePage() {
           <Link to={`/leagues/${league.id}/pickem`} className="btn-ghost">
             {t("pickem:open")}
           </Link>
+          <Link to={`/leagues/${league.id}/overrides`} className="btn-ghost">
+            {t("overrides:open")}
+          </Link>
         </div>
       </header>
 
