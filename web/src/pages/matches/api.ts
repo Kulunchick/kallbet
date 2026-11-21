@@ -36,7 +36,8 @@ export type MatchCard = {
   lock: { locks_at: string | null; locked_at: string | null; locked: boolean };
   my_prediction: number | null;
   predictions: Predictions;
-  // #7 adds my Points.
+  my_result: "pending" | "correct" | "wrong" | "missing" | "void";
+  my_points: number;
   source: DataSource;
   updated_at: string;
 };

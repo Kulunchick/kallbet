@@ -13,9 +13,10 @@ use sqlx::SqlitePool;
 
 use crate::domain::effective_match::{self, EventView};
 use crate::domain::lock_reveal::{self, MemberSpan, Outcome};
-use crate::domain::{MatchId, UserId};
+use crate::domain::{MatchId, StageKind, UserId};
 use crate::store::events;
 use crate::store::leagues::{self, League, MemberProfile};
+use crate::store::pickems;
 use crate::store::predictions::{self, Prediction};
 
 /// Everything about a League's Matches at one moment.
@@ -93,6 +94,12 @@ pub async fn evaluate(
             predictions::record(db, league.id, id, &outcome.transitions).await?;
         }
         outcomes.insert(id, outcome);
+    }
+
+    // Store each Stage Pick'em's Lock the moment it is due (#14), for the
+    // same reason as the Match Locks above: a postponement must not undo it.
+    for stage in view.stages.iter().filter(|s| s.kind == StageKind::Swiss) {
+        pickems::evaluate_lock(db, league.id, &view, stage.ordinal, now).await?;
     }
 
     Ok(LeagueMatches {

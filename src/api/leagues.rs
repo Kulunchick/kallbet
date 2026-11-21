@@ -11,11 +11,12 @@ use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::api::events;
+use crate::api::{events, leaderboard};
 use crate::auth::session::CurrentUser;
 use crate::domain::league::clean_league_name;
 use crate::domain::{Event, EventId, LeagueId, Role, User, UserId};
 use crate::error::{ApiError, ApiResult};
+use crate::league_matches;
 use crate::state::AppState;
 use crate::store::events as event_store;
 use crate::store::leagues::{self, League, Membership};
@@ -162,6 +163,10 @@ struct LeagueSummary {
     event: Event,
     my_role: Role,
     archived_at: Option<DateTime<Utc>>,
+    /// My place on the Leaderboard (shared places share the number) and my
+    /// Match Points.
+    my_place: Option<u32>,
+    my_points: u32,
 }
 
 async fn list_mine(
@@ -170,7 +175,18 @@ async fn list_mine(
 ) -> ApiResult<Json<Vec<LeagueSummary>>> {
     let mut out = Vec::new();
     for (league, role) in leagues::leagues_of(&state.db, user.id).await? {
+        let matches = league_matches::evaluate(&state.db, &league, state.clock.now()).await?;
+        let members: Vec<UserId> = leagues::members(&state.db, league.id)
+            .await?
+            .into_iter()
+            .map(|m| m.user_id)
+            .collect();
+        let mine = leaderboard::standings(&matches, &members)
+            .into_iter()
+            .find(|s| s.user_id == user.id);
         out.push(LeagueSummary {
+            my_place: mine.as_ref().map(|s| s.place),
+            my_points: mine.map_or(0, |s| s.points),
             id: league.id,
             name: league.name.clone(),
             event: event_of(&state, &league).await?,
