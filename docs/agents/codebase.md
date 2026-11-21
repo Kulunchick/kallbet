@@ -123,7 +123,14 @@ Test rules (spec, Testing Decisions):
 - Background work must be steppable. Give the poller a method that does one pass based on `clock.now()`; tests advance the clock and call it. Tests never sleep.
 - The in-memory database has a single connection. Do not hold a transaction open while awaiting another query on the pool: it deadlocks.
 
-Seam 2 (parser) tests keep fixtures under `tests/fixtures/<source>/` and feed them to the pure parser. No network.
+Seam 2 (parser) tests keep fixtures under `tests/fixtures/<source>/` and feed them to the pure parser. No network. Fixtures are real saved responses, never hand-written; list each one with its provenance in `tests/fixtures/<source>/README.md`. A test may derive a broken variant from a real fixture in code (e.g. a renamed class) to check that changed markup is an error.
+
+## Data Sources
+
+- Every adapter implements `MatchSource` and returns `SourceError::Parse` for anything it does not understand, never empty data. `Unavailable` is for network, browser, Cloudflare and HTTP failures.
+- `fetch_event(id)` may return a snapshot whose `event.id` differs from `id`: HLTV gives each Stage of a Major its own event id, and the canonical Event is the Major (the parent HLTV event). Store and key by `snapshot.event.id`.
+- Team logos are never sent to the SPA as Data Source URLs (`Team::logo_url`). The SPA shows `/api/teams/{id}/logo`; the HLTV adapter downloads each logo once (`sources::hltv::LogoCache`).
+- HLTV adapter: `sources::hltv::HltvSource::new(Arc::new(ChromePages::new(url)), clock).with_logos(LogoCache::new(dir))`. Its pure parser is `sources::hltv::parse`. `tests/hltv_live.rs` runs it against a real browser and HLTV (ignored by default; see the file for how to run it).
 
 ## Frontend map (`web/`)
 
@@ -176,6 +183,8 @@ Settings come from environment variables; `.env` is loaded for local development
 | `BOT_TOKEN` | unset | Telegram bot token (secret). Unset: `POST /api/auth/telegram` answers 503 `login_unavailable`. |
 | `BOT_USERNAME` | unset | The bot's @username (no @), needed by the Login Widget in the SPA (`GET /api/auth/config`). |
 | `PANDASCORE_TOKEN` | unset | PandaScore token (secret). Unset means the adapter is skipped. |
+| `KALLBET_CHROME_URL` | unset | DevTools endpoint of the headless Chrome the HLTV adapter uses (`http://chrome:9222` in compose; a hostname is resolved to an IP). Unset means the HLTV adapter is skipped. |
+| `KALLBET_LOGO_DIR` | `logos` | Downloaded team logos, served at `/api/teams/{id}/logo`. |
 
 A new setting needs a field in `Config`, a line in `Config::from_lookup`, a value in `Config::for_tests`, and an entry in `.env.example`. `Config`'s `Debug` output redacts secrets; keep it that way for new ones.
 
@@ -233,6 +242,18 @@ How League logic gets its Matches — read this before #6, #7, #13, #14, #16, #1
 - **SPA**: `/leagues/:id/pickem` (`web/src/pages/pickem/`, namespace `pickem`): leaderboard plus one `PickemStage` per Swiss Stage (form until Lock, everyone's Pick'ems after). #15 adds a bracket component for Playoffs Stages next to it.
 - Tests: `tests/api_pickem.rs` (setup has a Swiss Stage of 16 teams and a Playoffs Stage).
 
+### Playoffs Pick'em (ticket #15)
+
+- **Same endpoints, second shape.** `GET|PUT /api/leagues/{id}/stages/{ordinal}/pickem` serve a Playoffs Stage too (`pickem_stage` accepts Swiss and Playoffs; a Groups Stage still answers 404, so an Event without a Swiss Stage offers only the Playoffs Pick'em). Saved Pick'ems are `{shape: "playoffs", picks: [{rounds_before_final, slot, team_id}], updated_at}`; `PickemJson` is an enum tagged by `shape`. The GET also carries `bracket: {ready, slots: [{rounds_before_final, slot, team_a, team_b, leaf, winner}]}`; `teams` is the first-round teams. PUT takes `{picks: [...]}` (a body of the wrong shape for the Stage is 422 `pickem_wrong_count`). New code: 422 `pickem_bracket_not_ready`.
+- **Bracket shape** (`domain::pickem::Bracket::of`) comes from the Stage's Matches' `Playoffs` placements: the deepest `rounds_before_final` R with a placed Match gives `2^R` first slots, and the tree runs from the final (0,0) down to there, so 4 teams = semis + final (3 slots), 8 = 7, 16 = 15. Winners of slots `2n`, `2n+1` meet in slot `n`. A slot with no Match in the data is still a slot with unknown teams. A shallower slot whose two feeders have no Match is also a first slot (a bye). Placements outside the tree (round > 7, slot out of range) and `Unplaced` Matches are ignored.
+- **Picks storage**: kind `bracket`, `slot` = heap index `2^rounds_before_final + slot` (final 1, semis 2-3, quarterfinals 4-7), see `slot_id`.
+- **Validation** (`BracketPickem::validate`): every slot exactly once (else `pickem_wrong_count`), each winner a participant of its slot: a first slot's two teams, otherwise the winners picked in its two feeder slots (else `pickem_team_not_in_stage`). A team may win several slots, so there is no duplicate rule.
+- **TBD first-round teams**: while any first slot lacks a team the bracket is `ready: false`, PUT answers `pickem_bracket_not_ready` and the SPA shows a notice instead of the form. Lock is unaffected: it is still the Stage's first Match start, and `league_matches::evaluate` now stamps it for Playoffs Stages too. Teams are always read from the effective view, so a later poll that fills the slots opens the form (if not yet Locked).
+- **Scoring** (`score_bracket`): 1 Point per slot whose picked winner equals the winner of that slot's finished, non-Void Match. It is in the same sum as the Swiss Stages in `GET .../pickem-leaderboard` and in each revealed Member's `points`.
+- **Archive**: the PUT handler (`api/pickem.rs::save`) calls `require_writable(&league)` right after `require_member`, before either shape is validated, so both are read-only in an archived League.
+- **SPA**: `pages/pickem/bracket.ts` is the pure logic (`setWinner` propagates a pick into the next round and clears dependent picks, `participants`, `isComplete`, `toPicks`/`fromPicks`), tested by `web/scripts/bracket.test.mjs` (`npm test`). `PlayoffsStage.tsx` renders it (form until Lock, everyone's read-only brackets after, with ✓/✗ once a slot is decided). `PickemPage` picks `PlayoffsStage` or `PickemStage` by Stage kind.
+- Tests: `tests/api_pickem_playoffs.rs` (8-team bracket as the only Stage; 4, 16 teams; TBD first round; Event without a Swiss Stage). `tests/api_pickem.rs` no longer expects the Playoffs Stage to be 404.
+
 ## Scoring and Leaderboard (ticket #7)
 
 - **Points are never stored.** The Leaderboard is computed on every read from `LeagueMatches` (the effective Match view + the League's Predictions), so a result from a poll, and #13's Overrides, are reflected at once with no recalculation step. Consequently `poller::after_poll` has no scoring hook; do not add one.
@@ -241,6 +262,15 @@ How League logic gets its Matches — read this before #6, #7, #13, #14, #16, #1
 - Playoffs Matches are those whose Stage `kind` is `playoffs`.
 - **API**: `GET /api/leagues/{id}/leaderboard` → `{ rows: [{ place, user_id, nickname, avatar_url, points, playoff_points, percent_correct|null }] }`, ordered by place then nickname. `MatchCard` gained `my_result` (`pending|correct|wrong|missing|void`) and `my_points`. `GET /api/leagues` items gained `my_place` (null if not ranked) and `my_points`.
 - **SPA**: `/leagues/:id/leaderboard` (`web/src/pages/leaderboard/`, namespace `leaderboard`, place 1 gold, my row highlighted). #17 should render medals in this page. #14's Pick'em Leaderboard is separate.
+
+## Archive (ticket #17)
+
+- **The final** is the Playoffs Match with `rounds_before_final == 0`, finished with a winner, read from the League's *effective* Match view (`domain::league::final_decided`). A Void final (cancelled, or finished with no winner) does not archive. So when #13 sets a winner by Override in one League, only that League archives.
+- **Archiving** is `leagues.archived_at`, set once by `store::leagues::archive` (`WHERE archived_at IS NULL`, never cleared, even if the final's data later changes). `poller::after_poll` calls `poller::archive_if_final_decided(state, league, matches, now)`; it is idempotent. **#13: call it right after an Override sets a winner** (with a freshly evaluated `LeagueMatches`) so the League archives at once instead of on the next tick. The poller already skips Events with only archived Leagues, and Locks need no more evaluation.
+- **Read-only guard**: `api::leagues::require_writable(&league)` returns 409 `league_archived`. Call it right after `require_member`/`require_admin` (before reading the body or validating) in **every write that changes the game**. Applied today to: Prediction PUT, Pick'em PUT, join via Invite Link, kick. **#13 must call it in every Override endpoint, and #15/#6 keep their existing call**; the test "archived Leagues reject Overrides" comes with #13 (no Override endpoint exists yet).
+- **Still allowed after archiving**: leaving, deleting (creator), reissuing the Invite Link and changing roles (none of them changes a score). Joining and kicking are rejected so the final Leaderboard keeps its Members; leaving does remove the leaver from the Leaderboard, which is accepted.
+- **Medals**: `web/src/components/Medal.tsx` renders 🥇🥈🥉 for places 1-3; shared places share a medal because places are already numbered 1, 1, 3. `LeaderboardPage` and `PickemPage` show it only when `GET /api/leagues/{id}` has `archived_at` set. The League page shows an archived banner and hides the Invite Link and Kick controls.
+- Tests: `tests/api_archive.rs`.
 
 ## Accounts (ticket #3)
 

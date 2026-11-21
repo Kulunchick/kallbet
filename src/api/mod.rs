@@ -21,6 +21,7 @@ pub mod me;
 pub mod overrides;
 pub mod pickem;
 pub mod predictions;
+pub mod teams;
 
 pub fn router(config: &Config) -> Router<AppState> {
     let mut router = Router::new()
@@ -33,7 +34,8 @@ pub fn router(config: &Config) -> Router<AppState> {
         .merge(me::router())
         .merge(overrides::router())
         .merge(pickem::router())
-        .merge(predictions::router());
+        .merge(predictions::router())
+        .merge(teams::router());
 
     // The dev-only login bypass is not even routed unless explicitly enabled.
     if config.dev_login {

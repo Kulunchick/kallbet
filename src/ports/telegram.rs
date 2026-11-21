@@ -36,6 +36,9 @@ impl TelegramNotifier {
 
     /// Talks to another server than Telegram's (tests use a local one).
     pub fn with_base_url(token: Option<String>, base_url: &str) -> TelegramNotifier {
+        // reqwest is built on rustls without a bundled crypto provider (see
+        // `sources::hltv`): install ring once; a second install is a no-op.
+        let _ = rustls::crypto::ring::default_provider().install_default();
         TelegramNotifier {
             token,
             base_url: base_url.trim_end_matches('/').to_string(),

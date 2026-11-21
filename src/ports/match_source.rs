@@ -32,6 +32,10 @@ pub trait MatchSource: Send + Sync {
 
     /// One Event's whole structure: Stages, teams and Matches with their
     /// Scheduled Start, status, winner and format.
+    ///
+    /// `id` may name one Stage of a Major (HLTV gives each Stage its own
+    /// event id); the snapshot is then the Major's, so `snapshot.event.id`
+    /// can differ from `id`. Callers keep `snapshot.event.id`.
     async fn fetch_event(&self, id: EventId) -> Result<EventSnapshot, SourceError>;
 }
 

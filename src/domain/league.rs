@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::EventId;
+use super::effective_match::EventView;
+use super::{MatchPlacement, MatchStatus, StageKind};
 use super::ids::id;
 
 id!(
@@ -69,6 +71,27 @@ pub fn parse_hltv_event_link(link: &str) -> Option<EventId> {
     }
     let id: i64 = parts.next()?.parse().ok()?;
     (id > 0).then_some(EventId(id))
+}
+
+/// Whether the Event's final has a winner in this League's effective Match
+/// view: the Playoffs Match with `rounds_before_final == 0`, finished with a
+/// winner. A Void final (cancelled, or no winner) does not count. Reading the
+/// view, not raw source data, lets an Override (#13) decide it for one League.
+pub fn final_decided(view: &EventView) -> bool {
+    view.matches.iter().any(|m| {
+        let game = &m.data;
+        matches!(
+            game.placement,
+            MatchPlacement::Playoffs {
+                rounds_before_final: 0,
+                ..
+            }
+        ) && view
+            .stage(game.stage)
+            .is_some_and(|s| s.kind == StageKind::Playoffs)
+            && game.status == MatchStatus::Finished
+            && game.winner.is_some()
+    })
 }
 
 #[cfg(test)]

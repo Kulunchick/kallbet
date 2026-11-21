@@ -14,6 +14,8 @@ services:
       KALLBET_DEV_LOGIN: "false"
       # Where the HLTV adapter (ticket #8) finds Chrome.
       KALLBET_CHROME_URL: http://chrome:9222
+      # Downloaded team logos, on the data volume (ticket #8).
+      KALLBET_LOGO_DIR: /data/logos
     ports:
       # Host loopback only: Caddy is the sole way in from outside.
       - "127.0.0.1:8095:8095"

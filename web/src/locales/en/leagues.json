@@ -1,6 +1,7 @@
 {
   "loading": "Loading…",
   "backToLeagues": "Back to my Leagues",
+  "archived": "This League is archived. It is read-only; the final results are kept.",
   "role": { "admin": "League Admin" },
   "mine": {
     "place": "Place {{place}}",

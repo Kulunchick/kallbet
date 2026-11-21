@@ -63,6 +63,19 @@ pub async fn require_admin(
     Ok((league, membership))
 }
 
+/// The read-only guard (#17). Every write that changes what a League's game
+/// holds (Predictions, Pick'ems, Overrides, joining, kicking) calls this with
+/// the League from [`require_member`] and returns early on the error: an
+/// archived League answers 409 `league_archived`. Leaving and deleting do not
+/// call it. Call it before validating the body, so the answer does not depend
+/// on the payload.
+pub fn require_writable(league: &League) -> ApiResult<()> {
+    if league.archived_at.is_some() {
+        return Err(ApiError::conflict("league_archived"));
+    }
+    Ok(())
+}
+
 fn new_invite_token() -> String {
     hex::encode(rand::random::<[u8; 24]>())
 }
@@ -238,6 +251,7 @@ async fn kick(
     Path((id, target)): Path<(LeagueId, UserId)>,
 ) -> ApiResult<StatusCode> {
     let (league, _) = require_admin(&state, &user, id).await?;
+    require_writable(&league)?;
     if target == league.creator_id {
         return Err(ApiError::conflict("creator_protected"));
     }
@@ -332,6 +346,7 @@ async fn join(
     Path(token): Path<String>,
 ) -> ApiResult<Json<serde_json::Value>> {
     let league = league_for_token(&state, &token).await?;
+    require_writable(&league)?;
     leagues::add_member(&state.db, league.id, user.id, state.clock.now()).await?;
     Ok(Json(serde_json::json!({ "id": league.id })))
 }

@@ -66,6 +66,9 @@ export function LeaguePage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-extrabold text-gold-gradient">{league.name}</h1>
         <p className="text-mute">{league.event.name}</p>
+        {league.archived_at && (
+          <p className="card mt-2 px-3 py-2 text-sm text-gold-a">🏆 {t("archived")}</p>
+        )}
         <div className="mt-3 flex flex-wrap gap-2">
           <Link to={`/leagues/${league.id}/matches`} className="btn-primary">
             {t("matches:open")}
@@ -79,7 +82,7 @@ export function LeaguePage() {
         </div>
       </header>
 
-      {token && (
+      {token && !league.archived_at && (
         <section className="card flex flex-col gap-3 p-5">
           <h2 className="font-bold">{t("invite.title")}</h2>
           <input
@@ -140,7 +143,7 @@ export function LeaguePage() {
                   >
                     {m.role === "admin" ? t("manage.removeAdmin") : t("manage.makeAdmin")}
                   </button>
-                  {m.user_id !== me && (
+                  {m.user_id !== me && !league.archived_at && (
                     <button
                       type="button"
                       className="rounded-lg px-2 py-1 text-xs text-danger transition-colors hover:bg-raised"
