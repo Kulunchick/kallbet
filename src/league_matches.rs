@@ -2,8 +2,8 @@
 //! Lock/Reveal policy, with transitions persisted.
 //!
 //! The one place League logic gets its Matches from. The Matches API, the
-//! Prediction endpoint and the poller all call [`evaluate`], so a Lock (or,
-//! from #6, a Reveal) that any of them observes is stored at once and seen the
+//! Prediction endpoint and the poller all call [`evaluate`], so a Lock or a
+//! Reveal that any of them observes is stored at once and seen the
 //! same way by all of them.
 
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ use crate::domain::effective_match::{self, EventView};
 use crate::domain::lock_reveal::{self, MemberSpan, Outcome};
 use crate::domain::{MatchId, UserId};
 use crate::store::events;
-use crate::store::leagues::{self, League};
+use crate::store::leagues::{self, League, MemberProfile};
 use crate::store::predictions::{self, Prediction};
 
 /// Everything about a League's Matches at one moment.
@@ -29,6 +29,8 @@ pub struct LeagueMatches {
     pub predictions: Vec<Prediction>,
     /// Every membership stretch, for Eligible Members.
     pub members: Vec<MemberSpan>,
+    /// Current Members with Nickname and avatar, for the revealed Predictions.
+    pub profiles: Vec<MemberProfile>,
 }
 
 impl LeagueMatches {
@@ -98,5 +100,6 @@ pub async fn evaluate(
         outcomes,
         predictions,
         members,
+        profiles: leagues::members(db, league.id).await?,
     })
 }
