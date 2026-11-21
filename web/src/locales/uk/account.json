@@ -1,6 +1,7 @@
 {
   "signIn": "Увійти",
   "signOut": "Вийти",
+  "myLeagues": "Мої ліги",
   "login": {
     "title": "Вхід у KallBET",
     "subtitle": "Використайте акаунт Telegram. Пароль не потрібен.",

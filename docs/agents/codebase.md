@@ -189,7 +189,14 @@ Dev login, when enabled: `POST /api/dev/login` with `{"nickname": "alice"}` sign
 - The `events` table (0400) holds only id, name and dates, upserted from `MatchSource::fetch_event` when a League is created. #5 adds Stages, teams and Matches in its own migration and fills `store/events.rs`.
 - Invite Link: the secret is `leagues.invite_token`; the SPA link is `/join/<token>`. API: `GET /api/invites/{token}` (preview) and `POST /api/invites/{token}/join`; an unknown or reissued token is 404 `invite_invalid`. Only admins receive `invite_token` in the League JSON.
 - Data Source failures reach clients as 502 `source_unavailable` (`api::events::source_error`).
-- Frontend: nothing links to `/leagues` yet; the header (#3, `HeaderUser`) should. `/join/<token>` shows the 401 text when signed out; after sign-in (#3) it should return the User to the link.
+- Frontend: the header (`HeaderUser`) links to `/leagues`. `/join/<token>` signed out shows a sign-in prompt linking to `/login?next=/join/<token>`; `LoginPage` honours `?next=` (same-site paths only) after any sign-in, so pages can send visitors through login and back the same way.
+
+## League management (ticket #12)
+
+- Endpoints (all gated by `require_admin` unless noted): `DELETE /api/leagues/{id}/members/{user_id}` (kick = `end_membership`; 409 `creator_protected` for the creator, 409 `use_leave` for yourself, 404 when the target is not a current Member), `PUT /api/leagues/{id}/members/{user_id}/role` (`{"role": "member"|"admin"}`, 204; creator is 409 `creator_protected`), `POST /api/leagues/{id}/delete` (creator only: 403 for other Members, 422 `confirmation_mismatch` unless `{"confirm_name"}` equals the League name).
+- A kicked Member has a `left_at` like a Member who left, so they stop being Eligible from that moment by the same rule. They can rejoin through a valid Invite Link; an admin who wants them gone for good reissues the link.
+- **Deleting a League must keep working as tables grow.** `store::leagues::delete` is a single `DELETE FROM leagues`. Every later table that references a League (directly, or through `memberships`) must declare `REFERENCES leagues (id) ON DELETE CASCADE` (or cascade from another table that does), as `memberships` does. Never reference `leagues` without a cascade, and do not add a hand-written delete step per table. Tests: delete a League that has your rows and check they are gone through the API.
+- **Rule for #5 and #13 reviewers: no API path lets anyone create or change another Member's Prediction.** A Prediction handler takes the User only from `CurrentUser`, never from the path or body, and writes only for that User. No admin/creator override exists. #5 must add the test (an admin and a creator trying to write for another Member get no way to do so); it could not be written in #12 because Predictions did not exist.
 
 ## Accounts (ticket #3)
 

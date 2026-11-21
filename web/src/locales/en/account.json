@@ -1,6 +1,7 @@
 {
   "signIn": "Sign in",
   "signOut": "Sign out",
+  "myLeagues": "My Leagues",
   "login": {
     "title": "Sign in to KallBET",
     "subtitle": "Use your Telegram account. We never see a password.",
