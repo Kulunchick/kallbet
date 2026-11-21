@@ -62,4 +62,16 @@ pub struct User {
     pub nickname: String,
     pub avatar_url: Option<String>,
     pub language: Language,
+    pub notifications: NotificationPrefs,
+}
+
+/// Which Telegram notifications a User wants. All on by default.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct NotificationPrefs {
+    /// 30 minutes before Lock, when the User has not predicted.
+    pub reminder: bool,
+    /// When a Match's Predictions are revealed.
+    pub reveal: bool,
+    /// After a match day.
+    pub digest: bool,
 }

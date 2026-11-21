@@ -1,12 +1,20 @@
 import { api } from "../../api/client";
 import type { Language } from "../../i18n";
 
+/** Which Telegram notifications the User wants. */
+export type NotificationPrefs = {
+  reminder: boolean;
+  reveal: boolean;
+  digest: boolean;
+};
+
 /** The signed-in User, as `GET /api/me` returns it. */
 export type User = {
   id: number;
   nickname: string;
   avatar_url: string | null;
   language: Language;
+  notifications: NotificationPrefs;
 };
 
 /** What the Telegram Login Widget hands the page (plus our `hash` check). */
@@ -29,5 +37,9 @@ export const devSignIn = (nickname: string) =>
 
 export const signOutRequest = () => api<void>("/auth/logout", { method: "POST" });
 
-export const updateMe = (changes: { nickname?: string; language?: Language }) =>
+export const updateMe = (changes: {
+  nickname?: string;
+  language?: Language;
+  notifications?: Partial<NotificationPrefs>;
+}) =>
   api<User>("/me", { method: "PATCH", body: changes });

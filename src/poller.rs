@@ -22,6 +22,7 @@ use chrono::{DateTime, Duration, Utc};
 
 use crate::domain::{EventId, Match, MatchStatus};
 use crate::league_matches::{self, LeagueMatches};
+use crate::notifications;
 use crate::state::AppState;
 use crate::store::events;
 use crate::store::leagues::{self, League};
@@ -75,11 +76,12 @@ async fn run(state: &AppState, now: DateTime<Utc>) -> Result<(), sqlx::Error> {
 /// state is up to date. Each later ticket adds one call here:
 /// #7 scoring, #16 notifications, #17 archive.
 async fn after_poll(
-    _state: &AppState,
-    _league: &League,
-    _matches: &LeagueMatches,
-    _now: DateTime<Utc>,
+    state: &AppState,
+    league: &League,
+    matches: &LeagueMatches,
+    now: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
+    notifications::after_poll(state, league, matches, now).await?;
     Ok(())
 }
 

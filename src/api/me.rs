@@ -1,7 +1,7 @@
 //! Me API: the signed-in User's own profile.
 //!
 //! #3 reads it and edits the Nickname and the language; #16 adds the
-//! notification preferences.
+//! notification preferences (`notifications: {reminder, reveal, digest}`).
 
 use axum::extract::State;
 use axum::routing::get;
@@ -13,7 +13,7 @@ use crate::domain::user::validate_nickname;
 use crate::domain::{Language, User};
 use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;
-use crate::store::users;
+use crate::store::users::{self, NotificationPrefsChange};
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/me", get(get_me).patch(update_me))
@@ -27,6 +27,8 @@ async fn get_me(CurrentUser(user): CurrentUser) -> Json<User> {
 struct UpdateMe {
     nickname: Option<String>,
     language: Option<String>,
+    /// Partial: switches left out keep their value.
+    notifications: Option<NotificationPrefsChange>,
 }
 
 async fn update_me(
@@ -46,7 +48,12 @@ async fn update_me(
         .transpose()?;
 
     match users::update_profile(&state.db, user.id, nickname.as_deref(), language).await {
-        Ok(updated) => Ok(Json(updated)),
+        Ok(updated) => match body.notifications {
+            Some(change) => Ok(Json(
+                users::update_notification_prefs(&state.db, user.id, &change).await?,
+            )),
+            None => Ok(Json(updated)),
+        },
         Err(e) if users::is_unique_violation(&e) => Err(ApiError::conflict("nickname_taken")),
         Err(e) => Err(e.into()),
     }

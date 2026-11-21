@@ -9,6 +9,7 @@ import { updateMe, type User } from "./api";
 import { setUser, useSession } from "./session";
 
 const NICKNAME_MAX = 20;
+const NOTIFICATION_TYPES = ["reminder", "reveal", "digest"] as const;
 
 export function ProfilePage() {
   const { loading, user } = useSession();
@@ -87,6 +88,24 @@ function Profile({ user }: { user: User }) {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="card flex flex-col gap-3 p-5">
+        <p className="text-sm font-semibold">{t("profile.notifications")}</p>
+        {NOTIFICATION_TYPES.map((type) => (
+          <label key={type} className="flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={user.notifications[type]}
+              onChange={(event) =>
+                void updateMe({ notifications: { [type]: event.target.checked } }).then(setUser)
+              }
+              className="mt-0.5 size-4 accent-emerald-500"
+            />
+            <span>{t(`profile.notify.${type}`)}</span>
+          </label>
+        ))}
+        <p className="text-xs text-mute">{t("profile.notificationsHint")}</p>
       </div>
     </div>
   );

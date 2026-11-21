@@ -3,9 +3,10 @@
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, SqlitePool};
 
+use crate::domain::user::NotificationPrefs;
 use crate::domain::{Language, TelegramId, User, UserId};
 
-const COLUMNS: &str = "id, telegram_id, nickname, avatar_url, language";
+const COLUMNS: &str = "id, telegram_id, nickname, avatar_url, language, notify_reminder, notify_reveal, notify_digest";
 
 #[derive(FromRow)]
 struct UserRow {
@@ -14,6 +15,9 @@ struct UserRow {
     nickname: String,
     avatar_url: Option<String>,
     language: String,
+    notify_reminder: bool,
+    notify_reveal: bool,
+    notify_digest: bool,
 }
 
 impl From<UserRow> for User {
@@ -24,6 +28,11 @@ impl From<UserRow> for User {
             nickname: row.nickname,
             avatar_url: row.avatar_url,
             language: Language::from_code(&row.language).unwrap_or_default(),
+            notifications: NotificationPrefs {
+                reminder: row.notify_reminder,
+                reveal: row.notify_reveal,
+                digest: row.notify_digest,
+            },
         }
     }
 }
@@ -45,7 +54,8 @@ pub async fn create(
     let row: UserRow = sqlx::query_as(
         "INSERT INTO users (telegram_id, nickname, avatar_url, language, created_at) \
          VALUES (?, ?, ?, ?, ?) \
-         RETURNING id, telegram_id, nickname, avatar_url, language",
+         RETURNING id, telegram_id, nickname, avatar_url, language, \
+                   notify_reminder, notify_reveal, notify_digest",
     )
     .bind(new_user.telegram_id)
     .bind(&new_user.nickname)
@@ -69,7 +79,10 @@ pub async fn find_by_telegram_id(
 }
 
 /// Case-insensitive, like Nickname uniqueness.
-pub async fn find_by_nickname(db: &SqlitePool, nickname: &str) -> Result<Option<User>, sqlx::Error> {
+pub async fn find_by_nickname(
+    db: &SqlitePool,
+    nickname: &str,
+) -> Result<Option<User>, sqlx::Error> {
     let row: Option<UserRow> = sqlx::query_as(sqlx::AssertSqlSafe(format!(
         "SELECT {COLUMNS} FROM users WHERE nickname = ?"
     )))
@@ -121,7 +134,8 @@ pub async fn update_profile(
     let row: UserRow = sqlx::query_as(
         "UPDATE users SET nickname = COALESCE(?, nickname), language = COALESCE(?, language) \
          WHERE id = ? \
-         RETURNING id, telegram_id, nickname, avatar_url, language",
+         RETURNING id, telegram_id, nickname, avatar_url, language, \
+                   notify_reminder, notify_reveal, notify_digest",
     )
     .bind(nickname)
     .bind(language.map(Language::code))
@@ -139,9 +153,40 @@ pub async fn update_avatar(
 ) -> Result<User, sqlx::Error> {
     let row: UserRow = sqlx::query_as(
         "UPDATE users SET avatar_url = COALESCE(?, avatar_url) WHERE id = ? \
-         RETURNING id, telegram_id, nickname, avatar_url, language",
+         RETURNING id, telegram_id, nickname, avatar_url, language, \
+                   notify_reminder, notify_reveal, notify_digest",
     )
     .bind(avatar_url)
+    .bind(id)
+    .fetch_one(db)
+    .await?;
+    Ok(row.into())
+}
+
+/// A partial change of the notification switches: `None` keeps a switch.
+#[derive(Debug, Clone, Copy, Default, serde::Deserialize)]
+pub struct NotificationPrefsChange {
+    pub reminder: Option<bool>,
+    pub reveal: Option<bool>,
+    pub digest: Option<bool>,
+}
+
+pub async fn update_notification_prefs(
+    db: &SqlitePool,
+    id: UserId,
+    change: &NotificationPrefsChange,
+) -> Result<User, sqlx::Error> {
+    let row: UserRow = sqlx::query_as(
+        "UPDATE users SET notify_reminder = COALESCE(?, notify_reminder), \
+                          notify_reveal = COALESCE(?, notify_reveal), \
+                          notify_digest = COALESCE(?, notify_digest) \
+         WHERE id = ? \
+         RETURNING id, telegram_id, nickname, avatar_url, language, \
+                   notify_reminder, notify_reveal, notify_digest",
+    )
+    .bind(change.reminder)
+    .bind(change.reveal)
+    .bind(change.digest)
     .bind(id)
     .fetch_one(db)
     .await?;
