@@ -5,7 +5,7 @@ import { errorMessage } from "../../api/client";
 import { Avatar } from "../../components/Avatar";
 import { Medal } from "../../components/Medal";
 import { getLeague } from "../leagues/api";
-import { useLoad } from "../leagues/useLoad";
+import { useLoad } from "../../api/useLoad";
 import { getMatches } from "../matches/api";
 import { getLeaderboard } from "./api";
 import { PickemStage } from "./PickemStage";

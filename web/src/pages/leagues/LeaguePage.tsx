@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
 import { useSession } from "../account/session";
-import { Avatar } from "./Avatar";
+import { Avatar } from "../../components/Avatar";
 import {
   deleteLeague,
   getLeague,
@@ -14,7 +14,7 @@ import {
   reissueInvite,
   setMemberRole,
 } from "./api";
-import { useLoad } from "./useLoad";
+import { useLoad } from "../../api/useLoad";
 
 export function LeaguePage() {
   const { t } = useTranslation("leagues");

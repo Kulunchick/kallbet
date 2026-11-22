@@ -6,8 +6,8 @@ import { errorMessage } from "../../api/client";
 import { useSession } from "../account/session";
 import { Medal } from "../../components/Medal";
 import { getLeague } from "../leagues/api";
-import { Avatar } from "../leagues/Avatar";
-import { useLoad } from "../leagues/useLoad";
+import { Avatar } from "../../components/Avatar";
+import { useLoad } from "../../api/useLoad";
 import { getLeaderboard } from "./api";
 
 /** How often the page refetches, so a result shows up without a reload. */

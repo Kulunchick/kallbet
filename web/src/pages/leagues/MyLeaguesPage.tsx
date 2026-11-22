@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 import { errorMessage } from "../../api/client";
 import { myLeagues } from "./api";
-import { useLoad } from "./useLoad";
+import { useLoad } from "../../api/useLoad";
 
 export function MyLeaguesPage() {
   const { t } = useTranslation("leagues");

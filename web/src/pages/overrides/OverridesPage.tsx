@@ -5,7 +5,7 @@ import { Link, useParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
 import { getLeague } from "../leagues/api";
-import { useLoad } from "../leagues/useLoad";
+import { useLoad } from "../../api/useLoad";
 import { getMatches } from "../matches/api";
 import { formatStart } from "../matches/time";
 import {

@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import { useSession } from "../account/session";
 import { joinLeague, previewInvite } from "./api";
-import { useLoad } from "./useLoad";
+import { useLoad } from "../../api/useLoad";
 
 /** Opened from an Invite Link: shows the League and joins on confirmation. */
 export function JoinPage() {

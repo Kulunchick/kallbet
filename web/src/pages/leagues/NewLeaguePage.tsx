@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 
 import { errorMessage } from "../../api/client";
 import { createLeague, listEvents, resolveEvent, type EventInfo } from "./api";
-import { useLoad } from "./useLoad";
+import { useLoad } from "../../api/useLoad";
 
 export function NewLeaguePage() {
   const { t, i18n } = useTranslation("leagues");
