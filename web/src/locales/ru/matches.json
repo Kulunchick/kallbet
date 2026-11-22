@@ -20,7 +20,13 @@
   "overriddenField": { "scheduled_start": "время начала", "result": "результат", "teams": "команды" },
   "format": { "bo1": "Bo1", "bo3": "Bo3", "bo5": "Bo5" },
   "source": { "hltv": "HLTV", "pandascore": "PandaScore", "liquipedia": "Liquipedia" },
-  "status": { "live": "Идёт", "finished": "Завершён", "cancelled": "Отменён" },
+  "status": { "live": "Идёт", "finished": "Завершён" },
+  "void": {
+    "badge": "Аннулирован",
+    "cancelled": "Отменён: матч аннулирован и не засчитывается",
+    "noWinner": "Без победителя: матч аннулирован и не засчитывается"
+  },
+  "bracket": { "other": "Другие матчи плей-офф", "emptySlot": "Пока не определён" },
   "span": { "dh": "{{d}} д {{h}} ч", "hm": "{{h}} ч {{m}} мин", "m": "{{m}} мин" },
   "group": {
     "record": "Баланс {{wins}}-{{losses}}",

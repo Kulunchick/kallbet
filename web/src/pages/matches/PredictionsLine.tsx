@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import { Avatar } from "../../components/Avatar";
+import { TeamLogo } from "../../components/TeamLogo";
 import type { MatchCard, RevealedPrediction, TeamRef } from "./api";
 
 /**
@@ -45,8 +46,11 @@ function Side({
   const here = team === null ? [] : picks.filter((p) => p.team_id === team.id);
   return (
     <div className={`flex flex-col gap-1 ${align === "end" ? "items-end" : "items-start"}`}>
-      <span className="max-w-full truncate text-xs text-mute">
-        {team?.name ?? t("tbd")} · {here.length}
+      <span className="flex max-w-full items-center gap-1 text-xs text-mute">
+        {team && <TeamLogo id={team.id} className="size-4" />}
+        <span className="truncate">
+          {team?.name ?? t("tbd")} · {here.length}
+        </span>
       </span>
       {here.length === 0 ? (
         <span className="text-xs text-mute">{t("nobodyPicked")}</span>

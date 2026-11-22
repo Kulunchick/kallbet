@@ -20,7 +20,13 @@
   "overriddenField": { "scheduled_start": "start time", "result": "result", "teams": "teams" },
   "format": { "bo1": "Bo1", "bo3": "Bo3", "bo5": "Bo5" },
   "source": { "hltv": "HLTV", "pandascore": "PandaScore", "liquipedia": "Liquipedia" },
-  "status": { "live": "Live", "finished": "Finished", "cancelled": "Cancelled" },
+  "status": { "live": "Live", "finished": "Finished" },
+  "void": {
+    "badge": "Void",
+    "cancelled": "Cancelled: a Void Match, it counts for nothing",
+    "noWinner": "No winner: a Void Match, it counts for nothing"
+  },
+  "bracket": { "other": "Other Playoffs Matches", "emptySlot": "To be decided" },
   "span": { "dh": "{{d}} d {{h}} h", "hm": "{{h}} h {{m}} min", "m": "{{m}} min" },
   "group": {
     "record": "Record {{wins}}-{{losses}}",

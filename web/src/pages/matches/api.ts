@@ -28,6 +28,8 @@ export type MatchCard = {
   team_a: TeamRef | null;
   team_b: TeamRef | null;
   format: "bo1" | "bo3" | "bo5";
+  /** Slot within its Playoffs round (`null` outside the Playoffs). */
+  bracket_slot: number | null;
   scheduled_start: string | null;
   actual_start: string | null;
   status: MatchStatus;

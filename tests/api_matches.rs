@@ -88,6 +88,9 @@ async fn a_poll_brings_in_the_matches_grouped_by_stage_and_record() {
     assert_eq!(match_ids(&playoffs[0]), [201]);
     assert_eq!(playoffs[1]["rounds_before_final"], 0);
     assert_eq!(match_ids(&playoffs[1]), [301]);
+    // C2: the bracket slot places each card in the bracket drawing.
+    assert_eq!(playoffs[0]["matches"][0]["bracket_slot"], 0);
+    assert_eq!(stages[0]["groups"][0]["matches"][0]["bracket_slot"], serde_json::Value::Null);
 
     let navi_faze = find_match(&view, 101);
     assert_eq!(navi_faze["team_a"]["name"], "NAVI");

@@ -20,7 +20,13 @@
   "overriddenField": { "scheduled_start": "час початку", "result": "результат", "teams": "команди" },
   "format": { "bo1": "Bo1", "bo3": "Bo3", "bo5": "Bo5" },
   "source": { "hltv": "HLTV", "pandascore": "PandaScore", "liquipedia": "Liquipedia" },
-  "status": { "live": "Триває", "finished": "Завершено", "cancelled": "Скасовано" },
+  "status": { "live": "Триває", "finished": "Завершено" },
+  "void": {
+    "badge": "Анульовано",
+    "cancelled": "Скасовано: матч анульовано, він не зараховується",
+    "noWinner": "Без переможця: матч анульовано, він не зараховується"
+  },
+  "bracket": { "other": "Інші матчі плей-оф", "emptySlot": "Ще не визначено" },
   "span": { "dh": "{{d}} д {{h}} год", "hm": "{{h}} год {{m}} хв", "m": "{{m}} хв" },
   "group": {
     "record": "Баланс {{wins}}-{{losses}}",

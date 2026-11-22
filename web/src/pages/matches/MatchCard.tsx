@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
 
+import { TeamLogo } from "../../components/TeamLogo";
 import { PredictionsLine } from "./PredictionsLine";
 import type { MatchCard as Card, TeamRef } from "./api";
+import { cardState } from "./layout";
 import { formatAgo, formatSpan, formatStart } from "./time";
 
 type Props = {
@@ -23,13 +25,21 @@ export function MatchCard({ card, now, saving, onPredict }: Props) {
   const locksAt = card.lock.locks_at ? new Date(card.lock.locks_at).getTime() : null;
   const locked = card.lock.locked || (locksAt !== null && locksAt <= now);
   const canPredict = !locked && card.team_a !== null && card.team_b !== null && !saving;
+  const isVoid = cardState(card) === "void";
 
   return (
     <article
-      className={`card flex flex-col gap-3 p-4 ${card.my_prediction !== null && !locked ? "glow-emerald" : ""}`}
+      className={`card flex flex-col gap-3 p-4 ${card.my_prediction !== null && !locked ? "glow-emerald" : ""} ${isVoid ? "opacity-75" : ""}`}
     >
       <header className="flex flex-wrap items-center justify-between gap-2 text-xs text-mute">
-        <span className="font-semibold uppercase tracking-wide">{t(`format.${card.format}`)}</span>
+        <span className="flex items-center gap-2">
+          <span className="font-semibold uppercase tracking-wide">{t(`format.${card.format}`)}</span>
+          {isVoid && (
+            <span className="rounded-full border border-line bg-raised px-2 py-0.5 font-bold uppercase tracking-wide text-fg">
+              {t("void.badge")}
+            </span>
+          )}
+        </span>
         <span>
           {card.scheduled_start ? formatStart(card.scheduled_start, language) : t("startUnknown")}
         </span>
@@ -137,9 +147,12 @@ function TeamButton({
       aria-label={`${label}: ${team.name}`}
       disabled={disabled}
       onClick={() => onPick(team)}
-      className={`min-w-0 truncate rounded-xl border px-3 py-3 text-center font-bold transition disabled:cursor-default disabled:hover:border-line ${look} ${winner ? "underline decoration-gold-a decoration-2 underline-offset-4" : ""}`}
+      className={`flex min-w-0 items-center justify-center gap-2 rounded-xl border px-3 py-3 font-bold transition disabled:cursor-default disabled:hover:border-line ${look}`}
     >
-      {team.name}
+      <TeamLogo id={team.id} />
+      <span className={`truncate ${winner ? "underline decoration-gold-a decoration-2 underline-offset-4" : ""}`}>
+        {team.name}
+      </span>
     </button>
   );
 }
@@ -156,9 +169,16 @@ function LockLine({
   now: number;
 }) {
   const { t } = useTranslation("matches");
-  if (card.status === "live") return <span className="font-semibold text-danger">{t("status.live")}</span>;
-  if (card.status === "finished") return <span className="text-mute">{t("status.finished")}</span>;
-  if (card.status === "cancelled") return <span className="text-mute">{t("status.cancelled")}</span>;
+  const state = cardState(card);
+  if (state === "live") return <span className="font-semibold text-danger">{t("status.live")}</span>;
+  if (state === "void") {
+    return (
+      <span className="font-semibold text-fg">
+        {t(card.status === "cancelled" ? "void.cancelled" : "void.noWinner")}
+      </span>
+    );
+  }
+  if (state === "finished") return <span className="text-mute">{t("status.finished")}</span>;
   if (locked) return <span className="font-semibold text-gold-a">{t("locked")}</span>;
   if (locksAt === null) return <span className="text-mute">{t("lockUnknown")}</span>;
   return (

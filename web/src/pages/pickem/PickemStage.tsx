@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import { errorMessage } from "../../api/client";
 import { Avatar } from "../../components/Avatar";
-import { useLoad } from "../leagues/useLoad";
+import { TeamLogo } from "../../components/TeamLogo";
+import { useLoad } from "../../api/useLoad";
 import { getPickem, savePickem, type PickemView, type SwissBody } from "./api";
 
 type Choice = "three_nil" | "zero_three" | "advance";
@@ -83,7 +84,10 @@ export function PickemStage({
           <ul className="grid gap-2 sm:grid-cols-2">
             {view.teams.map((team) => (
               <li key={team.id} className="flex items-center justify-between gap-3">
-                <span>{team.name}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <TeamLogo id={team.id} className="size-5" />
+                  <span className="truncate">{team.name}</span>
+                </span>
                 <select
                   aria-label={team.name}
                   value={draft[team.id] ?? ""}

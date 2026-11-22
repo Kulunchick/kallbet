@@ -1,12 +1,21 @@
 import type { TFunction } from "i18next";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
-import { useLoad } from "../leagues/useLoad";
+import { useLoad } from "../../api/useLoad";
 import { MatchCard } from "./MatchCard";
-import { getMatches, predict, type MatchGroup, type MatchesView, type TeamRef } from "./api";
+import {
+  getMatches,
+  predict,
+  type MatchCard as Card,
+  type MatchGroup,
+  type MatchesView,
+  type StageView,
+  type TeamRef,
+} from "./api";
+import { bracketColumns } from "./layout";
 import { useNow } from "./time";
 
 /** How often the page refetches, so new Swiss rounds and Locks show up. */
@@ -64,6 +73,18 @@ export function MatchesPage() {
     return <p className="py-10 text-mute">{t("loading")}</p>;
   }
 
+  const renderCard = (card: Card) => (
+    <div key={card.id} className="flex flex-col gap-1">
+      <MatchCard
+        card={card}
+        now={now}
+        saving={saving === card.id}
+        onPredict={(team) => void onPredict(card.id, team)}
+      />
+      {error?.match === card.id && <p className="px-1 text-sm text-danger">{errorMessage(t, error.error)}</p>}
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-8 py-10">
       <header className="flex flex-col gap-1">
@@ -77,30 +98,76 @@ export function MatchesPage() {
       {view.stages.map((stage) => (
         <section key={stage.ordinal} className="flex flex-col gap-4">
           <h2 className="text-lg font-bold text-gold-gradient">{stage.name}</h2>
-          {stage.groups.map((group) => (
-            <div key={groupKey(group)} className="flex flex-col gap-3">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-mute">
-                {groupTitle(t, group)}
-              </h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                {group.matches.map((card) => (
-                  <div key={card.id} className="flex flex-col gap-1">
-                    <MatchCard
-                      card={card}
-                      now={now}
-                      saving={saving === card.id}
-                      onPredict={(team) => void onPredict(card.id, team)}
-                    />
-                    {error?.match === card.id && (
-                      <p className="px-1 text-sm text-danger">{errorMessage(t, error.error)}</p>
-                    )}
-                  </div>
-                ))}
+          {stage.kind === "playoffs" ? (
+            <PlayoffsBracket t={t} stage={stage} renderCard={renderCard} />
+          ) : (
+            stage.groups.map((group) => (
+              <div key={groupKey(group)} className="flex flex-col gap-3">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-mute">
+                  {groupTitle(t, group)}
+                </h3>
+                <div className="grid gap-3 md:grid-cols-2">{group.matches.map(renderCard)}</div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </section>
       ))}
+    </div>
+  );
+}
+
+/**
+ * The Playoffs as a bracket (story 29): one column per round, first round
+ * first, each slot level with the two it is fed by. Wide brackets scroll
+ * sideways inside their box; the page itself never does.
+ */
+function PlayoffsBracket({
+  t,
+  stage,
+  renderCard,
+}: {
+  t: TFunction;
+  stage: StageView;
+  renderCard: (card: Card) => ReactNode;
+}) {
+  const rounds = stage.groups.flatMap((g) => (g.kind === "playoff_round" ? [g] : []));
+  const { columns, extra } = bracketColumns(rounds);
+  const others = [...extra, ...stage.groups.flatMap((g) => (g.kind === "playoff_round" ? [] : g.matches))];
+  return (
+    <div className="flex flex-col gap-4">
+      {columns.length > 0 && (
+        <div className="overflow-x-auto pb-2">
+          <div className="flex min-w-max gap-4">
+            {columns.map((column) => (
+              <div key={column.round} className="flex w-72 flex-col gap-3 sm:w-80">
+                <h3 className="text-center text-sm font-semibold uppercase tracking-wide text-mute">
+                  {groupTitle(t, { kind: "playoff_round", rounds_before_final: column.round, matches: [] })}
+                </h3>
+                <div className="flex flex-1 flex-col justify-around gap-3">
+                  {column.cells.map((card, slot) =>
+                    card ? (
+                      renderCard(card)
+                    ) : (
+                      <div
+                        key={`empty-${slot}`}
+                        className="rounded-2xl border border-dashed border-line p-4 text-center text-sm text-mute"
+                      >
+                        {t("bracket.emptySlot")}
+                      </div>
+                    ),
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {others.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-mute">{t("bracket.other")}</h3>
+          <div className="grid gap-3 md:grid-cols-2">{others.map(renderCard)}</div>
+        </div>
+      )}
     </div>
   );
 }

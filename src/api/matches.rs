@@ -176,6 +176,10 @@ pub struct MatchCard {
     pub team_a: Option<TeamView>,
     pub team_b: Option<TeamView>,
     pub format: MatchFormat,
+    /// A Playoffs Match's slot within its round (its group's
+    /// `rounds_before_final`): the winners of slots 2n and 2n+1 meet in slot
+    /// n of the next round. `null` outside the Playoffs.
+    pub bracket_slot: Option<u8>,
     pub scheduled_start: Option<DateTime<Utc>>,
     pub actual_start: Option<DateTime<Utc>>,
     pub status: MatchStatus,
@@ -249,6 +253,10 @@ pub fn view_for(matches: &LeagueMatches, viewer: UserId) -> MatchesView {
                     team_a: team(game.team_a),
                     team_b: team(game.team_b),
                     format: game.format,
+                    bracket_slot: match game.placement {
+                        MatchPlacement::Playoffs { slot, .. } => Some(slot),
+                        _ => None,
+                    },
                     scheduled_start: game.scheduled_start,
                     actual_start: game.actual_start,
                     status: game.status,

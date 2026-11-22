@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import { errorMessage } from "../../api/client";
 import { Avatar } from "../../components/Avatar";
-import { useLoad } from "../leagues/useLoad";
+import { TeamLogo } from "../../components/TeamLogo";
+import { useLoad } from "../../api/useLoad";
 import { getPickem, savePickem, type PickemView } from "./api";
 import { fromPicks, isComplete, participants, setWinner, slotKey, toPicks, type Slot, type Winners } from "./bracket";
 
@@ -142,7 +143,10 @@ function Bracket({
                           mine ? "bg-emerald-gradient font-semibold text-ink glow-emerald" : "text-fg"
                         } ${team === null ? "text-mute" : ""}`}
                       >
-                        <span>{nameOf(team)}</span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          {team !== null && <TeamLogo id={team} className="size-5" />}
+                          <span className="truncate">{nameOf(team)}</span>
+                        </span>
                         {verdict && <span>{verdict}</span>}
                       </button>
                     );
