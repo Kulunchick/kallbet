@@ -876,3 +876,50 @@ async fn a_pickem_follows_its_stage_when_hltv_returns_with_an_earlier_stage() {
     assert_eq!(playoffs["stage"]["kind"], "playoffs", "{playoffs}");
     assert_ne!(playoffs["my_pickem"], Value::Null, "the Pick'em is lost: {playoffs}");
 }
+
+/// B1: HLTV first publishes a Match a fallback already gave a local id with
+/// a start time far off (outside the matching window). Two teams meet once
+/// per Swiss or Playoffs Stage, so it is still that Match: the local one is
+/// adopted and its Predictions follow, instead of staying behind on a local
+/// duplicate.
+#[tokio::test]
+async fn a_local_match_is_adopted_when_hltv_publishes_it_with_a_time_far_off() {
+    let c = chain().await;
+    let (alice, league) = hltv_then_panda(&c).await;
+    let now = c.app.clock.now();
+    c.panda.put_event(
+        panda_major(now)
+            .swiss_match(9201, (2, 1, 0), "Natus Vincere", "Team Vitality", now + Duration::hours(26))
+            .build(now),
+    );
+    poll_again(&c.app).await;
+    let local = all_matches(&matches(&alice, league).await)
+        .into_iter()
+        .find(|m| m["id"].as_i64().unwrap() < 0)
+        .expect("a local Match");
+    let res = alice
+        .put(
+            &format!("/api/leagues/{league}/matches/{}/prediction", local["id"]),
+            &json!({ "team_id": local["team_b"]["id"] }),
+        )
+        .await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.text());
+
+    c.hltv.recover();
+    c.hltv.update_event(EventId(EVENT), |s| {
+        let round2 = EventSnapshotBuilder::new(EVENT, "Test Major")
+            .stage(StageKind::Swiss, "Stage 1")
+            .swiss_match(101, (1, 0, 0), "NAVI", "FaZe", now + Duration::hours(2))
+            .swiss_match(102, (1, 0, 0), "Vitality", "G2", now + Duration::hours(3))
+            .swiss_match(201, (2, 1, 0), "Vitality", "NAVI", now + Duration::hours(40))
+            .build(now);
+        s.matches = round2.matches;
+        s.teams = round2.teams;
+    });
+    poll_again(&c.app).await;
+
+    let view = matches(&alice, league).await;
+    let ids: Vec<i64> = all_matches(&view).iter().map(|m| m["id"].as_i64().unwrap()).collect();
+    assert_eq!(ids.len(), 3, "no local duplicate left: {ids:?}");
+    assert_eq!(find_match(&view, 201)["my_prediction"], 3, "the Prediction followed");
+}

@@ -39,7 +39,7 @@ use super::names::{event_similarity, team_key};
 use crate::domain::effective_match::{EventView, SourcedMatch};
 use crate::domain::{
     DataSourceKind, Event, EventSnapshot, Match, MatchId, MatchPlacement, MatchScore, MatchStatus,
-    Stage, StageOrdinal, Team, TeamId,
+    Stage, StageKind, StageOrdinal, Team, TeamId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
@@ -822,7 +822,21 @@ pub fn adoptions(stored: &EventView, snapshot: &EventSnapshot, window: Duration)
                             .find(|t| *t != a && *t != b && !adopted.contains(t))?;
                         pairs.push((local_team, other));
                     }
-                    let diff = within(g.scheduled_start, local.data.scheduled_start, window)?;
+                    // Two teams meet once per Swiss or Playoffs Stage: with
+                    // both teams agreeing there, a start time outside the
+                    // window is the same Match with a bad time (else its
+                    // Predictions would stay on a local duplicate).
+                    let once_per_stage = agree == 2
+                        && g.stage == local.data.stage
+                        && stored.stages.iter().any(|s| {
+                            s.ordinal == g.stage
+                                && matches!(s.kind, StageKind::Swiss | StageKind::Playoffs)
+                        });
+                    let diff = match within(g.scheduled_start, local.data.scheduled_start, window) {
+                        Some(diff) => diff,
+                        None if once_per_stage => i64::MAX,
+                        None => return None,
+                    };
                     Some((diff, g.id, pairs))
                 })
                 .min_by_key(|(diff, id, _)| (*diff, *id));
