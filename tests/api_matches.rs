@@ -182,6 +182,33 @@ async fn matches_are_polled_every_minute_when_one_starts_within_45_minutes() {
     assert_eq!(polls(&app) - before, 3);
 }
 
+/// B3: a League's Scheduled Start Override that brings a Match within 45
+/// minutes speeds polling up like a Data Source's Scheduled Start does.
+#[tokio::test]
+async fn a_scheduled_start_override_within_45_minutes_makes_polling_every_minute() {
+    let app = TestApp::new().await;
+    app.source
+        .put_event(major(app.clock.now()).build(app.clock.now()));
+    let alice = app.user("alice").await;
+    let league = create_league(&alice).await;
+    poller::tick(&app.state).await;
+    let soon = app.clock.now() + Duration::minutes(30);
+    let res = alice
+        .post(
+            &format!("/api/leagues/{league}/matches/201/overrides"),
+            &json!({ "field": "scheduled_start", "scheduled_start": soon }),
+        )
+        .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.text());
+
+    let before = polls(&app);
+    for _ in 0..3 {
+        app.clock.advance(Duration::minutes(1));
+        poller::tick(&app.state).await;
+    }
+    assert_eq!(polls(&app) - before, 3);
+}
+
 #[tokio::test]
 async fn matches_are_polled_every_minute_while_one_is_live() {
     let app = TestApp::new().await;

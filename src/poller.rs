@@ -136,10 +136,29 @@ pub async fn refresh_event_list(
 
 async fn poll_event(state: &AppState, id: EventId, now: DateTime<Utc>) -> Result<(), sqlx::Error> {
     let key = event_key(id);
-    let stored: Vec<Match> = events::base_view(&mut *state.db.acquire().await?, id)
+    let mut stored: Vec<Match> = events::base_view(&mut *state.db.acquire().await?, id)
         .await?
         .map(|view| view.matches.into_iter().map(|m| m.data).collect())
         .unwrap_or_default();
+    // The cadence also follows each active League's Overrides: a Scheduled
+    // Start Override that brings a Match within the hot window makes the
+    // Event hot like a source's Scheduled Start does. Hand-added Matches are
+    // not the Data Sources' business, so they do not count.
+    for league in leagues::active(&state.db).await? {
+        if league.event_id == id {
+            let (view, overrides) = league_matches::effective_view_and_overrides(
+                &mut *state.db.acquire().await?,
+                &league,
+            )
+            .await?;
+            stored.extend(
+                view.matches
+                    .into_iter()
+                    .filter(|m| !overrides.is_added(m.data.id))
+                    .map(|m| m.data),
+            );
+        }
+    }
     let last = events::last_polled(&state.db, &key).await?;
     if last.is_some_and(|at| now - at < match_poll_interval(&stored, now)) {
         return Ok(());
