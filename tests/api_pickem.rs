@@ -196,26 +196,62 @@ async fn an_early_start_locks_at_once_and_a_lock_survives_a_postponement() {
 }
 
 #[tokio::test]
-async fn other_members_picks_are_hidden_until_lock_even_when_everyone_has_picked() {
+async fn the_final_voter_can_edit_before_everyones_picks_are_revealed() {
     let s = setup().await;
     s.pick(&s.alice, &valid()).await;
-    s.pick(&s.bob, &CHANGED()).await;
+    let partial = s.view(&s.bob).await;
+    assert_eq!(partial["submitted"], 1);
+    assert_eq!(partial["eligible"], 2);
+    assert_eq!(partial["pickems"], Value::Null);
 
-    // Everyone has picked, yet nothing about the others is returned, and the
-    // Pick'em is not Locked (ADR-0003).
+    s.pick(&s.bob, &CHANGED()).await;
+    let closes = s.app.clock.now() + Duration::minutes(5);
     let before = s.view(&s.bob).await;
     assert_eq!(before["pickems"], Value::Null);
     assert_eq!(before["lock"]["locked"], false);
+    assert_eq!(before["lock"]["can_edit"], true);
+    assert_eq!(before["lock"]["locks_at"], json!(closes));
     assert!(!serde_json::to_string(&before).unwrap().contains("alice"));
-    assert_eq!(s.pick(&s.bob, &CHANGED()).await.status, StatusCode::OK);
+    assert_eq!(s.view(&s.alice).await["lock"]["can_edit"], false);
+    assert_rejected(
+        &s.pick(&s.alice, &CHANGED()).await,
+        StatusCode::CONFLICT,
+        "pickem_locked",
+    );
 
-    // At Lock they all appear.
-    s.app.clock.set(s.start);
+    s.app.clock.advance(Duration::minutes(4));
+    assert_eq!(s.pick(&s.bob, &valid()).await.status, StatusCode::OK);
+    assert_eq!(s.view(&s.bob).await["lock"]["locks_at"], json!(closes));
+    s.app.clock.set(closes);
     let after = s.view(&s.bob).await;
+    assert_eq!(after["lock"]["locked_at"], json!(closes));
     let all = after["pickems"].as_array().unwrap();
     assert_eq!(all.len(), 2);
-    let alice = all.iter().find(|p| p["nickname"] == "alice").unwrap();
-    assert_eq!(alice["three_nil"], json!([1, 4]));
+    assert!(all.iter().all(|p| p["three_nil"] == json!([1, 4])));
+    assert_rejected(
+        &s.pick(&s.bob, &CHANGED()).await,
+        StatusCode::CONFLICT,
+        "pickem_locked",
+    );
+}
+
+#[tokio::test]
+async fn the_stage_deadline_caps_the_final_edit_window() {
+    let s = setup().await;
+    s.pick(&s.alice, &valid()).await;
+    s.app.clock.set(s.start - Duration::minutes(1));
+    s.pick(&s.bob, &CHANGED()).await;
+    assert_eq!(s.view(&s.bob).await["lock"]["locks_at"], json!(s.start));
+    s.app.clock.set(s.start);
+    assert_rejected(
+        &s.pick(&s.bob, &valid()).await,
+        StatusCode::CONFLICT,
+        "pickem_locked",
+    );
+    assert_eq!(
+        s.view(&s.alice).await["pickems"].as_array().unwrap().len(),
+        2
+    );
 }
 
 #[tokio::test]

@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { ApiError, errorMessage } from "../../api/client";
 import { Avatar } from "../../components/Avatar";
 import { TeamLogo } from "../../components/TeamLogo";
-import { useLoad } from "../../api/useLoad";
-import { getPickem, savePickem, type PickemView, type SwissBody } from "./api";
+import { StageStatus, useStagePickem } from "./StageStatus";
+import { savePickem, type PickemView, type SwissBody } from "./api";
 
 type Choice = "three_nil" | "zero_three" | "advance";
 const CHOICES: Choice[] = ["three_nil", "advance", "zero_three"];
@@ -22,11 +22,13 @@ export function PickemStage({
   onSaved: () => void;
 }) {
   const { t } = useTranslation("pickem");
-  const { result, reload } = useLoad(() => getPickem(league, stage), [league, stage]);
+  const { result, reload } = useStagePickem(league, stage, onSaved);
   const [draft, setDraft] = useState<Record<number, Choice>>({});
   const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
+
+  const savedAt = result.state === "ready" ? result.data.my_pickem?.updated_at : undefined;
 
   useEffect(() => {
     if (result.state !== "ready") return;
@@ -34,7 +36,7 @@ export function PickemStage({
     const next: Record<number, Choice> = {};
     if (mine?.shape === "swiss") for (const c of CHOICES) for (const team of mine[c]) next[team] = c;
     setDraft(next);
-  }, [result]);
+  }, [league, stage, savedAt]);
 
   if (result.state === "loading") return <p className="text-mute">{t("loading")}</p>;
   if (result.state === "error") return <p className="text-danger">{errorMessage(t, result.error)}</p>;
@@ -65,6 +67,7 @@ export function PickemStage({
     setError(null);
     try {
       await savePickem(league, stage, body);
+      reload();
       onSaved();
     } catch (e) {
       setError(e);
@@ -76,15 +79,15 @@ export function PickemStage({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-mute">
-        {view.lock.locked
-          ? t("locked")
-          : view.lock.locks_at
-            ? t("locksAt", { time: new Date(view.lock.locks_at).toLocaleString() })
-            : t("lockUnknown")}
-      </p>
+      <StageStatus view={view} />
+      {!view.lock.locked && !view.lock.can_edit && view.my_pickem?.shape === "swiss" && (
+        <div className="card flex flex-col gap-2 p-4">
+          <h3 className="font-semibold">{t("waitingToReveal")}</h3>
+          <SwissPicks picks={view.my_pickem} nameOf={nameOf} />
+        </div>
+      )}
 
-      {!view.lock.locked && (
+      {view.lock.can_edit && (
         <div className="card flex flex-col gap-5 p-4 sm:p-6" aria-busy={saving}>
           <p className="text-sm text-mute">{t("boardHelp")}</p>
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
@@ -149,7 +152,7 @@ export function PickemStage({
           </div>
           {error != null && <p className="text-danger">{errorMessage(t, error)}</p>}
           <button type="button" className="btn-primary self-start" disabled={!complete || saving} onClick={save}>
-            {saving ? t("common:saving") : t("save")}
+            {saving ? t("common:saving") : t(view.my_pickem ? "saveChanges" : "save")}
           </button>
         </div>
       )}
@@ -172,23 +175,30 @@ function LockedView({ view, nameOf }: { view: PickemView; nameOf: (id: number) =
             <span className="ml-auto font-display text-gold-a">{t("points", { count: p.points })}</span>
           </div>
           {p.shape === "swiss" && (
-            <div className="grid gap-2 md:grid-cols-[1fr_2fr_1fr]">
-              {CHOICES.map((choice) => (
-                <section key={choice} className="rounded-lg border border-line bg-ink p-3">
-                  <h3 className="mb-2 text-sm font-bold text-gold-a">{t(`kind.${choice}`)}</h3>
-                  <ul className="flex flex-wrap gap-2">
-                    {p[choice].map((team) => (
-                      <li key={team} className="flex items-center gap-1.5 rounded bg-raised px-2 py-1 text-xs">
-                        <TeamLogo id={team} className="size-5" />{nameOf(team)}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
+            <SwissPicks picks={p} nameOf={nameOf} />
           )}
         </li>
       ))}
     </ul>
+  );
+}
+
+function SwissPicks({ picks, nameOf }: { picks: SwissBody; nameOf: (id: number) => string }) {
+  const { t } = useTranslation("pickem");
+  return (
+    <div className="grid gap-2 md:grid-cols-[1fr_2fr_1fr]">
+      {CHOICES.map((choice) => (
+        <section key={choice} className="rounded-lg border border-line bg-ink p-3">
+          <h3 className="mb-2 text-sm font-bold text-gold-a">{t(`kind.${choice}`)}</h3>
+          <ul className="flex flex-wrap gap-2">
+            {picks[choice].map((team) => (
+              <li key={team} className="flex items-center gap-1.5 rounded bg-raised px-2 py-1 text-xs">
+                <TeamLogo id={team} className="size-5" />{nameOf(team)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
   );
 }

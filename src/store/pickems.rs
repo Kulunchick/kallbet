@@ -41,10 +41,14 @@ pub async fn save(
         .execute(&mut *tx)
         .await?;
     let locked: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM pickem_locks WHERE league_id = ? AND stage_ordinal = ?)",
+        "SELECT EXISTS (SELECT 1 FROM pickem_locks WHERE league_id = ?1 AND stage_ordinal = ?2)
+         OR EXISTS (SELECT 1 FROM pickem_edit_windows WHERE league_id = ?1 AND stage_ordinal = ?2
+                    AND (user_id != ?3 OR ends_at <= ?4))",
     )
     .bind(league)
     .bind(stage.0)
+    .bind(user)
+    .bind(now)
     .fetch_one(&mut *tx)
     .await?;
     if locked {
@@ -121,15 +125,38 @@ pub async fn for_stage(
         .collect())
 }
 
-/// The Stage Pick'em's Lock as of `now`, stored the first time it is seen
-/// (so a later postponement cannot undo it).
+pub struct StageState {
+    pub locked_at: Option<DateTime<Utc>>,
+    pub locks_at: Option<DateTime<Utc>>,
+    pub edit_window: Option<(UserId, DateTime<Utc>)>,
+    pub members: Vec<UserId>,
+    pub submitted: Vec<UserId>,
+}
+
+impl StageState {
+    pub fn can_edit(&self, user: UserId) -> bool {
+        self.locked_at.is_none() && self.edit_window.is_none_or(|(owner, _)| owner == user)
+    }
+
+    pub fn is_final_submission(&self, user: UserId) -> bool {
+        self.edit_window.is_none()
+            && self.members.contains(&user)
+            && !self.submitted.contains(&user)
+            && self
+                .members
+                .iter()
+                .all(|member| *member == user || self.submitted.contains(member))
+    }
+}
+
+/// Evaluates and persists the lock under the caller's write transaction.
 pub async fn evaluate_lock(
     db: &mut SqliteConnection,
     league: LeagueId,
     view: &EventView,
     stage: StageOrdinal,
     now: DateTime<Utc>,
-) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+) -> Result<StageState, sqlx::Error> {
     let stored: Option<DateTime<Utc>> = sqlx::query_scalar(
         "SELECT locked_at FROM pickem_locks WHERE league_id = ? AND stage_ordinal = ?",
     )
@@ -137,13 +164,46 @@ pub async fn evaluate_lock(
     .bind(stage.0)
     .fetch_optional(&mut *db)
     .await?;
-    let locked_at = pickem::lock(view, stage, stored, now);
+    let edit_window: Option<(UserId, DateTime<Utc>)> = sqlx::query_as(
+        "SELECT user_id, ends_at FROM pickem_edit_windows WHERE league_id = ? AND stage_ordinal = ?",
+    )
+    .bind(league)
+    .bind(stage.0)
+    .fetch_optional(&mut *db)
+    .await?;
+    let (members, submitted): (Vec<_>, Vec<_>) = {
+        let rows: Vec<(UserId, bool)> = sqlx::query_as(
+            "SELECT m.user_id, p.user_id IS NOT NULL FROM memberships m
+             LEFT JOIN pickems p ON p.league_id = m.league_id AND p.user_id = m.user_id
+                                AND p.stage_ordinal = ?
+             WHERE m.league_id = ? AND m.left_at IS NULL",
+        )
+        .bind(stage.0)
+        .bind(league)
+        .fetch_all(&mut *db)
+        .await?;
+        (
+            rows.iter().map(|&(user, _)| user).collect(),
+            rows.into_iter()
+                .filter_map(|(user, picked)| picked.then_some(user))
+                .collect(),
+        )
+    };
+    let early = match edit_window {
+        Some((_, ends)) => (ends <= now).then_some(ends),
+        None => (!members.is_empty() && members.len() == submitted.len()).then_some(now),
+    };
+    let locked_at = stored.or_else(|| {
+        pickem::lock(view, stage, None, now)
+            .into_iter()
+            .chain(early)
+            .min()
+    });
     if stored.is_none()
         && let Some(at) = locked_at
     {
         sqlx::query(
-            "INSERT OR IGNORE INTO pickem_locks (league_id, stage_ordinal, locked_at) \
-             VALUES (?, ?, ?)",
+            "INSERT INTO pickem_locks (league_id, stage_ordinal, locked_at) VALUES (?, ?, ?)",
         )
         .bind(league)
         .bind(stage.0)
@@ -151,5 +211,35 @@ pub async fn evaluate_lock(
         .execute(&mut *db)
         .await?;
     }
-    Ok(locked_at)
+    Ok(StageState {
+        locked_at,
+        locks_at: locked_at.or_else(|| {
+            pickem::expected_lock(view, stage)
+                .into_iter()
+                .chain(edit_window.map(|(_, ends)| ends))
+                .min()
+        }),
+        edit_window,
+        members,
+        submitted,
+    })
+}
+
+pub async fn open_edit_window(
+    db: &mut SqliteConnection,
+    league: LeagueId,
+    stage: StageOrdinal,
+    user: UserId,
+    now: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO pickem_edit_windows (league_id, stage_ordinal, user_id, ends_at) VALUES (?, ?, ?, ?)",
+    )
+    .bind(league)
+    .bind(stage.0)
+    .bind(user)
+    .bind(now + crate::domain::lock_reveal::FINAL_EDIT_WINDOW)
+    .execute(db)
+    .await?;
+    Ok(())
 }

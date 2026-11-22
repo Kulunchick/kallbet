@@ -31,7 +31,9 @@ export type MemberPickem = Pickem & {
 export type PickemView = {
   stage: { ordinal: number; kind: "swiss" | "playoffs" | "groups"; name: string };
   teams: TeamRef[];
-  lock: { locks_at: string | null; locked_at: string | null; locked: boolean };
+  lock: { locks_at: string | null; locked_at: string | null; locked: boolean; can_edit: boolean; edit_window: boolean };
+  submitted: number;
+  eligible: number;
   my_pickem: Pickem | null;
   /** Everyone's Pick'ems: null until the Stage's Lock. */
   pickems: MemberPickem[] | null;

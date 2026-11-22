@@ -1,4 +1,10 @@
 {
+  "saveChanges": "Зберегти зміни",
+  "revealed": "Pick’em закрито. Прогнози відкрито.",
+  "finalEditUntil": "Ви можете змінити Pick’em до {{time}}.",
+  "revealAt": "Pick’em учасників відкриються о {{time}}.",
+  "submittedCount": "Надіслано {{count}} з {{eligible}}",
+  "waitingToReveal": "Ваш збережений Pick’em",
   "boardHelp": "Перетягніть команду до групи або виберіть її й натисніть на вільне місце. Виберіть дві команди на 3–0, шість на вихід і дві на 0–3.",
   "removeTeam": "Прибрати {{team}}",
   "fillSlot": "Заповнити місце {{number}} у групі {{group}}",

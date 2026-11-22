@@ -92,7 +92,7 @@ async fn predict(
         .bind(league.id)
         .bind(match_id)
         .bind(user)
-        .bind(now + chrono::Duration::minutes(5))
+        .bind(now + crate::domain::lock_reveal::FINAL_EDIT_WINDOW)
         .execute(&mut *db)
         .await?;
     }

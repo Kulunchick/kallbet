@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { ApiError, errorMessage } from "../../api/client";
 import { Avatar } from "../../components/Avatar";
 import { TeamLogo } from "../../components/TeamLogo";
-import { useLoad } from "../../api/useLoad";
-import { getPickem, savePickem, type PickemView } from "./api";
+import { StageStatus, useStagePickem } from "./StageStatus";
+import { savePickem, type PickemView } from "./api";
 import { fromPicks, isComplete, participants, setWinner, slotKey, toPicks, type Slot, type Winners } from "./bracket";
 
 /** A Playoffs Stage's Pick'em: the bracket form until Lock, everyone's brackets after it. */
@@ -19,16 +19,18 @@ export function PlayoffsStage({
   onSaved: () => void;
 }) {
   const { t } = useTranslation("pickem");
-  const { result, reload } = useLoad(() => getPickem(league, stage), [league, stage]);
+  const { result, reload } = useStagePickem(league, stage, onSaved);
   const [draft, setDraft] = useState<Winners>({});
   const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
+
+  const savedAt = result.state === "ready" ? result.data.my_pickem?.updated_at : undefined;
 
   useEffect(() => {
     if (result.state !== "ready") return;
     const mine = result.data.my_pickem;
     setDraft(mine?.shape === "playoffs" ? fromPicks(mine.picks) : {});
-  }, [result]);
+  }, [league, stage, savedAt]);
 
   if (result.state === "loading") return <p className="text-mute">{t("loading")}</p>;
   if (result.state === "error") return <p className="text-danger">{errorMessage(t, result.error)}</p>;
@@ -43,6 +45,7 @@ export function PlayoffsStage({
     setError(null);
     try {
       await savePickem(league, stage, { picks: toPicks(slots, draft) });
+      reload();
       onSaved();
     } catch (e) {
       setError(e);
@@ -54,17 +57,17 @@ export function PlayoffsStage({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-mute">
-        {view.lock.locked
-          ? t("lockedBracket")
-          : view.lock.locks_at
-            ? t("locksAt", { time: new Date(view.lock.locks_at).toLocaleString() })
-            : t("lockUnknown")}
-      </p>
+      <StageStatus view={view} />
+      {!view.lock.locked && !view.lock.can_edit && view.my_pickem?.shape === "playoffs" && (
+        <div className="card flex flex-col gap-2 p-4">
+          <h3 className="font-semibold">{t("waitingToReveal")}</h3>
+          <Bracket slots={slots} winners={fromPicks(view.my_pickem.picks)} nameOf={nameOf} readOnly />
+        </div>
+      )}
 
       {!view.lock.locked && !view.bracket?.ready && <p className="card p-5 text-mute">{t("bracketNotReady")}</p>}
 
-      {!view.lock.locked && view.bracket?.ready && (
+      {view.lock.can_edit && view.bracket?.ready && (
         <div className="card flex flex-col gap-4 p-5">
           <p className="text-sm text-mute">{t("bracketHelp")}</p>
           <Bracket
@@ -83,7 +86,7 @@ export function PlayoffsStage({
             disabled={saving || !isComplete(slots, draft)}
             onClick={save}
           >
-            {saving ? t("common:saving") : t("save")}
+            {saving ? t("common:saving") : t(view.my_pickem ? "saveChanges" : "save")}
           </button>
         </div>
       )}

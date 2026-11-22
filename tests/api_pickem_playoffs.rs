@@ -156,23 +156,24 @@ async fn saving_again_replaces_the_bracket() {
 }
 
 #[tokio::test]
-async fn other_members_brackets_are_hidden_until_the_first_match_starts() {
+async fn other_members_brackets_are_hidden_until_the_final_edit_window_expires() {
     let s = quarterfinals().await;
     s.alice.put(&s.url(1), &valid()).await;
     s.bob.put(&s.url(1), &valid()).await;
 
-    // Everyone has picked, yet nothing about the others is returned and the
-    // Pick'em is not Locked, even after the Matches' own Lock (15 minutes
-    // before the start): the Pick'em Locks at the start itself.
-    s.app.clock.set(s.start - Duration::minutes(1));
+    let closes = s.app.clock.now() + Duration::minutes(5);
+    s.app.clock.advance(Duration::minutes(1));
     let before = s.view(&s.bob, 1).await;
     assert_eq!(before["pickems"], Value::Null);
     assert_eq!(before["lock"]["locked"], false);
+    assert_eq!(before["lock"]["can_edit"], true);
+    assert_eq!(before["lock"]["locks_at"], json!(closes));
     assert!(!serde_json::to_string(&before).unwrap().contains("alice"));
     assert_eq!(s.bob.put(&s.url(1), &valid()).await.status, StatusCode::OK);
 
-    s.app.clock.set(s.start);
+    s.app.clock.set(closes);
     let after = s.view(&s.bob, 1).await;
+    assert_eq!(after["lock"]["locked_at"], json!(closes));
     let all = after["pickems"].as_array().unwrap();
     assert_eq!(all.len(), 2);
     let alice = all.iter().find(|p| p["nickname"] == "alice").unwrap();

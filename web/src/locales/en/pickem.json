@@ -1,4 +1,10 @@
 {
+  "saveChanges": "Save changes",
+  "revealed": "Pick’em is locked. Predictions are revealed.",
+  "finalEditUntil": "You can change your Pick’em until {{time}}.",
+  "revealAt": "Pick’ems will be revealed at {{time}}.",
+  "submittedCount": "{{count}} / {{eligible}} submitted",
+  "waitingToReveal": "Your saved Pick’em",
   "boardHelp": "Drag a team into a group or select a team and tap an empty slot. Pick two for 3–0, six to advance and two for 0–3.",
   "removeTeam": "Remove {{team}}",
   "fillSlot": "Fill {{group}} slot {{number}}",

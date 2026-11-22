@@ -24,6 +24,7 @@ use super::{Match, MatchStatus, UserId};
 
 /// Lock is this long before the Scheduled Start.
 pub const LOCK_BEFORE_START: Duration = Duration::minutes(15);
+pub const FINAL_EDIT_WINDOW: Duration = Duration::minutes(5);
 
 /// One stretch of a User's membership in the League (`left_at` is `None`
 /// while still a Member). Eligible Members are derived from these.

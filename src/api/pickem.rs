@@ -25,7 +25,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::SqliteConnection;
 
-use crate::api::leagues::{require_member, require_writable};
+use crate::api::leagues::require_writable;
 use crate::api::matches::TeamView;
 use crate::auth::session::CurrentUser;
 use crate::db;
@@ -71,31 +71,37 @@ async fn leaderboard(
     CurrentUser(user): CurrentUser,
     Path(id): Path<LeagueId>,
 ) -> ApiResult<Json<Leaderboard>> {
-    let (league, _) = require_member(&state, &user, id).await?;
+    let mut conn = db::begin_write(&state.db).await?;
+    let (league, _) = leagues::member_of(&mut *conn, id, user.id)
+        .await?
+        .ok_or_else(ApiError::not_found)?;
     let now = state.clock.now();
-    let view = league_matches::evaluate(&state.db, &league, now).await?.view;
+    let (view, _) = league_matches::effective_view_and_overrides(&mut conn, &league).await?;
+    let mut members = leagues::members(&mut *conn, league.id).await?;
     let mut points: HashMap<UserId, u32> = HashMap::new();
-    let mut conn = state.db.acquire().await?;
     for stage in view
         .stages
         .iter()
         .filter(|s| matches!(s.kind, StageKind::Swiss | StageKind::Playoffs))
     {
-        if pickems::evaluate_lock(&mut conn, league.id, &view, stage.ordinal, now)
-            .await?
-            .is_none()
-        {
+        let stage_state =
+            pickems::evaluate_lock(&mut conn, league.id, &view, stage.ordinal, now).await?;
+        let Some(locked_at) = stage_state.locked_at else {
             continue;
-        }
+        };
         let outcomes = pickem::swiss_outcomes(&view, stage.ordinal);
         let bracket = Bracket::of(&view, stage.ordinal);
         for stored in pickems::for_stage(&mut conn, league.id, stage.ordinal).await? {
-            *points.entry(stored.user_id).or_default() +=
-                stored_points(stage.kind, &bracket, &outcomes, &stored.picks);
+            if members
+                .iter()
+                .any(|m| m.user_id == stored.user_id && m.joined_at <= locked_at)
+            {
+                *points.entry(stored.user_id).or_default() +=
+                    stored_points(stage.kind, &bracket, &outcomes, &stored.picks);
+            }
         }
     }
-    drop(conn);
-    let mut members = leagues::members(&state.db, league.id).await?;
+    conn.commit().await?;
     members.sort_by_key(|m| m.nickname.to_lowercase());
     let entries = pickem::rank(
         members
@@ -184,10 +190,12 @@ struct StageInfo {
 
 #[derive(Serialize)]
 struct LockJson {
-    /// When the Lock is expected: the Scheduled Start of the Stage's first Match.
+    /// Earliest expected close from the Stage deadline and final edit window.
     locks_at: Option<DateTime<Utc>>,
     locked_at: Option<DateTime<Utc>>,
     locked: bool,
+    can_edit: bool,
+    edit_window: bool,
 }
 
 /// Another Member's Pick'em. Only ever sent after Lock.
@@ -231,6 +239,8 @@ struct PickemView {
     teams: Vec<TeamView>,
     lock: LockJson,
     my_pickem: Option<PickemJson>,
+    submitted: usize,
+    eligible: usize,
     /// Every current Member's Pick'em: `null` until the Stage's Lock.
     pickems: Option<Vec<MemberPickem>>,
     /// The Playoffs Stage's bracket; absent for a Swiss Stage.
@@ -305,15 +315,18 @@ async fn show(
     CurrentUser(user): CurrentUser,
     Path((id, ordinal)): Path<(LeagueId, StageOrdinal)>,
 ) -> ApiResult<Json<PickemView>> {
-    let (league, _) = require_member(&state, &user, id).await?;
+    let mut conn = db::begin_write(&state.db).await?;
+    let (league, _) = leagues::member_of(&mut *conn, id, user.id)
+        .await?
+        .ok_or_else(ApiError::not_found)?;
     let now = state.clock.now();
-    let matches = league_matches::evaluate(&state.db, &league, now).await?;
-    let view = &matches.view;
+    let (view, _) = league_matches::effective_view_and_overrides(&mut conn, &league).await?;
+    let view = &view;
     let stage = pickem_stage(view, ordinal)?;
-    let mut conn = state.db.acquire().await?;
-    let locked_at = pickems::evaluate_lock(&mut conn, league.id, view, ordinal, now).await?;
+    let stage_state = pickems::evaluate_lock(&mut conn, league.id, view, ordinal, now).await?;
     let all = pickems::for_stage(&mut conn, league.id, ordinal).await?;
-    drop(conn);
+    let members = leagues::members(&mut *conn, league.id).await?;
+    conn.commit().await?;
     let bracket = Bracket::of(view, ordinal);
     let outcomes = pickem::swiss_outcomes(view, ordinal);
 
@@ -322,17 +335,20 @@ async fn show(
         .find(|p| p.user_id == user.id)
         .map(|p| stored_json(stage.kind, &bracket, &p.picks, p.updated_at));
     // Other Members' Pick'ems exist in the response only after Lock.
-    let others = if locked_at.is_some() {
-        let members = leagues::members(&state.db, league.id).await?;
+    let eligible: Vec<_> = members
+        .iter()
+        .filter(|m| stage_state.locked_at.is_none_or(|at| m.joined_at <= at))
+        .collect();
+    let others = if stage_state.locked_at.is_some() {
         Some(
-            members
-                .into_iter()
+            eligible
+                .iter()
                 .filter_map(|m| {
                     let p = all.iter().find(|p| p.user_id == m.user_id)?;
                     Some(MemberPickem {
                         user_id: m.user_id,
-                        nickname: m.nickname,
-                        avatar_url: m.avatar_url,
+                        nickname: m.nickname.clone(),
+                        avatar_url: m.avatar_url.clone(),
                         pickem: stored_json(stage.kind, &bracket, &p.picks, p.updated_at),
                         points: stored_points(stage.kind, &bracket, &outcomes, &p.picks),
                     })
@@ -377,11 +393,18 @@ async fn show(
         },
         teams,
         lock: LockJson {
-            locks_at: pickem::expected_lock(view, ordinal),
-            locked_at,
-            locked: locked_at.is_some(),
+            locks_at: stage_state.locks_at,
+            locked_at: stage_state.locked_at,
+            locked: stage_state.locked_at.is_some(),
+            can_edit: stage_state.can_edit(user.id) && league.archived_at.is_none(),
+            edit_window: stage_state.edit_window.is_some() && stage_state.locked_at.is_none(),
         },
         my_pickem: mine,
+        submitted: eligible
+            .iter()
+            .filter(|m| stage_state.submitted.contains(&m.user_id))
+            .count(),
+        eligible: eligible.len(),
         pickems: others,
         bracket: bracket_view,
     }))
@@ -393,11 +416,13 @@ async fn save(
     Path((id, ordinal)): Path<(LeagueId, StageOrdinal)>,
     Json(body): Json<serde_json::Value>,
 ) -> ApiResult<Json<PickemJson>> {
-    let (league, _) = require_member(&state, &user, id).await?;
-    require_writable(&league)?;
     // Check and write are one write transaction (ADR-0003): no Lock can be
     // stored between them, and `now` is read once it holds the write lock.
     let mut tx = db::begin_write(&state.db).await?;
+    let (league, _) = leagues::member_of(&mut *tx, id, user.id)
+        .await?
+        .ok_or_else(ApiError::not_found)?;
+    require_writable(&league)?;
     let now = state.clock.now();
     let result = save_in(&mut tx, &league, user.id, ordinal, body, now).await;
     db::finish(tx, result).await.map(Json)
@@ -411,14 +436,12 @@ async fn save_in(
     body: serde_json::Value,
     now: DateTime<Utc>,
 ) -> ApiResult<PickemJson> {
-    let matches = league_matches::evaluate_in(db, league, now).await?;
-    let view = &matches.view;
+    let (view, _) = league_matches::effective_view_and_overrides(db, league).await?;
+    let view = &view;
     let stage = pickem_stage(view, ordinal)?;
     // Lock is re-checked on the server, so a stale page cannot bypass it.
-    if pickems::evaluate_lock(db, league.id, view, ordinal, now)
-        .await?
-        .is_some()
-    {
+    let stage_state = pickems::evaluate_lock(db, league.id, view, ordinal, now).await?;
+    if !stage_state.can_edit(user) {
         return Err(ApiError::conflict("pickem_locked"));
     }
     // A body of the wrong shape for the Stage is a wrong count of picks.
@@ -446,6 +469,9 @@ async fn save_in(
     };
     if !pickems::save(db, league.id, ordinal, user, &picks, now).await? {
         return Err(ApiError::conflict("pickem_locked"));
+    }
+    if stage_state.is_final_submission(user) {
+        pickems::open_edit_window(db, league.id, ordinal, user, now).await?;
     }
     Ok(saved)
 }
