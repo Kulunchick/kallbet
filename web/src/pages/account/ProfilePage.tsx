@@ -26,17 +26,30 @@ function Profile({ user }: { user: User }) {
 
   const changed = nickname.trim() !== user.nickname;
 
+  const [pending, setPending] = useState(false);
+
+  async function save(changes: Parameters<typeof updateMe>[0], onSaved = setUser) {
+    if (pending) return;
+    setError(null);
+    setPending(true);
+    try {
+      onSaved(await updateMe(changes));
+    } catch (error) {
+      setError(error);
+    } finally {
+      setPending(false);
+    }
+  }
+
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
+    if (!changed) return;
     setSaved(false);
-    updateMe({ nickname })
-      .then((updated) => {
-        setUser(updated);
-        setNickname(updated.nickname);
-        setSaved(true);
-      })
-      .catch(setError);
+    void save({ nickname }, (updated) => {
+      setUser(updated);
+      setNickname(updated.nickname);
+      setSaved(true);
+    });
   };
 
   return (
@@ -54,6 +67,7 @@ function Profile({ user }: { user: User }) {
           id="nickname"
           value={nickname}
           maxLength={NICKNAME_MAX}
+          disabled={pending}
           onChange={(event) => {
             setNickname(event.target.value);
             setSaved(false);
@@ -67,7 +81,7 @@ function Profile({ user }: { user: User }) {
           </p>
         )}
         {saved && <p className="text-sm text-emerald-b">{t("profile.saved")}</p>}
-        <button type="submit" className="btn-primary self-start" disabled={!changed}>
+        <button type="submit" className="btn-primary self-start" disabled={!changed || pending}>
           {t("profile.save")}
         </button>
       </form>
@@ -81,7 +95,8 @@ function Profile({ user }: { user: User }) {
               type="button"
               lang={language}
               aria-pressed={language === user.language}
-              onClick={() => void updateMe({ language }).then(setUser)}
+              disabled={pending}
+              onClick={() => void save({ language })}
               className={language === user.language ? "btn-primary !py-2" : "btn-ghost !py-2"}
             >
               {t(`common:language.${language}`)}
@@ -97,8 +112,9 @@ function Profile({ user }: { user: User }) {
             <input
               type="checkbox"
               checked={user.notifications[type]}
+              disabled={pending}
               onChange={(event) =>
-                void updateMe({ notifications: { [type]: event.target.checked } }).then(setUser)
+                void save({ notifications: { [type]: event.target.checked } })
               }
               className="mt-0.5 size-4 accent-emerald-500"
             />

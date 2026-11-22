@@ -13,7 +13,7 @@ use serde::Serialize;
 
 use crate::api::leagues::require_member;
 use crate::auth::session::CurrentUser;
-use crate::domain::scoring::{self, ScoredMatch, LeaderboardRow};
+use crate::domain::scoring::{self, LeaderboardRow, ScoredMatch};
 use crate::domain::{LeagueId, StageKind, UserId};
 use crate::error::ApiResult;
 use crate::league_matches::{self, LeagueMatches};
@@ -34,6 +34,7 @@ pub fn ranking(matches: &LeagueMatches, members: &[UserId]) -> Vec<LeaderboardRo
         .iter()
         .map(|m| ScoredMatch {
             game: &m.data,
+            points: matches.points_for(m.data.stage),
             playoffs: matches
                 .view
                 .stage(m.data.stage)

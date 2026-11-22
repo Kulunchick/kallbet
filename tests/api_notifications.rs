@@ -136,6 +136,7 @@ impl Setup {
 async fn an_early_reveal_is_announced_once_to_every_eligible_member() {
     let s = setup().await;
     s.everyone_predicts().await;
+    s.app.clock.advance(Duration::minutes(5));
 
     poller::tick(&s.app.state).await;
     poller::tick(&s.app.state).await;
@@ -182,7 +183,7 @@ async fn nothing_is_announced_when_nobody_predicted() {
 async fn a_member_who_joined_after_the_reveal_is_not_told_about_it() {
     let s = setup().await;
     s.everyone_predicts().await;
-    s.app.clock.advance(Duration::minutes(1));
+    s.app.clock.advance(Duration::minutes(6));
     let dave = s.app.user("dave").await;
     join(&s.alice, s.league, &[&dave]).await;
 
@@ -203,6 +204,7 @@ async fn turning_reveal_announcements_off_suppresses_them() {
         .patch("/api/me", &json!({ "notifications": { "reveal": false } }))
         .await;
     s.everyone_predicts().await;
+    s.app.clock.advance(Duration::minutes(5));
 
     poller::tick(&s.app.state).await;
 

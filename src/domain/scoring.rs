@@ -48,6 +48,7 @@ pub fn judge(game: &Match, pick: Option<TeamId>) -> Verdict {
 pub struct ScoredMatch<'a> {
     pub game: &'a Match,
     pub playoffs: bool,
+    pub points: u32,
 }
 
 /// One Member's row of the Leaderboard.
@@ -96,9 +97,9 @@ pub fn leaderboard(
             };
             for scored in games {
                 let verdict = judge(scored.game, pick_of(user_id, scored.game.id));
-                row.points += verdict.points();
+                row.points += verdict.points() * scored.points;
                 if scored.playoffs {
-                    row.playoff_points += verdict.points();
+                    row.playoff_points += verdict.points() * scored.points;
                 }
                 match verdict {
                     Verdict::Correct => row.correct += 1,
@@ -123,8 +124,8 @@ pub fn leaderboard(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{MatchFormat, StageOrdinal};
     use crate::domain::MatchPlacement;
+    use crate::domain::{MatchFormat, StageOrdinal};
 
     fn game(status: MatchStatus, winner: Option<i64>) -> Match {
         Match {
@@ -193,13 +194,18 @@ mod tests {
     }
 
     /// `picks`: (user, match, team).
-    fn board(members: &[i64], games: &[(Match, bool)], picks: &[(i64, i64, i64)]) -> Vec<LeaderboardRow> {
+    fn board(
+        members: &[i64],
+        games: &[(Match, bool)],
+        picks: &[(i64, i64, i64)],
+    ) -> Vec<LeaderboardRow> {
         let members: Vec<UserId> = members.iter().map(|&u| UserId(u)).collect();
         let games: Vec<ScoredMatch> = games
             .iter()
             .map(|(game, playoffs)| ScoredMatch {
                 game,
                 playoffs: *playoffs,
+                points: 1,
             })
             .collect();
         leaderboard(&members, &games, |user, game| {

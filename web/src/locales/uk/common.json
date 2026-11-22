@@ -1,4 +1,5 @@
 {
+  "saving": "Зберігаємо…",
   "appName": "KallBET",
   "language": {
     "label": "Мова",
@@ -23,5 +24,14 @@
     "forbidden": "У вас немає прав на цю дію.",
     "not_found": "Не знайдено.",
     "league_archived": "Ця ліга в архіві: фінал завершено, вона доступна лише для читання."
+  },
+  "notices": {
+    "saved": "Готово",
+    "eventSelected": "Турнір вибрано",
+    "leagueCreated": "Лігу створено",
+    "leagueJoined": "Ви вступили до ліги",
+    "pickemSaved": "Pick’em збережено",
+    "predictionSaved": "Ставку збережено",
+    "dismiss": "Закрити"
   }
 }

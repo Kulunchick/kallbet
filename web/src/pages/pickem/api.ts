@@ -53,6 +53,6 @@ export type BracketBody = { picks: BracketPick[] };
 export const getPickem = (league: number, stage: number) =>
   api<PickemView>(`/leagues/${league}/stages/${stage}/pickem`);
 export const savePickem = (league: number, stage: number, body: SwissBody | BracketBody) =>
-  api<Pickem>(`/leagues/${league}/stages/${stage}/pickem`, { method: "PUT", body });
+  api<Pickem>(`/leagues/${league}/stages/${stage}/pickem`, { method: "PUT", success: "pickemSaved", body });
 export const getLeaderboard = (league: number) =>
   api<{ entries: LeaderboardEntry[] }>(`/leagues/${league}/pickem-leaderboard`);

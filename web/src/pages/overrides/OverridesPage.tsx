@@ -149,13 +149,19 @@ function AdminTools({
   const hiddenIds = new Set(data.hidden.map((m) => m.id));
   const all = [...visible.filter((m) => !hiddenIds.has(m.id)), ...data.hidden];
 
-  const run = async (action: () => Promise<unknown>) => {
+  const [pending, setPending] = useState<string | null>(null);
+
+  const run = async (key: string, action: () => Promise<unknown>) => {
+    if (pending !== null) return;
+    setPending(key);
     setError(null);
     try {
       await action();
       onChange();
     } catch (e) {
       setError(e);
+    } finally {
+      setPending(null);
     }
   };
 
@@ -166,11 +172,13 @@ function AdminTools({
           {errorMessage(t, error)}
         </p>
       )}
-      <OverrideForm
-        matches={all}
-        teams={data.teams}
-        onSubmit={(match, body) => run(() => setOverride(league, match, body))}
-      />
+      <fieldset disabled={pending !== null} aria-busy={pending === "override"}>
+        <OverrideForm
+          matches={all}
+          teams={data.teams}
+          onSubmit={(match, body) => run("override", () => setOverride(league, match, body))}
+        />
+      </fieldset>
       <section className="card flex flex-col gap-3 p-4">
         <h2 className="font-display text-lg font-bold text-gold-gradient">{t("inForce")}</h2>
         {inForce(data.entries).length === 0 ? (
@@ -185,7 +193,8 @@ function AdminTools({
                 <button
                   type="button"
                   className="btn-ghost"
-                  onClick={() => run(() => removeOverride(league, e.match_id, e.field))}
+                  disabled={pending !== null}
+                  onClick={() => run(String(e.id), () => removeOverride(league, e.match_id, e.field))}
                 >
                   {e.field === "hidden" ? t("unhide") : t("remove")}
                 </button>
@@ -194,7 +203,9 @@ function AdminTools({
           </ul>
         )}
       </section>
-      <AddMatchForm data={data} onSubmit={(body) => run(() => addMatch(league, body))} />
+      <fieldset disabled={pending !== null} aria-busy={pending === "add"}>
+        <AddMatchForm data={data} onSubmit={(body) => run("add", () => addMatch(league, body))} />
+      </fieldset>
       <section className="card flex flex-col gap-3 p-4">
         <h2 className="font-display text-lg font-bold text-gold-gradient">{t("warnings.title")}</h2>
         <p className="text-xs text-mute">{t("warnings.hint")}</p>

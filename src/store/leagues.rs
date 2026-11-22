@@ -186,8 +186,8 @@ pub async fn membership(
 
 /// The League and `user`'s current membership in it, read in one query (so
 /// both come from the same League row); `None` when either is missing.
-pub async fn member_of(
-    db: &SqlitePool,
+pub async fn member_of<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
     league: LeagueId,
     user: UserId,
 ) -> Result<Option<(League, Membership)>, sqlx::Error> {

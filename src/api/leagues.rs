@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::api::{events, leaderboard};
 use crate::auth::session::CurrentUser;
 use crate::domain::league::clean_league_name;
-use crate::domain::{Event, EventId, LeagueId, Role, User, UserId};
+use crate::domain::{Event, EventId, LeagueId, Role, Stage, StageOrdinal, User, UserId};
 use crate::error::{ApiError, ApiResult};
 use crate::league_matches;
 use crate::state::AppState;
@@ -25,6 +25,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/leagues", post(create).get(list_mine))
         .route("/leagues/{id}", get(show))
+        .route("/leagues/{id}/stage-points", put(set_stage_points))
         .route("/leagues/{id}/invite/reissue", post(reissue_invite))
         .route("/leagues/{id}/leave", post(leave))
         .route("/leagues/{id}/delete", post(delete_league))
@@ -101,6 +102,9 @@ struct LeagueDetail {
     is_creator: bool,
     archived_at: Option<DateTime<Utc>>,
     members: Vec<MemberView>,
+    stages: Vec<Stage>,
+    matches_pending: bool,
+    stage_points: Vec<StagePoints>,
     /// Only League Admins get the Invite Link secret.
     #[serde(skip_serializing_if = "Option::is_none")]
     invite_token: Option<String>,
@@ -124,7 +128,17 @@ async fn detail(
             joined_at: m.joined_at,
         })
         .collect();
+    let view = league_matches::effective_view(&state.db, &league).await?;
+    let stage_points = sqlx::query_as(
+        "SELECT stage, points FROM league_stage_points WHERE league_id = ? ORDER BY stage",
+    )
+    .bind(league.id)
+    .fetch_all(&state.db)
+    .await?;
     Ok(LeagueDetail {
+        matches_pending: view.matches.is_empty(),
+        stages: view.stages,
+        stage_points,
         id: league.id,
         name: league.name,
         event,
@@ -135,6 +149,45 @@ async fn detail(
         members,
         invite_token: role.is_admin().then_some(league.invite_token),
     })
+}
+
+#[derive(Deserialize, Serialize, sqlx::FromRow)]
+struct StagePoints {
+    stage: StageOrdinal,
+    points: u32,
+}
+
+async fn set_stage_points(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<LeagueId>,
+    Json(settings): Json<Vec<StagePoints>>,
+) -> ApiResult<StatusCode> {
+    let (league, _) = require_member(&state, &user, id).await?;
+    if league.creator_id != user.id {
+        return Err(ApiError::forbidden());
+    }
+    let mut tx = crate::db::begin_write(&state.db).await?;
+    let (view, _) = league_matches::effective_view_and_overrides(&mut tx, &league).await?;
+    let mut seen = std::collections::HashSet::new();
+    for entry in &settings {
+        if entry.points > 1000 || view.stage(entry.stage).is_none() || !seen.insert(entry.stage) {
+            return Err(ApiError::unprocessable("stage_points_invalid"));
+        }
+    }
+    for entry in settings {
+        sqlx::query(
+            "INSERT INTO league_stage_points (league_id, stage, points) VALUES (?, ?, ?)
+             ON CONFLICT (league_id, stage) DO UPDATE SET points = excluded.points",
+        )
+        .bind(id)
+        .bind(entry.stage)
+        .bind(entry.points)
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[derive(Deserialize)]
@@ -150,13 +203,17 @@ async fn create(
 ) -> ApiResult<(StatusCode, Json<LeagueDetail>)> {
     let name =
         clean_league_name(&body.name).ok_or(ApiError::unprocessable("league_name_invalid"))?;
-    let snapshot = events::fetch(&state, body.event_id).await?;
-    event_store::upsert(&state.db, &snapshot.event).await?;
-    // `body.event_id` may name one Stage of a Major; the League is on the
-    // Major (the snapshot's Event).
+    let event = match event_store::find(&state.db, body.event_id).await? {
+        Some(event) => event,
+        None => {
+            let event = events::fetch(&state, body.event_id).await?.event;
+            event_store::upsert(&state.db, &event).await?;
+            event
+        }
+    };
     let league = leagues::create(
         &state.db,
-        snapshot.event.id,
+        event.id,
         &name,
         user.id,
         &new_invite_token(),

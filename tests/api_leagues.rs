@@ -65,10 +65,15 @@ async fn the_event_list_is_served_from_the_stored_copy() {
         assert_eq!(res.status, StatusCode::OK);
         assert_eq!(res.json()[0]["id"], EVENT);
     }
-    assert_eq!(app.source.list_events_calls(), 1, "no request reached the source");
+    assert_eq!(
+        app.source.list_events_calls(),
+        1,
+        "no request reached the source"
+    );
 
     // A source failure later does not empty the list either.
-    app.source.fail_with(SourceError::Unavailable("down".into()));
+    app.source
+        .fail_with(SourceError::Unavailable("down".into()));
     let res = alice.get("/api/events").await;
     assert_eq!(res.status, StatusCode::OK);
     assert_eq!(res.json()[0]["id"], EVENT);
@@ -437,4 +442,17 @@ async fn the_creator_cannot_leave() {
 
     assert_eq!(res.status, StatusCode::CONFLICT);
     assert_eq!(res.error_code(), "creator_cannot_leave");
+}
+
+#[tokio::test]
+async fn a_listed_event_can_create_a_league_without_fetching_its_schedule() {
+    let app = app_with_event().await;
+    let alice = app.user("alice").await;
+    assert_eq!(alice.get("/api/events").await.status, StatusCode::OK);
+    app.source
+        .fail_with(SourceError::Unavailable("down".into()));
+
+    let league = create(&alice, "Friends").await;
+    assert_eq!(league["matches_pending"], true);
+    assert_eq!(app.source.total_fetch_event_calls(), 0);
 }

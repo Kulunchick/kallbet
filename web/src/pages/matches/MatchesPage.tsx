@@ -27,7 +27,7 @@ export function MatchesPage() {
   const { result, reload } = useLoad(() => getMatches(league), [league]);
   const now = useNow();
   const [view, setView] = useState<MatchesView | null>(null);
-  const [saving, setSaving] = useState<number | null>(null);
+  const [saving, setSaving] = useState<Set<number>>(() => new Set());
   const [error, setError] = useState<{ match: number; error: unknown } | null>(null);
 
   useEffect(() => {
@@ -39,19 +39,36 @@ export function MatchesPage() {
     return () => window.clearInterval(id);
   }, [reload]);
 
+  useEffect(() => {
+    const deadlines = view?.stages.flatMap((stage) =>
+      stage.groups.flatMap((group) => group.matches.flatMap((match) =>
+        match.lock.edit_window && match.lock.locks_at ? [Date.parse(match.lock.locks_at)] : [],
+      )),
+    );
+    if (!deadlines?.length) return;
+    const next = Math.min(...deadlines);
+    const timer = window.setTimeout(reload, Math.max(0, next - Date.now()) + 250);
+    return () => window.clearTimeout(timer);
+  }, [view, reload]);
+
   async function onPredict(match: number, team: TeamRef) {
-    setSaving(match);
+    if (saving.has(match)) return;
+    setSaving((pending) => new Set(pending).add(match));
     setError(null);
     try {
       await predict(league, match, team.id);
       setView((v) => v && withPrediction(v, match, team.id));
-      // The count changed, and this Prediction may have triggered a Reveal.
+      // The count changed, and this Prediction may have opened the final edit window.
       reload();
     } catch (e) {
       setError({ match, error: e });
       reload();
     } finally {
-      setSaving(null);
+      setSaving((pending) => {
+        const next = new Set(pending);
+        next.delete(match);
+        return next;
+      });
     }
   }
 
@@ -78,7 +95,7 @@ export function MatchesPage() {
       <MatchCard
         card={card}
         now={now}
-        saving={saving === card.id}
+        saving={saving.has(card.id)}
         onPredict={(team) => void onPredict(card.id, team)}
       />
       {error?.match === card.id && <p className="px-1 text-sm text-danger">{errorMessage(t, error.error)}</p>}

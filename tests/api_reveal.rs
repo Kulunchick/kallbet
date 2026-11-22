@@ -170,7 +170,7 @@ async fn before_reveal_a_card_shows_only_the_count() {
 }
 
 #[tokio::test]
-async fn the_last_eligible_member_predicting_reveals_and_locks() {
+async fn only_the_final_voter_can_edit_until_the_original_window_expires() {
     let s = setup().await;
     s.predict(&s.alice, NAVI_FAZE, NAVI).await;
     s.predict(&s.bob, NAVI_FAZE, FAZE).await;
@@ -178,17 +178,31 @@ async fn the_last_eligible_member_predicting_reveals_and_locks() {
     let now = s.app.clock.now();
 
     s.predict(&s.carol, NAVI_FAZE, NAVI).await;
+    let end = now + Duration::minutes(5);
+    for (client, can_predict) in [(&s.alice, false), (&s.bob, false), (&s.carol, true)] {
+        let card = s.card(client, NAVI_FAZE).await;
+        assert_eq!(card["lock"]["can_predict"], can_predict);
+        assert_eq!(card["lock"]["locks_at"], json!(end));
+        assert_eq!(card["predictions"]["revealed"], Value::Null);
+    }
+    assert_eq!(
+        s.try_predict(&s.alice, NAVI_FAZE, FAZE).await.status,
+        StatusCode::CONFLICT
+    );
+    s.app.clock.advance(Duration::minutes(4));
+    s.predict(&s.carol, NAVI_FAZE, FAZE).await;
+    s.app.clock.advance(Duration::minutes(1));
 
     for client in [&s.alice, &s.bob, &s.carol] {
         let card = s.card(client, NAVI_FAZE).await;
         assert_eq!(card["lock"]["locked"], true, "{card}");
-        assert_eq!(card["lock"]["locked_at"], json!(now));
-        assert_eq!(card["predictions"]["revealed_at"], json!(now));
+        assert_eq!(card["lock"]["locked_at"], json!(end));
+        assert_eq!(card["predictions"]["revealed_at"], json!(end));
         assert_eq!(card["predictions"]["count"], 3);
         assert_eq!(card["predictions"]["eligible"], 3);
         assert_eq!(
             revealed(&card),
-            pairs(&[("alice", NAVI), ("bob", FAZE), ("carol", NAVI)])
+            pairs(&[("alice", NAVI), ("bob", FAZE), ("carol", FAZE)])
         );
     }
     // Nobody may change their Prediction after seeing the others.
@@ -246,6 +260,7 @@ async fn a_member_who_left_does_not_count_and_does_not_hold_up_reveal() {
     assert_eq!(card["predictions"]["eligible"], 2);
 
     s.predict(&s.bob, NAVI_FAZE, NAVI).await;
+    s.app.clock.advance(Duration::minutes(5));
 
     let card = s.card(&s.alice, NAVI_FAZE).await;
     assert_eq!(card["lock"]["locked"], true);
@@ -312,6 +327,7 @@ async fn a_reveal_is_never_undone() {
     for (c, team) in [(&s.alice, NAVI), (&s.bob, FAZE), (&s.carol, NAVI)] {
         s.predict(c, NAVI_FAZE, team).await;
     }
+    s.app.clock.advance(Duration::minutes(5));
     let revealed_at = s.card(&s.alice, NAVI_FAZE).await["predictions"]["revealed_at"].clone();
     assert_ne!(revealed_at, Value::Null);
 
@@ -368,6 +384,7 @@ async fn lock_and_reveal_are_per_league() {
         }
     }
 
+    s.app.clock.advance(Duration::minutes(5));
     // Duo: both Eligible Members predicted, so it Revealed and Locked early.
     let duo_card = card_in(&s.alice, duo_id, NAVI_FAZE).await;
     assert_eq!(duo_card["lock"]["locked"], true, "{duo_card}");
@@ -428,4 +445,24 @@ async fn before_reveal_no_response_carries_another_members_prediction() {
     // Other Members' Prediction responses do not carry it either.
     let res = s.predict(&s.carol, VITALITY_G2, VITALITY + 1).await;
     assert!(!res.text().contains(&format!("\"user_id\":{bob}")));
+}
+
+#[tokio::test]
+async fn the_normal_deadline_can_end_the_final_edit_window_early() {
+    let s = setup().await;
+    s.predict(&s.alice, NAVI_FAZE, NAVI).await;
+    s.predict(&s.bob, NAVI_FAZE, FAZE).await;
+
+    let lock = s.start - Duration::minutes(15);
+    s.app.clock.set(lock - Duration::minutes(2));
+    s.predict(&s.carol, NAVI_FAZE, NAVI).await;
+    let card = s.card(&s.carol, NAVI_FAZE).await;
+    assert_eq!(card["lock"]["locks_at"], json!(lock));
+    assert_eq!(card["predictions"]["revealed"], Value::Null);
+
+    s.app.clock.set(lock);
+    let result = s.try_predict(&s.carol, NAVI_FAZE, FAZE).await;
+    assert_eq!(result.error_code(), "match_locked");
+    let card = s.card(&s.carol, NAVI_FAZE).await;
+    assert_eq!(card["predictions"]["revealed_at"], json!(lock));
 }

@@ -331,3 +331,27 @@ async fn the_leaderboard_is_only_for_members() {
 
     assert_eq!(res.status, StatusCode::NOT_FOUND);
 }
+
+#[tokio::test]
+async fn only_the_creator_can_change_stage_points_and_completed_matches_are_rescored() {
+    let (s, alice) = setup().await;
+    let bob = s.member("bob").await;
+    s.predict(&alice, 101, NAVI).await;
+    s.predict(&alice, 201, SPIRIT).await;
+    s.finish(101, "NAVI").await;
+    s.finish(201, "Spirit").await;
+
+    let path = format!("/api/leagues/{}/stage-points", s.league);
+    let weights = json!([{ "stage": 1, "points": 2 }, { "stage": 2, "points": 4 }]);
+    assert_eq!(bob.put(&path, &weights).await.status, StatusCode::FORBIDDEN);
+    assert_eq!(
+        alice.put(&path, &weights).await.status,
+        StatusCode::NO_CONTENT
+    );
+
+    let board = s.board(&alice).await;
+    assert_eq!(board[0]["points"], 6);
+    assert_eq!(board[0]["playoff_points"], 4);
+    assert_eq!(board[0]["percent_correct"], 100);
+    assert_eq!(s.card(&alice, 101).await["my_points"], 2);
+}

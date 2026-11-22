@@ -1,4 +1,5 @@
 {
+  "joining": "Joining…",
   "loading": "Loading…",
   "backToLeagues": "Back to my Leagues",
   "archived": "This League is archived. It is read-only; the final results are kept.",
@@ -12,6 +13,8 @@
     "empty": "You are not in any League yet. Create one, or open an Invite Link from a friend."
   },
   "new": {
+    "creating": "Creating league…",
+    "resolving": "Finding tournament…",
     "title": "Create a League",
     "pickEvent": "Pick an Event",
     "noEvents": "No current Events are listed. Paste an HLTV event link below.",
@@ -70,5 +73,12 @@
     "confirmation_mismatch": "The name you typed does not match the League name.",
     "forbidden": "You are not allowed to do that.",
     "not_found": "This League or Member no longer exists."
+  },
+  "matchesPending": "Waiting for the tournament schedule to sync.",
+  "stagePoints": {
+    "title": "Points per correct match prediction",
+    "save": "Save points",
+    "saving": "Saving…",
+    "recalculate": "Recalculate points for all completed matches? League rankings may change."
   }
 }

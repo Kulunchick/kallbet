@@ -1,6 +1,7 @@
 // The one way the SPA talks to the JSON API. Area-specific calls live next to
 // their pages (src/pages/<area>/api.ts) and are built on `api`.
 
+import { notify } from "../components/Toasts";
 import type { TFunction } from "i18next";
 
 /** An error response: `{"error": {"code": "..."}}`. `code` is stable API. */
@@ -18,10 +19,16 @@ type Options = {
   /** Sent as JSON. */
   body?: unknown;
   signal?: AbortSignal;
+  success?: string;
 };
 
 /** Calls `/api<path>` and returns the JSON body. Throws `ApiError`. */
 export async function api<T>(path: string, options: Options = {}): Promise<T> {
+  const mutation = options.method !== undefined && options.method !== "GET";
+  const fail = (error: ApiError) => {
+    if (mutation) notify({ error: error.code });
+    throw error;
+  };
   let response: Response;
   try {
     response = await fetch(`/api${path}`, {
@@ -33,15 +40,16 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
     });
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
-    throw new ApiError(0, "network");
+    return fail(new ApiError(0, "network"));
   }
 
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
-    throw new ApiError(response.status, payload?.error?.code ?? "internal");
+    return fail(new ApiError(response.status, payload?.error?.code ?? "internal"));
   }
-  if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  const data = response.status === 204 ? undefined : await response.json();
+  if (mutation) notify({ success: options.success ?? "saved" });
+  return data as T;
 }
 
 /**

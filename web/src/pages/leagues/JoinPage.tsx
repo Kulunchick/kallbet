@@ -16,13 +16,19 @@ export function JoinPage() {
   const { result } = useLoad(() => previewInvite(token), [token, session.user?.id]);
   const [error, setError] = useState<unknown>(null);
 
+  const [joining, setJoining] = useState(false);
+
   async function join() {
+    if (joining) return;
+    setJoining(true);
     setError(null);
     try {
       const { id } = await joinLeague(token);
       navigate(`/leagues/${id}`);
     } catch (e) {
       setError(e);
+    } finally {
+      setJoining(false);
     }
   }
 
@@ -60,8 +66,8 @@ export function JoinPage() {
               {t("join.open")}
             </Link>
           ) : (
-            <button type="button" className="btn-primary" onClick={join}>
-              {t("join.button")}
+            <button type="button" className="btn-primary" disabled={joining} onClick={join}>
+              {t(joining ? "joining" : "join.button")}
             </button>
           )}
         </div>

@@ -101,6 +101,7 @@ fn digests(league: &League, matches: &LeagueMatches, now: DateTime<Utc>, out: &m
             .filter(|g| g.status == MatchStatus::Finished && !g.is_void())
             .map(|&game| ScoredMatch {
                 game,
+                points: matches.points_for(game.stage),
                 playoffs: false,
             })
             .collect();

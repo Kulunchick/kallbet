@@ -127,6 +127,7 @@ async fn a_prediction_write_after_another_members_reveal_does_not_land() {
     // alice's request to change to FaZe has checked Lock: the Match is open.
     // Before it writes, bob's last Prediction Reveals (and Locks) the Match.
     s.predict(&s.bob, FAZE).await;
+    s.app.clock.advance(Duration::minutes(5));
     assert!(s.card(&s.bob).await["lock"]["locked"].as_bool().unwrap());
 
     // alice's write runs now, with the instant of its check.

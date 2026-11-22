@@ -35,7 +35,7 @@ export type MatchCard = {
   status: MatchStatus;
   winner: number | null;
   score: { team_a: number; team_b: number } | null;
-  lock: { locks_at: string | null; locked_at: string | null; locked: boolean };
+  lock: { locks_at: string | null; locked_at: string | null; locked: boolean; edit_window: boolean; can_predict: boolean };
   my_prediction: number | null;
   predictions: Predictions;
   my_result: "pending" | "correct" | "wrong" | "missing" | "void";
@@ -68,5 +68,6 @@ export const getMatches = (league: number) => api<MatchesView>(`/leagues/${leagu
 export const predict = (league: number, match: number, team_id: number) =>
   api<Prediction>(`/leagues/${league}/matches/${match}/prediction`, {
     method: "PUT",
+    success: "predictionSaved",
     body: { team_id },
   });

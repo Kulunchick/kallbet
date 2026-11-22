@@ -46,5 +46,6 @@
     "match_locked": "This Match is Locked: Predictions can no longer be made or changed.",
     "team_not_in_match": "That team does not play in this Match.",
     "not_found": "This League or Match was not found."
-  }
+  },
+  "editWindow": "You can change your prediction for {{time}}"
 }

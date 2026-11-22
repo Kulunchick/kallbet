@@ -27,6 +27,9 @@ export type LeagueDetail = LeagueSummary & {
   creator_id: number;
   is_creator: boolean;
   members: Member[];
+  stages: { ordinal: number; name: string }[];
+  matches_pending: boolean;
+  stage_points: StagePoints[];
   /** Only League Admins receive it. */
   invite_token?: string;
 };
@@ -40,11 +43,15 @@ export type InvitePreview = {
 
 export const listEvents = () => api<EventInfo[]>("/events");
 export const resolveEvent = (link: string) =>
-  api<EventInfo>("/events/resolve", { method: "POST", body: { link } });
+  api<EventInfo>("/events/resolve", { method: "POST", success: "eventSelected", body: { link } });
 export const createLeague = (event_id: number, name: string) =>
-  api<LeagueDetail>("/leagues", { method: "POST", body: { event_id, name } });
+  api<LeagueDetail>("/leagues", { method: "POST", success: "leagueCreated", body: { event_id, name } });
 export const myLeagues = () => api<LeagueListItem[]>("/leagues");
 export const getLeague = (id: number) => api<LeagueDetail>(`/leagues/${id}`);
+export type StagePoints = { stage: number; points: number };
+
+export const saveStagePoints = (id: number, settings: StagePoints[]) =>
+  api<void>(`/leagues/${id}/stage-points`, { method: "PUT", body: settings });
 export const reissueInvite = (id: number) =>
   api<{ invite_token: string }>(`/leagues/${id}/invite/reissue`, { method: "POST" });
 export const leaveLeague = (id: number) => api<void>(`/leagues/${id}/leave`, { method: "POST" });
@@ -57,7 +64,7 @@ export const deleteLeague = (league: number, confirm_name: string) =>
 export const previewInvite = (token: string) =>
   api<InvitePreview>(`/invites/${encodeURIComponent(token)}`);
 export const joinLeague = (token: string) =>
-  api<{ id: number }>(`/invites/${encodeURIComponent(token)}/join`, { method: "POST" });
+  api<{ id: number }>(`/invites/${encodeURIComponent(token)}/join`, { method: "POST", success: "leagueJoined" });
 
 /** The Invite Link a League Admin shares. */
 export const inviteUrl = (token: string) => `${window.location.origin}/join/${token}`;

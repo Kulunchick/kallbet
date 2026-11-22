@@ -11,8 +11,8 @@ use crate::auth::session::CurrentUser;
 use crate::domain::league::parse_hltv_event_link;
 use crate::domain::{Event, EventId, EventSnapshot};
 use crate::error::{ApiError, ApiResult};
-use crate::ports::SourceError;
 use crate::poller;
+use crate::ports::SourceError;
 use crate::state::AppState;
 use crate::store::events as event_store;
 
@@ -68,5 +68,13 @@ async fn resolve(
 ) -> ApiResult<Json<Event>> {
     let id =
         parse_hltv_event_link(&body.link).ok_or(ApiError::unprocessable("invalid_hltv_link"))?;
-    Ok(Json(fetch(&state, id).await?.event))
+    let event = match event_store::find(&state.db, id).await? {
+        Some(event) => event,
+        None => {
+            let event = fetch(&state, id).await?.event;
+            event_store::upsert(&state.db, &event).await?;
+            event
+        }
+    };
+    Ok(Json(event))
 }

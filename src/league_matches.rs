@@ -13,7 +13,7 @@ use sqlx::{SqliteConnection, SqlitePool};
 
 use crate::domain::effective_match::{self, EventView, LeagueOverrides};
 use crate::domain::lock_reveal::{self, MemberSpan, Outcome};
-use crate::domain::{MatchId, StageKind, UserId};
+use crate::domain::{MatchId, StageKind, StageOrdinal, UserId};
 use crate::store::events;
 use crate::store::leagues::{self, League, MemberProfile};
 use crate::store::overrides as store_overrides;
@@ -26,6 +26,8 @@ pub struct LeagueMatches {
     pub view: EventView,
     /// The Lock/Reveal outcome of every Match in `view`.
     pub outcomes: HashMap<MatchId, Outcome>,
+    pub edit_windows: HashMap<MatchId, (UserId, DateTime<Utc>)>,
+    pub stage_points: HashMap<StageOrdinal, u32>,
     /// Every Prediction in the League. Never send other Members' ones to a
     /// client before Reveal.
     pub predictions: Vec<Prediction>,
@@ -39,6 +41,10 @@ pub struct LeagueMatches {
 }
 
 impl LeagueMatches {
+    pub fn points_for(&self, stage: StageOrdinal) -> u32 {
+        self.stage_points.get(&stage).copied().unwrap_or(1)
+    }
+
     pub fn outcome(&self, id: MatchId) -> Option<&Outcome> {
         self.outcomes.get(&id)
     }
@@ -91,7 +97,10 @@ pub async fn evaluate(
     league: &League,
     now: DateTime<Utc>,
 ) -> Result<LeagueMatches, sqlx::Error> {
-    evaluate_in(&mut *db.acquire().await?, league, now).await
+    let mut tx = crate::db::begin_write(db).await?;
+    let matches = evaluate_in(&mut tx, league, now).await?;
+    tx.commit().await?;
+    Ok(matches)
 }
 
 /// [`evaluate`] on one connection, typically a write transaction from
@@ -130,6 +139,22 @@ pub async fn evaluate_in(
         .collect();
     let stored = predictions::stamps(&mut *db, league.id).await?;
 
+    let windows: Vec<(MatchId, UserId, DateTime<Utc>)> = sqlx::query_as(
+        "SELECT match_id, user_id, ends_at FROM prediction_edit_windows WHERE league_id = ?",
+    )
+    .bind(league.id)
+    .fetch_all(&mut *db)
+    .await?;
+    let edit_windows: HashMap<_, _> = windows
+        .into_iter()
+        .map(|(game, user, end)| (game, (user, end)))
+        .collect();
+    let points: Vec<(StageOrdinal, u32)> =
+        sqlx::query_as("SELECT stage, points FROM league_stage_points WHERE league_id = ?")
+            .bind(league.id)
+            .fetch_all(&mut *db)
+            .await?;
+
     let mut outcomes = HashMap::new();
     for m in &view.matches {
         let id = m.data.id;
@@ -143,6 +168,7 @@ pub async fn evaluate_in(
             members: &members,
             predicted: &predicted,
             stored: stored.get(&id).copied().unwrap_or_default(),
+            edit_until: edit_windows.get(&id).map(|(_, end)| *end),
             now,
         });
         if !outcome.transitions.is_empty() {
@@ -164,6 +190,8 @@ pub async fn evaluate_in(
     Ok(LeagueMatches {
         view,
         outcomes,
+        edit_windows,
+        stage_points: points.into_iter().collect(),
         predictions,
         members,
         profiles: leagues::members(&mut *db, league.id).await?,

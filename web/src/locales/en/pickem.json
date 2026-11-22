@@ -1,4 +1,7 @@
 {
+  "boardHelp": "Drag a team into a group or select a team and tap an empty slot. Pick two for 3–0, six to advance and two for 0–3.",
+  "removeTeam": "Remove {{team}}",
+  "fillSlot": "Fill {{group}} slot {{number}}",
   "open": "Pick'em",
   "title": "Pick'em",
   "loading": "Loading…",

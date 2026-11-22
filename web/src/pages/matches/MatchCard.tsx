@@ -24,7 +24,7 @@ export function MatchCard({ card, now, saving, onPredict }: Props) {
   const language = i18n.resolvedLanguage ?? "en";
   const locksAt = card.lock.locks_at ? new Date(card.lock.locks_at).getTime() : null;
   const locked = card.lock.locked || (locksAt !== null && locksAt <= now);
-  const canPredict = !locked && card.team_a !== null && card.team_b !== null && !saving;
+  const canPredict = card.lock.can_predict && !locked && card.team_a !== null && card.team_b !== null && !saving;
   const isVoid = cardState(card) === "void";
 
   return (
@@ -150,7 +150,7 @@ function TeamButton({
       className={`flex min-w-0 items-center justify-center gap-2 rounded-xl border px-3 py-3 font-bold transition disabled:cursor-default disabled:hover:border-line ${look}`}
     >
       <TeamLogo id={team.id} />
-      <span className={`truncate ${winner ? "underline decoration-gold-a decoration-2 underline-offset-4" : ""}`}>
+      <span className={`truncate ${winner ? "font-bold text-gold-a" : ""}`}>
         {team.name}
       </span>
     </button>
@@ -183,7 +183,7 @@ function LockLine({
   if (locksAt === null) return <span className="text-mute">{t("lockUnknown")}</span>;
   return (
     <span className="font-semibold text-emerald-b">
-      {t("locksIn", { time: formatSpan(t, locksAt - now) })}
+      {t(card.lock.edit_window && card.lock.can_predict ? "editWindow" : "locksIn", { time: formatSpan(t, locksAt - now) })}
     </span>
   );
 }

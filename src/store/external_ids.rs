@@ -363,6 +363,7 @@ pub async fn rekey_match(db: &SqlitePool, from: MatchId, to: MatchId) -> Result<
     for sql in [
         "UPDATE matches SET id = ? WHERE id = ?",
         "UPDATE predictions SET match_id = ? WHERE match_id = ?",
+        "UPDATE prediction_edit_windows SET match_id = ? WHERE match_id = ?",
         "UPDATE match_locks SET match_id = ? WHERE match_id = ?",
         "UPDATE source_conflicts SET match_id = ? WHERE match_id = ?",
         "UPDATE external_ids SET canonical_id = ? WHERE kind = 'match' AND canonical_id = ?",

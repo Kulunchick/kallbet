@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { errorMessage } from "../../api/client";
+import { ApiError, errorMessage } from "../../api/client";
 import { Avatar } from "../../components/Avatar";
 import { TeamLogo } from "../../components/TeamLogo";
 import { useLoad } from "../../api/useLoad";
@@ -22,7 +22,7 @@ export function PlayoffsStage({
   const { result, reload } = useLoad(() => getPickem(league, stage), [league, stage]);
   const [draft, setDraft] = useState<Winners>({});
   const [error, setError] = useState<unknown>(null);
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (result.state !== "ready") return;
@@ -38,15 +38,17 @@ export function PlayoffsStage({
     id === null ? t("tbd") : (view.teams.find((x) => x.id === id)?.name ?? `#${id}`);
 
   async function save() {
+    if (saving || !isComplete(slots, draft)) return;
+    setSaving(true);
     setError(null);
     try {
       await savePickem(league, stage, { picks: toPicks(slots, draft) });
-      setSaved(true);
-      reload();
       onSaved();
     } catch (e) {
       setError(e);
-      reload();
+      if (e instanceof ApiError && e.code === "pickem_locked") reload();
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -69,20 +71,19 @@ export function PlayoffsStage({
             slots={slots}
             winners={draft}
             nameOf={nameOf}
+            readOnly={saving}
             onPick={(r, s, team) => {
-              setSaved(false);
               setDraft((d) => setWinner(slots, d, r, s, team));
             }}
           />
           {error != null && <p className="text-danger">{errorMessage(t, error)}</p>}
-          {saved && <p className="text-emerald-b">{t("saved")}</p>}
           <button
             type="button"
             className="btn-primary self-start"
-            disabled={!isComplete(slots, draft)}
+            disabled={saving || !isComplete(slots, draft)}
             onClick={save}
           >
-            {t("save")}
+            {saving ? t("common:saving") : t("save")}
           </button>
         </div>
       )}
@@ -116,44 +117,46 @@ function Bracket({
 }) {
   const rounds = [...new Set(slots.map((s) => s.rounds_before_final))].sort((a, b) => b - a);
   return (
-    <div className="flex gap-6 overflow-x-auto pb-2">
+    <div className="flex gap-5 overflow-x-auto rounded-xl border border-line bg-ink p-3">
       {rounds.map((round) => (
-        <div key={round} className="flex min-w-44 flex-col justify-around gap-3">
+        <div key={round} className="grid min-w-44 flex-1 grid-rows-[auto_1fr] gap-3">
           <h3 className="text-center text-xs font-bold uppercase tracking-wide text-gold-a">
             <RoundName round={round} />
           </h3>
-          {slots
-            .filter((s) => s.rounds_before_final === round)
-            .sort((a, b) => a.slot - b.slot)
-            .map((slot) => {
-              const picked = winners[slotKey(round, slot.slot)];
-              return (
-                <div key={slot.slot} className="flex flex-col gap-1 rounded-xl border border-line bg-raised p-1.5">
-                  {participants(slot, winners).map((team, i) => {
-                    const mine = team !== null && picked === team;
-                    const verdict = slot.winner !== null && mine ? (slot.winner === team ? "✓" : "✗") : null;
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        disabled={readOnly || team === null}
-                        aria-pressed={mine}
-                        onClick={() => team !== null && onPick?.(round, slot.slot, team)}
-                        className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm ${
-                          mine ? "bg-emerald-gradient font-semibold text-ink glow-emerald" : "text-fg"
-                        } ${team === null ? "text-mute" : ""}`}
-                      >
-                        <span className="flex min-w-0 items-center gap-2">
-                          {team !== null && <TeamLogo id={team} className="size-5" />}
-                          <span className="truncate">{nameOf(team)}</span>
-                        </span>
-                        {verdict && <span>{verdict}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
+          <div className="flex flex-col justify-around gap-3">
+            {slots
+              .filter((s) => s.rounds_before_final === round)
+              .sort((a, b) => a.slot - b.slot)
+              .map((slot) => {
+                const picked = winners[slotKey(round, slot.slot)];
+                return (
+                  <div key={slot.slot} className="flex flex-col gap-1 rounded-xl border border-line bg-raised p-1.5">
+                    {participants(slot, winners).map((team, i) => {
+                      const mine = team !== null && picked === team;
+                      const verdict = slot.winner !== null && mine ? (slot.winner === team ? "✓" : "✗") : null;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          disabled={readOnly || team === null}
+                          aria-pressed={mine}
+                          onClick={() => team !== null && onPick?.(round, slot.slot, team)}
+                          className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm ${
+                            mine ? "bg-emerald-gradient font-semibold text-ink glow-emerald" : "text-fg"
+                          } ${team === null ? "text-mute" : ""}`}
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            {team !== null && <TeamLogo id={team} className="size-5" />}
+                            <span className={team !== null && slot.winner === team ? "truncate font-bold text-gold-a" : "truncate"}>{nameOf(team)}</span>
+                          </span>
+                          {verdict && <span>{verdict}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+          </div>
         </div>
       ))}
     </div>

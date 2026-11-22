@@ -53,6 +53,8 @@ pub async fn upsert<'e>(
          SELECT ?1, ?2, ?3, ?4, ?5 WHERE NOT EXISTS ( \
            SELECT 1 FROM match_locks \
            WHERE league_id = ?1 AND match_id = ?2 AND locked_at IS NOT NULL) \
+         AND NOT EXISTS (SELECT 1 FROM prediction_edit_windows \
+           WHERE league_id = ?1 AND match_id = ?2 AND (user_id != ?3 OR ends_at <= ?5)) \
          ON CONFLICT (league_id, match_id, user_id) DO UPDATE SET \
            team_id = excluded.team_id, updated_at = excluded.updated_at \
          RETURNING match_id, user_id, team_id, updated_at",

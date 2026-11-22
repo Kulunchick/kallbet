@@ -21,8 +21,10 @@
 
   <!-- emblem: a K cut into an emerald-edged tile -->
   <rect x="8" y="8" width="64" height="64" rx="16" fill="#0c1011" stroke="url(#emerald)" stroke-width="2.5" filter="url(#glow)"/>
-  <path d="M27 22h9v36h-9z" fill="url(#emerald)"/>
-  <path d="M38 40 52 22h11L48.5 40 63 58H52z" fill="url(#gold)"/>
+  <g transform="translate(-5 0)">
+    <path d="M27 22h9v36h-9z" fill="url(#emerald)"/>
+    <path d="M38 40 52 22h11L48.5 40 63 58H52z" fill="url(#gold)"/>
+  </g>
 
   <!-- wordmark -->
   <g font-family="Unbounded, 'Arial Black', 'Segoe UI Black', Impact, sans-serif" font-weight="800" font-size="38" letter-spacing="-0.5">

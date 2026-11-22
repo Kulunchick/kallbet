@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router";
 
@@ -13,6 +13,8 @@ import {
   leaveLeague,
   reissueInvite,
   setMemberRole,
+  saveStagePoints,
+  type LeagueDetail,
 } from "./api";
 import { useLoad } from "../../api/useLoad";
 
@@ -26,14 +28,31 @@ export function LeaguePage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteName, setDeleteName] = useState("");
   const me = useSession().user?.id;
+  const pending = result.state === "ready" && result.data.matches_pending;
 
-  async function run(action: () => Promise<unknown>, then: () => void) {
+  useEffect(() => {
+    if (!pending) return;
+    const timer = window.setInterval(reload, 10_000);
+    return () => window.clearInterval(timer);
+  }, [pending, reload]);
+
+  const [actions, setActions] = useState<Set<string>>(() => new Set());
+
+  async function run(key: string, action: () => Promise<unknown>, then: () => void) {
+    if (actions.has(key)) return;
+    setActions((pending) => new Set(pending).add(key));
     setError(null);
     try {
       await action();
       then();
     } catch (e) {
       setError(e);
+    } finally {
+      setActions((pending) => {
+        const next = new Set(pending);
+        next.delete(key);
+        return next;
+      });
     }
   }
 
@@ -66,6 +85,7 @@ export function LeaguePage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-extrabold text-gold-gradient">{league.name}</h1>
         <p className="text-mute">{league.event.name}</p>
+        {pending && <p role="status" className="text-sm text-mute">{t("matchesPending")}</p>}
         {league.archived_at && (
           <p className="card mt-2 px-3 py-2 text-sm text-gold-a">🏆 {t("archived")}</p>
         )}
@@ -85,6 +105,10 @@ export function LeaguePage() {
         </div>
       </header>
 
+      {league.is_creator && league.stages.length > 0 && (
+        <StagePointsForm key={league.id} league={league} reload={reload} />
+      )}
+
       {token && !league.archived_at && (
         <section className="card flex flex-col gap-3 p-5">
           <h2 className="font-bold">{t("invite.title")}</h2>
@@ -102,8 +126,10 @@ export function LeaguePage() {
             <button
               type="button"
               className="btn-ghost"
+              disabled={actions.has("invite")}
               onClick={() =>
                 run(
+                  "invite",
                   () => reissueInvite(league.id),
                   () => {
                     setCopied(false);
@@ -112,7 +138,7 @@ export function LeaguePage() {
                 )
               }
             >
-              {t("invite.reissue")}
+              {t(actions.has("invite") ? "common:saving" : "invite.reissue")}
             </button>
           </div>
           <p className="text-xs text-mute">{t("invite.reissueHint")}</p>
@@ -136,8 +162,10 @@ export function LeaguePage() {
                   <button
                     type="button"
                     className="rounded-lg px-2 py-1 text-xs text-mute transition-colors hover:text-fg"
+                    disabled={actions.has(String(m.user_id))}
                     onClick={() =>
                       run(
+                        String(m.user_id),
                         () =>
                           setMemberRole(league.id, m.user_id, m.role === "admin" ? "member" : "admin"),
                         reload,
@@ -150,9 +178,10 @@ export function LeaguePage() {
                     <button
                       type="button"
                       className="rounded-lg px-2 py-1 text-xs text-danger transition-colors hover:bg-raised"
+                      disabled={actions.has(String(m.user_id))}
                       onClick={() => {
                         if (window.confirm(t("manage.kickConfirm", { name: m.nickname }))) {
-                          void run(() => kickMember(league.id, m.user_id), reload);
+                          void run(String(m.user_id), () => kickMember(league.id, m.user_id), reload);
                         }
                       }}
                     >
@@ -191,15 +220,16 @@ export function LeaguePage() {
                 <button
                   type="button"
                   className="btn-primary"
-                  disabled={deleteName.trim() !== league.name}
+                  disabled={actions.has("delete") || deleteName.trim() !== league.name}
                   onClick={() =>
                     run(
+                      "delete",
                       () => deleteLeague(league.id, deleteName),
                       () => navigate("/leagues"),
                     )
                   }
                 >
-                  {t("delete.button")}
+                  {t(actions.has("delete") ? "common:saving" : "delete.button")}
                 </button>
                 <button
                   type="button"
@@ -222,19 +252,67 @@ export function LeaguePage() {
           <button
             type="button"
             className="btn-ghost"
+            disabled={actions.has("leave")}
             onClick={() => {
               if (window.confirm(t("leave.confirm"))) {
                 void run(
+                  "leave",
                   () => leaveLeague(league.id),
                   () => navigate("/leagues"),
                 );
               }
             }}
           >
-            {t("leave.button")}
+            {t(actions.has("leave") ? "common:saving" : "leave.button")}
           </button>
         </div>
       )}
     </div>
+  );
+}
+
+function StagePointsForm({ league, reload }: { league: LeagueDetail; reload: () => void }) {
+  const { t } = useTranslation("leagues");
+  const [saving, setSaving] = useState(false);
+  const [changes, setChanges] = useState<Record<number, string>>({});
+
+  return (
+    <form className="card flex flex-col gap-3 p-5" onSubmit={async (event) => {
+      event.preventDefault();
+      if (saving || !window.confirm(t("stagePoints.recalculate"))) return;
+      setSaving(true);
+      try {
+        await saveStagePoints(league.id, Object.entries(changes).map(([stage, points]) => ({
+          stage: Number(stage),
+          points: Number(points),
+        })));
+        reload();
+        setChanges({});
+      } catch {
+        // The API displays the failure and the form keeps the edits for retry.
+      } finally {
+        setSaving(false);
+      }
+    }}>
+      <h2 className="font-bold">{t("stagePoints.title")}</h2>
+      {league.stages.map((stage) => (
+        <label key={stage.ordinal} className="flex items-center justify-between gap-3">
+          {stage.name}
+          <input
+            type="number"
+            required
+            min={0}
+            max={1000}
+            disabled={saving}
+            value={changes[stage.ordinal] ?? league.stage_points.find((value) => value.stage === stage.ordinal)?.points ?? 1}
+            onChange={(event) => setChanges({ ...changes, [stage.ordinal]: event.target.value })}
+            className="w-24 rounded-xl border border-line bg-raised px-3 py-2"
+          />
+        </label>
+      ))}
+      <button className="btn-primary self-start" disabled={saving || Object.keys(changes).length === 0}>
+        {t(saving ? "stagePoints.saving" : "stagePoints.save")}
+      </button>
+    </form>
   );
 }

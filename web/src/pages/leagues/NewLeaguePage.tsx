@@ -14,39 +14,39 @@ export function NewLeaguePage() {
   const [link, setLink] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<unknown>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"resolve" | "create" | null>(null);
 
   const date = (iso: string | null) =>
     iso ? new Date(iso).toLocaleDateString(i18n.language, { day: "numeric", month: "short" }) : "";
 
   async function useLink() {
     setError(null);
-    setBusy(true);
+    setBusy("resolve");
     try {
       setPicked(await resolveEvent(link));
     } catch (e) {
       setError(e);
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!picked) return;
+    if (!picked || busy) return;
     setError(null);
-    setBusy(true);
+    setBusy("create");
     try {
       const league = await createLeague(picked.id, name);
       navigate(`/leagues/${league.id}`);
     } catch (err) {
       setError(err);
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   return (
-    <form onSubmit={submit} className="flex max-w-2xl flex-col gap-8 py-10">
+    <form onSubmit={submit} aria-busy={busy !== null} className="flex max-w-2xl flex-col gap-8 py-10">
       <h1 className="text-2xl font-extrabold text-gold-gradient">{t("new.title")}</h1>
 
       <section className="flex flex-col gap-3">
@@ -97,10 +97,10 @@ export function NewLeaguePage() {
           <button
             type="button"
             className="btn-ghost"
-            disabled={busy || !link.trim()}
+            disabled={busy !== null || !link.trim()}
             onClick={useLink}
           >
-            {t("new.useLink")}
+            {t(busy === "resolve" ? "new.resolving" : "new.useLink")}
           </button>
         </div>
       </section>
@@ -126,8 +126,8 @@ export function NewLeaguePage() {
       {error !== null && <p className="text-danger">{errorMessage(t, error)}</p>}
 
       <div>
-        <button type="submit" className="btn-primary" disabled={busy || !picked || !name.trim()}>
-          {t("new.submit")}
+        <button type="submit" className="btn-primary" disabled={busy !== null || !picked || !name.trim()}>
+          {t(busy === "create" ? "new.creating" : "new.submit")}
         </button>
       </div>
     </form>

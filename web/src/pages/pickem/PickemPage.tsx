@@ -20,6 +20,10 @@ export function PickemPage() {
   const archived = useLoad(() => getLeague(league), [league]).result;
   const isArchived = archived.state === "ready" && archived.data.archived_at !== null;
 
+  const playableStages = stages.result.state === "ready"
+    ? stages.result.data.stages.filter((stage) => stage.kind === "swiss" || stage.kind === "playoffs")
+    : [];
+
   return (
     <div className="flex flex-col gap-8 py-10">
       <header className="flex flex-col gap-1">
@@ -28,6 +32,14 @@ export function PickemPage() {
         </Link>
         <h1 className="text-2xl font-extrabold text-gold-gradient">{t("title")}</h1>
       </header>
+
+      {playableStages.length > 1 && (
+        <nav className="flex flex-wrap gap-2" aria-label={t("title")}>
+          {playableStages.map((stage) => (
+            <a key={stage.ordinal} className="btn-ghost" href={`#stage-${stage.ordinal}`}>{stage.name}</a>
+          ))}
+        </nav>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-bold text-gold-gradient">{t("leaderboard")}</h2>
@@ -52,11 +64,8 @@ export function PickemPage() {
       {stages.result.state === "error" && (
         <p className="text-danger">{errorMessage(t, stages.result.error)}</p>
       )}
-      {stages.result.state === "ready" &&
-        stages.result.data.stages
-          .filter((s) => s.kind === "swiss" || s.kind === "playoffs")
-          .map((s) => (
-            <section key={s.ordinal} className="flex flex-col gap-3">
+      {playableStages.map((s) => (
+            <section key={s.ordinal} id={`stage-${s.ordinal}`} className="flex scroll-mt-6 flex-col gap-3">
               <h2 className="text-lg font-bold text-gold-gradient">{s.name}</h2>
               {s.kind === "playoffs" ? (
                 <PlayoffsStage league={league} stage={s.ordinal} onSaved={board.reload} />

@@ -116,6 +116,8 @@ pub struct LockView {
     /// The stored Lock timestamp; `null` while open.
     pub locked_at: Option<DateTime<Utc>>,
     pub locked: bool,
+    pub edit_window: bool,
+    pub can_predict: bool,
 }
 
 /// The Predictions of a Match as a Member may see them (#6, ADR-0003).
@@ -266,11 +268,18 @@ pub fn view_for(matches: &LeagueMatches, viewer: UserId) -> MatchesView {
                         locks_at: outcome.lock_time,
                         locked_at: outcome.stamps.locked_at,
                         locked: outcome.is_locked(),
+                        can_predict: !outcome.is_locked()
+                            && matches
+                                .edit_windows
+                                .get(&game.id)
+                                .is_none_or(|(owner, _)| *owner == viewer),
+                        edit_window: !outcome.is_locked()
+                            && matches.edit_windows.contains_key(&game.id),
                     },
                     my_prediction: matches.prediction_of(game.id, viewer).map(|p| p.team_id),
                     predictions: predictions_view(matches, game.id, &outcome),
                     my_result: verdict,
-                    my_points: verdict.points(),
+                    my_points: verdict.points() * matches.points_for(game.stage),
                     source: (!added).then_some(m.source),
                     updated_at: m.updated_at,
                     overridden: matches.overrides.of(game.id).fields(),

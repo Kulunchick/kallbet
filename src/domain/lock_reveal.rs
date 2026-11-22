@@ -9,8 +9,10 @@
 //! Start until it happens. Once stored it is never undone: a later
 //! postponement does not reopen the Match.
 //!
-//! Reveal happens the moment every Eligible Member (see [`eligible`]) has
-//! predicted, and that Reveal also Locks the Match at the same instant.
+//! When the final Eligible Member submits a Prediction, an edit window can
+//! delay early Lock and Reveal by up to five minutes. Normal Lock deadlines
+//! still apply. When a membership change completes participation with no
+//! final submission, the Match Locks and Reveals immediately.
 //! Otherwise Reveal happens at Lock, stamped with the Lock time. A League
 //! with no Eligible Member waits for Lock. Both stamps are stored once and
 //! never cleared, so `revealed_at` is the one record of when a Reveal
@@ -47,6 +49,7 @@ pub struct Inputs<'a> {
     /// Users who have a Prediction for this Match.
     pub predicted: &'a [UserId],
     pub stored: Stamps,
+    pub edit_until: Option<DateTime<Utc>>,
     pub now: DateTime<Utc>,
 }
 
@@ -94,6 +97,7 @@ pub fn evaluate(inputs: &Inputs<'_>) -> Outcome {
         members,
         predicted,
         stored,
+        edit_until,
         now,
     } = *inputs;
     let mut stamps = stored;
@@ -101,13 +105,16 @@ pub fn evaluate(inputs: &Inputs<'_>) -> Outcome {
 
     if stamps.locked_at.is_none()
         && let Some(at) = lock_due(game, now)
+            .into_iter()
+            .chain(edit_until.filter(|at| *at <= now))
+            .min()
     {
         stamps.locked_at = Some(at);
         transitions.push(Transition::Locked(at));
     }
 
     // Every Eligible Member has predicted: Reveal, which also Locks.
-    if stamps.locked_at.is_none() {
+    if stamps.locked_at.is_none() && edit_until.is_none() {
         let awaited = eligible(members, None);
         if !awaited.is_empty() && awaited.iter().all(|u| predicted.contains(u)) {
             stamps.locked_at = Some(now);
@@ -127,7 +134,9 @@ pub fn evaluate(inputs: &Inputs<'_>) -> Outcome {
 
     Outcome {
         stamps,
-        lock_time: stamps.locked_at.or_else(|| scheduled_lock(game)),
+        lock_time: stamps
+            .locked_at
+            .or_else(|| scheduled_lock(game).into_iter().chain(edit_until).min()),
         transitions,
         eligible: eligible(members, stamps.locked_at),
     }
@@ -189,6 +198,7 @@ mod tests {
             members: &[],
             predicted: &[],
             stored,
+            edit_until: None,
             now,
         })
     }
@@ -282,6 +292,7 @@ mod tests {
             members: &members,
             predicted: &[UserId(2), UserId(1)],
             stored: Stamps::default(),
+            edit_until: None,
             now: at(12, 0),
         });
         assert_eq!(
@@ -302,6 +313,7 @@ mod tests {
             members: &members,
             predicted: &[UserId(1)],
             stored: Stamps::default(),
+            edit_until: None,
             now: at(12, 0),
         });
         assert!(!out.is_revealed());
