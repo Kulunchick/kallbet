@@ -818,3 +818,61 @@ async fn a_winner_conflict_is_recorded_when_hltv_adopts_a_local_match() {
     assert_eq!(conflicts[0]["other_source"], "pandascore");
     assert_eq!(conflicts[0]["other_winner"]["id"], 3);
 }
+
+/// B2: while only a fallback serves an Event, its Stages get ordinals by its
+/// own list; when HLTV returns with a Stage the fallback lacked, the ordinals
+/// shift, and a Pick'em stored by ordinal must follow its Stage.
+#[tokio::test]
+async fn a_pickem_follows_its_stage_when_hltv_returns_with_an_earlier_stage() {
+    let c = chain().await;
+    let now = c.app.clock.now();
+    let later = now + Duration::days(2);
+    c.hltv.put_event(
+        hltv_major(now)
+            .stage(StageKind::Playoffs, "Playoffs")
+            .playoff_match(201, (1, 0), "NAVI", "FaZe", later)
+            .playoff_match(202, (1, 1), "Vitality", "G2", later)
+            .playoff_slot(203, (0, 0), later + Duration::days(1))
+            .build(now),
+    );
+    // PandaScore lists only the Playoffs.
+    c.panda.put_event(
+        EventSnapshotBuilder::new(PS_EVENT, "Test Major 2026")
+            .stage(StageKind::Playoffs, "Playoffs")
+            .playoff_match(9201, (1, 0), "NAVI", "FaZe", later)
+            .playoff_match(9202, (1, 1), "Vitality", "G2", later)
+            .playoff_slot(9203, (0, 0), later + Duration::days(1))
+            .build(now),
+    );
+    poller::tick(&c.app.state).await; // the Event list knows "Test Major"
+    c.hltv.fail_with(SourceError::Unavailable("cloudflare".into()));
+    let alice = c.app.user("alice").await;
+    let league = create_league(&alice).await;
+    poller::tick(&c.app.state).await;
+
+    let pickem = |ordinal: u8| format!("/api/leagues/{league}/stages/{ordinal}/pickem");
+    let view = alice.get(&pickem(1)).await.json();
+    assert_eq!(view["stage"]["kind"], "playoffs", "{view}");
+    let slots = view["bracket"]["slots"].as_array().unwrap().clone();
+    let first = |r: u64, s: u64| {
+        slots
+            .iter()
+            .find(|x| x["rounds_before_final"] == r && x["slot"] == s)
+            .unwrap()["team_a"]
+            .clone()
+    };
+    let body = json!({ "picks": [
+        { "rounds_before_final": 1, "slot": 0, "team_id": first(1, 0) },
+        { "rounds_before_final": 1, "slot": 1, "team_id": first(1, 1) },
+        { "rounds_before_final": 0, "slot": 0, "team_id": first(1, 0) },
+    ] });
+    let res = alice.put(&pickem(1), &body).await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.text());
+
+    c.hltv.recover();
+    poll_again(&c.app).await;
+
+    let playoffs = alice.get(&pickem(2)).await.json();
+    assert_eq!(playoffs["stage"]["kind"], "playoffs", "{playoffs}");
+    assert_ne!(playoffs["my_pickem"], Value::Null, "the Pick'em is lost: {playoffs}");
+}

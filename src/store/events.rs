@@ -153,6 +153,7 @@ pub async fn save_snapshot(
     .bind(event.ends_at)
     .execute(&mut *tx)
     .await?;
+    move_stage_data(&mut tx, snapshot).await?;
 
     for stage in &snapshot.stages {
         sqlx::query(
@@ -229,6 +230,70 @@ pub async fn save_snapshot(
         .await?;
     }
     tx.commit().await?;
+    Ok(())
+}
+
+/// When a snapshot puts stored Matches in another Stage ordinal than before
+/// (HLTV returning with a Stage a fallback did not list, so the fallback's
+/// ordinals were off), the League data kept by ordinal follows its Stage:
+/// Pick'ems, their Picks and Locks, and hand-added Matches. The mapping is
+/// read from the Matches both know; an ordinal whose Matches split between
+/// two new ordinals is left alone.
+async fn move_stage_data(
+    db: &mut SqliteConnection,
+    snapshot: &EventSnapshot,
+) -> Result<(), sqlx::Error> {
+    let stored: Vec<(MatchId, u8)> = sqlx::query_as(
+        "SELECT id, stage_ordinal FROM matches WHERE event_id = ? AND league_id IS NULL",
+    )
+    .bind(snapshot.event.id)
+    .fetch_all(&mut *db)
+    .await?;
+    let mut moves: std::collections::BTreeMap<u8, Option<u8>> = Default::default();
+    for (id, old) in stored {
+        let Some(new) = snapshot.matches.iter().find(|m| m.id == id).map(|m| m.stage.0) else {
+            continue;
+        };
+        let entry = moves.entry(old).or_insert(Some(new));
+        if *entry != Some(new) {
+            *entry = None;
+        }
+    }
+    let moves: Vec<(u8, u8)> = moves
+        .into_iter()
+        .filter_map(|(old, new)| new.filter(|new| *new != old).map(|new| (old, new)))
+        .collect();
+    let mut targets: Vec<u8> = moves.iter().map(|(_, new)| *new).collect();
+    targets.sort();
+    targets.dedup();
+    if moves.is_empty() || targets.len() != moves.len() {
+        return Ok(());
+    }
+
+    const PARKED: i64 = 1000;
+    sqlx::query("PRAGMA defer_foreign_keys = ON").execute(&mut *db).await?;
+    let tables = [
+        "pickems WHERE league_id IN (SELECT id FROM leagues WHERE event_id = ?2)",
+        "picks WHERE league_id IN (SELECT id FROM leagues WHERE event_id = ?2)",
+        "pickem_locks WHERE league_id IN (SELECT id FROM leagues WHERE event_id = ?2)",
+        "matches WHERE event_id = ?2 AND league_id IS NOT NULL",
+    ];
+    // Two steps (park, then place), so swapped ordinals never collide.
+    let park = moves.iter().map(|&(old, _)| (i64::from(old), i64::from(old) + PARKED));
+    let place = moves.iter().map(|&(old, new)| (i64::from(old) + PARKED, i64::from(new)));
+    for (old, new) in park.chain(place) {
+        for table in tables {
+            let (name, filter) = table.split_once(" WHERE ").expect("table filter");
+            sqlx::query(sqlx::AssertSqlSafe(format!(
+                "UPDATE {name} SET stage_ordinal = ?3 WHERE stage_ordinal = ?1 AND {filter}"
+            )))
+            .bind(old)
+            .bind(snapshot.event.id)
+            .bind(new)
+            .execute(&mut *db)
+            .await?;
+        }
+    }
     Ok(())
 }
 
