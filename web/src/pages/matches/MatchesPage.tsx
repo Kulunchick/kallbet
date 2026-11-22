@@ -15,7 +15,7 @@ import {
   type StageView,
   type TeamRef,
 } from "./api";
-import { bracketColumns } from "./layout";
+import { bracketColumns, compareMatchOrder, orderMatchGroups } from "./layout";
 import { useNow } from "./time";
 
 /** How often the page refetches, so new Swiss rounds and Locks show up. */
@@ -102,6 +102,12 @@ export function MatchesPage() {
     </div>
   );
 
+  const stages = orderMatchGroups(view.stages.map((stage) => ({
+    ...stage,
+    groups: orderMatchGroups(stage.groups),
+    matches: stage.groups.flatMap((group) => group.matches),
+  })));
+
   return (
     <div className="flex flex-col gap-8 py-10">
       <header className="flex flex-col gap-1">
@@ -112,7 +118,7 @@ export function MatchesPage() {
 
       {view.stages.length === 0 && <p className="card p-6 text-mute">{t("empty")}</p>}
 
-      {view.stages.map((stage) => (
+      {stages.map((stage) => (
         <section key={stage.ordinal} className="flex flex-col gap-4">
           <h2 className="text-lg font-bold text-gold-gradient">{stage.name}</h2>
           {stage.kind === "playoffs" ? (
@@ -182,7 +188,7 @@ function PlayoffsBracket({
       {others.length > 0 && (
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-mute">{t("bracket.other")}</h3>
-          <div className="grid gap-3 md:grid-cols-2">{others.map(renderCard)}</div>
+          <div className="grid gap-3 md:grid-cols-2">{others.sort(compareMatchOrder).map(renderCard)}</div>
         </div>
       )}
     </div>

@@ -11,6 +11,40 @@ export function cardState(card: { status: string; winner: number | null }): Card
   return "upcoming";
 }
 
+type DatedMatch = {
+  status: string;
+  scheduled_start: string | null;
+  actual_start: string | null;
+};
+
+export function compareMatchOrder(a: DatedMatch, b: DatedMatch): number {
+  const priority = (match: DatedMatch) =>
+    match.status === "live" ? 0 : match.status === "upcoming" ? 1 : 2;
+  const order = priority(a) - priority(b);
+  if (order !== 0) return order;
+
+  const time = (match: DatedMatch) => {
+    const start = match.actual_start ?? match.scheduled_start;
+    return start === null ? null : Date.parse(start);
+  };
+  const aTime = time(a);
+  const bTime = time(b);
+  if (aTime === null) return bTime === null ? 0 : 1;
+  if (bTime === null) return -1;
+  return a.status === "upcoming" ? aTime - bTime : bTime - aTime;
+}
+
+/** Orders sections by their first match and orders the matches within them. */
+export function orderMatchGroups<C extends DatedMatch, G extends { matches: C[] }>(groups: G[]): G[] {
+  return groups.map((group) => ({ ...group, matches: [...group.matches].sort(compareMatchOrder) }))
+    .sort((a, b) => {
+      const first = a.matches[0];
+      const second = b.matches[0];
+      if (!first) return second ? 1 : 0;
+      return second ? compareMatchOrder(first, second) : -1;
+    });
+}
+
 /** A Playoffs round as the API groups it. */
 export type RoundGroup<C> = { rounds_before_final: number; matches: C[] };
 

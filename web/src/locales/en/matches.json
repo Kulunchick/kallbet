@@ -1,4 +1,5 @@
 {
+  "myPrediction": "Your prediction: {{team}}",
   "open": "Matches and Predictions",
   "title": "Matches",
   "loading": "Loading…",

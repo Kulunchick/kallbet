@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { bracketColumns, cardState } from "../src/pages/matches/layout.ts";
+import { bracketColumns, cardState, orderMatchGroups } from "../src/pages/matches/layout.ts";
 
 const card = (id, bracket_slot) => ({ id, bracket_slot });
 const ids = (columns) => columns.map((c) => [c.round, c.cells.map((x) => (x ? x.id : null))]);
@@ -54,4 +54,21 @@ test("a card without a usable slot is kept aside, not dropped", () => {
 
 test("no Playoffs Matches means no bracket", () => {
   assert.deepEqual(bracketColumns([]), { columns: [], extra: [] });
+});
+
+test("match groups put live and near upcoming matches above recent results", () => {
+  const match = (id, status, day) => ({
+    id, status, actual_start: null,
+    scheduled_start: day === null ? null : `2026-11-${day}T12:00:00Z`,
+  });
+  const archived = { matches: [match(1, "finished", 10), match(2, "finished", 12)] };
+  const upcoming = { matches: [
+    match(3, "upcoming", null), match(4, "upcoming", 23), match(5, "upcoming", 21),
+  ] };
+  const live = { matches: [match(6, "live", 20)] };
+  assert.deepEqual(
+    orderMatchGroups([archived, upcoming, live]).map((g) => g.matches.map((m) => m.id)),
+    [[6], [5, 4, 3], [2, 1]],
+  );
+  assert.deepEqual(archived.matches.map((m) => m.id), [1, 2]);
 });
