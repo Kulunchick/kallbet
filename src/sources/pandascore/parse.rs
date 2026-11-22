@@ -6,18 +6,30 @@
 //! Stage; a **match** belongs to one tournament. Two things PandaScore does
 //! not say, and that we therefore derive:
 //!
-//! - **Stage kind.** `has_bracket` marks a knockout stage (Playoffs). The
-//!   docs never mention Swiss; a stage without a bracket is taken as Swiss
-//!   when its name says so ("Swiss", or "Stage <n>"), otherwise as Groups.
-//!   UNVERIFIED against a real Major response.
-//! - **Swiss round and record.** A Match carries neither. They are replayed
-//!   from the results in Scheduled Start order: a Match between two known
-//!   teams with equal records `w`-`l` is round `w + l + 1`, bucket `w`-`l`.
-//!   Anything else (a team still TBD, unequal records) is `Unplaced`.
+//! - **Stage kind** ([`stage_kind`]). PandaScore has no Stage type. A
+//!   tournament with `has_bracket` is the Playoffs, unless its name says it is
+//!   a group phase (real data: "Group Stage" and "Play-In Group A" carry
+//!   `has_bracket: true`). Without a bracket, a name that says Swiss is Swiss:
+//!   "Stage <n>" (Cologne 2026, Singapore 2026), "Opening/Elimination Stage"
+//!   (Shanghai 2024), "Challengers/Legends Stage" (Rio 2022, Berlin 2019);
+//!   anything else is Groups.
+//! - **Swiss round and record.** The round is in the match name ("Round 5:
+//!   NRG vs BIG"); the record bucket is not anywhere and is replayed from the
+//!   results in Scheduled Start order: a Match between two known teams with
+//!   equal records `w`-`l` is bucket `w`-`l`, and its round must be `w + l + 1`
+//!   (the name's round, when there is one, has to agree). Round 1 is always
+//!   0-0, even with both teams TBD. Anything else (a team still TBD, unequal
+//!   records, a disagreeing name) is `Unplaced`.
 //!
 //! Playoffs slots come from `previous_matches` (present on
 //! `/tournaments/{id}/brackets`): a single-elimination tree gets
-//! `Playoffs { rounds_before_final, slot }`, anything else is `Unplaced`.
+//! `Playoffs { rounds_before_final, slot }`, anything else is `Unplaced`. The
+//! order of `previous_matches` is not top to bottom (Cologne 2026 lists
+//! quarterfinal 4 before 3), so siblings named "<Round> <n>" are ordered by
+//! n; otherwise the listed order is kept.
+//!
+//! The Event name is the league's name plus the serie's `full_name`: the
+//! serie alone is "Cologne Major 2026" or just "Season 14 2026".
 
 use std::collections::{HashMap, HashSet};
 
@@ -58,6 +70,12 @@ struct RawSerie {
     full_name: Option<String>,
     begin_at: Option<DateTime<Utc>>,
     end_at: Option<DateTime<Utc>>,
+    league: Option<RawLeague>,
+}
+
+#[derive(Deserialize)]
+struct RawLeague {
+    name: Option<String>,
 }
 
 /// A list of series objects, as the Event list.
@@ -78,6 +96,14 @@ pub fn event(serie: &Value) -> Result<ExternalEvent, SourceError> {
         .filter(|n| !n.is_empty())
         .or(raw.name.filter(|n| !n.is_empty()))
         .ok_or_else(|| bad(format!("serie {} has no name", raw.id)))?;
+    // "IEM" + "Cologne Major 2026": HLTV spells the Event with its league.
+    let league = raw.league.and_then(|l| l.name).filter(|n| !n.is_empty());
+    let name = match league {
+        Some(league) if !name.to_lowercase().starts_with(&league.to_lowercase()) => {
+            format!("{league} {name}")
+        }
+        _ => name,
+    };
     Ok(ExternalEvent {
         external_id: raw.id.to_string(),
         canonical: None,
@@ -96,11 +122,14 @@ struct RawTournament {
     begin_at: Option<DateTime<Utc>>,
 }
 
-/// "Swiss", or "Stage 1" / "Stage 2 ...": the Major's Swiss Stages. Guessed
-/// from the name; see the module docs.
+/// The names a Swiss Stage has been seen under; see the module docs.
 fn names_a_swiss_stage(name: &str) -> bool {
     let lower = name.to_lowercase();
-    if lower.contains("swiss") {
+    if lower.contains("swiss")
+        || ["opening stage", "elimination stage", "challengers stage", "legends stage"]
+            .iter()
+            .any(|n| lower.contains(n))
+    {
         return true;
     }
     lower
@@ -115,6 +144,27 @@ fn names_a_swiss_stage(name: &str) -> bool {
                     .all(|c| c.is_ascii_digit())
                 && !w[1].trim_matches(|c: char| !c.is_alphanumeric()).is_empty()
         })
+}
+
+fn names_a_group_phase(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    lower.contains("group") || lower.contains("play-in") || lower.contains("play in")
+}
+
+/// The kind of Stage a tournament object is; see the module docs.
+pub fn stage_kind(tournament: &Value) -> Result<StageKind, SourceError> {
+    let raw: RawTournament = from_value(tournament, "tournament")?;
+    Ok(kind_of(&raw))
+}
+
+fn kind_of(raw: &RawTournament) -> StageKind {
+    if raw.has_bracket && !names_a_group_phase(&raw.name) {
+        StageKind::Playoffs
+    } else if !raw.has_bracket && names_a_swiss_stage(&raw.name) {
+        StageKind::Swiss
+    } else {
+        StageKind::Groups
+    }
 }
 
 /// The whole Event: the serie plus its tournaments with their matches.
@@ -136,13 +186,7 @@ pub fn snapshot(
         let ordinal = StageOrdinal(
             u8::try_from(index + 1).map_err(|_| bad("more than 255 tournaments in a serie"))?,
         );
-        let kind = if raw.has_bracket {
-            StageKind::Playoffs
-        } else if names_a_swiss_stage(&raw.name) {
-            StageKind::Swiss
-        } else {
-            StageKind::Groups
-        };
+        let kind = kind_of(raw);
         stages.push(Stage { ordinal, kind, name: raw.name.clone() });
 
         let placements = match kind {
@@ -288,6 +332,18 @@ pub fn match_record(
     })
 }
 
+/// The `5` of "Round 5: NRG vs BIG".
+fn round_in_name(name: &str) -> Option<u8> {
+    name.strip_prefix("Round ")?.split(':').next()?.trim().parse().ok()
+}
+
+/// The `3` of "Quarterfinal 3: FURIA vs 9z", with its label ("quarterfinal").
+fn numbered_label(name: &str) -> Option<(String, u32)> {
+    let head = name.split(':').next()?.trim();
+    let (label, n) = head.rsplit_once(' ')?;
+    Some((label.trim().to_lowercase(), n.parse().ok()?))
+}
+
 /// Round and record bucket of each Swiss match (same order as `matches`).
 fn swiss_placements(matches: &[Value]) -> Result<Vec<MatchPlacement>, SourceError> {
     struct Row {
@@ -296,6 +352,8 @@ fn swiss_placements(matches: &[Value]) -> Result<Vec<MatchPlacement>, SourceErro
         teams: Option<(i64, i64)>,
         winner: Option<i64>,
         finished: bool,
+        /// "Round 5: NRG vs BIG" says 5.
+        named_round: Option<u8>,
     }
     let mut rows = Vec::new();
     for m in matches {
@@ -310,6 +368,7 @@ fn swiss_placements(matches: &[Value]) -> Result<Vec<MatchPlacement>, SourceErro
             id,
             teams,
             winner: raw.winner_id,
+            named_round: m["name"].as_str().and_then(round_in_name),
             finished: raw.status.as_deref() == Some("finished")
                 || (raw.status.as_deref() == Some("canceled") && raw.forfeit),
         });
@@ -322,17 +381,20 @@ fn swiss_placements(matches: &[Value]) -> Result<Vec<MatchPlacement>, SourceErro
     let mut placements = vec![MatchPlacement::Unplaced; rows.len()];
     for i in order {
         let row = &rows[i];
-        let Some((a, b)) = row.teams else { continue };
+        let Some((a, b)) = row.teams else {
+            // Everyone starts 0-0, so round 1 is placed before teams are known.
+            if row.named_round == Some(1) {
+                placements[i] = MatchPlacement::Swiss { round: 1, wins: 0, losses: 0 };
+            }
+            continue;
+        };
         let (ra, rb) = (
             records.get(&a).copied().unwrap_or_default(),
             records.get(&b).copied().unwrap_or_default(),
         );
-        if ra == rb {
-            placements[i] = MatchPlacement::Swiss {
-                round: ra.0.saturating_add(ra.1).saturating_add(1),
-                wins: ra.0,
-                losses: ra.1,
-            };
+        let round = ra.0.saturating_add(ra.1).saturating_add(1);
+        if ra == rb && row.named_round.is_none_or(|n| n == round) {
+            placements[i] = MatchPlacement::Swiss { round, wins: ra.0, losses: ra.1 };
         }
         if let (true, Some(w)) = (row.finished, row.winner) {
             let loser = if w == a { b } else { a };
@@ -363,6 +425,21 @@ fn playoffs_placements(matches: &[Value]) -> Result<Vec<MatchPlacement>, SourceE
     }
     if previous.values().all(Vec::is_empty) {
         return Ok(unplaced);
+    }
+
+    // Order siblings by the number in their names ("Quarterfinal 3").
+    let labels: HashMap<i64, (String, u32)> = matches
+        .iter()
+        .filter_map(|m| Some((m["id"].as_i64()?, numbered_label(m["name"].as_str()?)?)))
+        .collect();
+    for prev in previous.values_mut() {
+        if let [a, b] = prev.as_slice()
+            && let (Some((la, na)), Some((lb, nb))) = (labels.get(a), labels.get(b))
+            && la == lb
+            && na > nb
+        {
+            prev.swap(0, 1);
+        }
     }
 
     let known: HashSet<i64> = ids.iter().copied().collect();

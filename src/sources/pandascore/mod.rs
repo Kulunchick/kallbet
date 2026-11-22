@@ -12,9 +12,21 @@
 //! the Event list, `/csgo/series` (filtered by id or by date range) to find
 //! one, `/series/{id}/tournaments` for its Stages and
 //! `/tournaments/{id}/matches` (`/brackets` for a bracket Stage, which adds
-//! `previous_matches`) for the Matches. The path and filter names of the
-//! `/csgo/series...` calls come from the docs index and are UNVERIFIED
-//! against a live response.
+//! `previous_matches`) for the Matches.
+//!
+//! Verified against the real API (2026-11-22, the owner's plan, see
+//! `tests/fixtures/pandascore/README.md`): every request form used here
+//! answers 200 (`/csgo/series?filter[id]=`, `...?search[name]=`,
+//! `...?range[begin_at]=<date>,<date>`, `/csgo/series/running|upcoming`,
+//! `/series/{id}/tournaments`, `/tournaments/{id}/matches|brackets`, each
+//! with `page[size]`). `search[name]` matches the serie's own `name`
+//! ("Cologne Major"), not the league ("IEM") or `full_name`, so an undated
+//! search by an HLTV name finds little; Events always have dates in
+//! practice. `/series/{id}/tournaments` embeds matches too, but without
+//! opponents or results, so they are not used.
+//!
+//! UNVERIFIED: page numbering beyond page 1 (`page[number]`), and
+//! `/brackets` of a tournament that is not a single-elimination tree.
 
 pub mod parse;
 
@@ -24,7 +36,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-use crate::domain::DataSourceKind;
+use crate::domain::{DataSourceKind, StageKind};
 use crate::ports::SourceError;
 use crate::sources::fallback::{EventHint, ExternalEvent, ExternalSnapshot, ExternalSource};
 use parse::TournamentInput;
@@ -104,8 +116,8 @@ impl PandaScoreSource {
         let mut all = Vec::new();
         for page in 1..=MAX_PAGES {
             let mut q = query.to_vec();
-            q.push(("page", page.to_string()));
-            q.push(("per_page", PER_PAGE.to_string()));
+            q.push(("page[number]", page.to_string()));
+            q.push(("page[size]", PER_PAGE.to_string()));
             let body = self.get(path, &q).await?;
             let items = body.as_array().ok_or_else(|| {
                 SourceError::Parse(format!("PandaScore: {path} did not answer a JSON array"))
@@ -152,7 +164,7 @@ fn query_string(query: &[(&str, String)]) -> String {
 }
 
 fn day(t: DateTime<Utc>) -> String {
-    t.format("%Y-%m-%dT%H:%M:%SZ").to_string()
+    t.format("%Y-%m-%d").to_string()
 }
 
 #[async_trait]
@@ -179,7 +191,6 @@ impl ExternalSource for PandaScoreSource {
             // Series starting around the Event's start; the chain picks by name.
             (Some(start), _) => vec![
                 ("range[begin_at]", format!("{},{}", day(start - window), day(start + window))),
-                ("sort", "begin_at".to_string()),
             ],
             (None, false) => vec![("search[name]", hint.name.clone())],
             (None, true) => return Ok(vec![]),
@@ -203,8 +214,9 @@ impl ExternalSource for PandaScoreSource {
             let tid = tournament["id"].as_i64().ok_or_else(|| {
                 SourceError::Parse("PandaScore: a tournament has no id".to_string())
             })?;
-            // A bracket Stage comes from /brackets: it carries `previous_matches`.
-            let endpoint = if tournament["has_bracket"].as_bool().unwrap_or(false) {
+            // The Playoffs come from /brackets: it carries `previous_matches`.
+            // A group phase flagged `has_bracket` is read as plain matches.
+            let endpoint = if parse::stage_kind(&tournament)? == StageKind::Playoffs {
                 "brackets"
             } else {
                 "matches"

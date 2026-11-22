@@ -1,0 +1,258 @@
+{
+ "_constructed": "NOT a real PandaScore response. Hand-built from the documented match lifecycle (https://developers.pandascore.co/docs/matches-lifecycle) for exactly the cases no real capture contains: a forfeit (finished, forfeit=true), running, postponed, canceled, and an opponent still TBD (one opponent only). Team names, ids and dates are invented. Every other behaviour is tested on real captures (real-*.json).",
+ "serie": {
+  "id": 60,
+  "name": "Major",
+  "full_name": "Constructed Statuses 2026",
+  "season": null,
+  "year": 2026,
+  "begin_at": "2026-12-01T09:00:00Z",
+  "end_at": "2026-12-07T20:00:00Z",
+  "league_id": 1,
+  "slug": "constructed-major-2026",
+  "winner_id": null,
+  "winner_type": "Team"
+ },
+ "tournament": {
+  "id": 801,
+  "name": "Group Stage",
+  "has_bracket": false,
+  "serie_id": 60,
+  "begin_at": "2026-12-01T09:00:00Z",
+  "end_at": "2026-12-03T20:00:00Z",
+  "slug": "s1"
+ },
+ "matches": [
+  {
+   "id": 106,
+   "name": "m",
+   "status": "finished",
+   "match_type": "best_of",
+   "number_of_games": 1,
+   "scheduled_at": "2026-12-02T11:00:00Z",
+   "original_scheduled_at": "2026-12-02T11:00:00Z",
+   "rescheduled": false,
+   "begin_at": "2026-12-02T11:00:00Z",
+   "end_at": null,
+   "opponents": [
+    {
+     "opponent": {
+      "id": 5,
+      "name": "Echo",
+      "acronym": "ECH",
+      "slug": "echo",
+      "image_url": "https://cdn-api.pandascore.co/images/team/image/5/x.png",
+      "location": "EU",
+      "modified_at": "2026-01-01T00:00:00Z"
+     },
+     "type": "Team"
+    },
+    {
+     "opponent": {
+      "id": 7,
+      "name": "Golf",
+      "acronym": "GOL",
+      "slug": "golf",
+      "image_url": "https://cdn-api.pandascore.co/images/team/image/7/x.png",
+      "location": "EU",
+      "modified_at": "2026-01-01T00:00:00Z"
+     },
+     "type": "Team"
+    }
+   ],
+   "results": [
+    {
+     "score": 0,
+     "team_id": 5
+    },
+    {
+     "score": 0,
+     "team_id": 7
+    }
+   ],
+   "winner_id": 5,
+   "winner_type": "Team",
+   "forfeit": true,
+   "draw": false,
+   "tournament_id": 701,
+   "serie_id": 50
+  },
+  {
+   "id": 108,
+   "name": "m",
+   "status": "running",
+   "match_type": "best_of",
+   "number_of_games": 1,
+   "scheduled_at": "2026-12-02T13:00:00Z",
+   "original_scheduled_at": "2026-12-02T13:00:00Z",
+   "rescheduled": false,
+   "begin_at": "2026-12-02T13:07:00Z",
+   "end_at": null,
+   "opponents": [
+    {
+     "opponent": {
+      "id": 6,
+      "name": "Foxtrot",
+      "acronym": "FOX",
+      "slug": "foxtrot",
+      "image_url": "https://cdn-api.pandascore.co/images/team/image/6/x.png",
+      "location": "EU",
+      "modified_at": "2026-01-01T00:00:00Z"
+     },
+     "type": "Team"
+    },
+    {
+     "opponent": {
+      "id": 8,
+      "name": "Hotel",
+      "acronym": "HOT",
+      "slug": "hotel",
+      "image_url": "https://cdn-api.pandascore.co/images/team/image/8/x.png",
+      "location": "EU",
+      "modified_at": "2026-01-01T00:00:00Z"
+     },
+     "type": "Team"
+    }
+   ],
+   "results": [
+    {
+     "score": 0,
+     "team_id": 6
+    },
+    {
+     "score": 0,
+     "team_id": 8
+    }
+   ],
+   "winner_id": null,
+   "winner_type": "Team",
+   "forfeit": false,
+   "draw": false,
+   "tournament_id": 701,
+   "serie_id": 50
+  },
+  {
+   "id": 109,
+   "name": "m",
+   "status": "postponed",
+   "match_type": "best_of",
+   "number_of_games": 3,
+   "scheduled_at": "2026-12-03T10:00:00Z",
+   "original_scheduled_at": "2026-12-03T10:00:00Z",
+   "rescheduled": false,
+   "begin_at": null,
+   "end_at": null,
+   "opponents": [
+    {
+     "opponent": {
+      "id": 1,
+      "name": "Alpha Team",
+      "acronym": "ALP",
+      "slug": "alpha-team",
+      "image_url": "https://cdn-api.pandascore.co/images/team/image/1/x.png",
+      "location": "EU",
+      "modified_at": "2026-01-01T00:00:00Z"
+     },
+     "type": "Team"
+    },
+    {
+     "opponent": {
+      "id": 5,
+      "name": "Echo",
+      "acronym": "ECH",
+      "slug": "echo",
+      "image_url": "https://cdn-api.pandascore.co/images/team/image/5/x.png",
+      "location": "EU",
+      "modified_at": "2026-01-01T00:00:00Z"
+     },
+     "type": "Team"
+    }
+   ],
+   "results": [],
+   "winner_id": null,
+   "winner_type": "Team",
+   "forfeit": false,
+   "draw": false,
+   "tournament_id": 701,
+   "serie_id": 50
+  },
+  {
+   "id": 111,
+   "name": "m",
+   "status": "not_started",
+   "match_type": "best_of",
+   "number_of_games": 1,
+   "scheduled_at": "2026-12-03T12:00:00Z",
+   "original_scheduled_at": "2026-12-03T12:00:00Z",
+   "rescheduled": false,
+   "begin_at": "2026-12-03T12:00:00Z",
+   "end_at": null,
+   "opponents": [
+    {
+     "opponent": {
+      "id": 4,
+      "name": "Delta",
+      "acronym": "DEL",
+      "slug": "delta",
+      "image_url": "https://cdn-api.pandascore.co/images/team/image/4/x.png",
+      "location": "EU",
+      "modified_at": "2026-01-01T00:00:00Z"
+     },
+     "type": "Team"
+    }
+   ],
+   "results": [],
+   "winner_id": null,
+   "winner_type": "Team",
+   "forfeit": false,
+   "draw": false,
+   "tournament_id": 701,
+   "serie_id": 50
+  },
+  {
+   "id": 112,
+   "name": "m",
+   "status": "canceled",
+   "match_type": "best_of",
+   "number_of_games": 1,
+   "scheduled_at": "2026-12-03T14:00:00Z",
+   "original_scheduled_at": "2026-12-03T14:00:00Z",
+   "rescheduled": false,
+   "begin_at": null,
+   "end_at": null,
+   "opponents": [
+    {
+     "opponent": {
+      "id": 2,
+      "name": "Bravo Esports",
+      "acronym": "BRA",
+      "slug": "bravo-esports",
+      "image_url": "https://cdn-api.pandascore.co/images/team/image/2/x.png",
+      "location": "EU",
+      "modified_at": "2026-01-01T00:00:00Z"
+     },
+     "type": "Team"
+    },
+    {
+     "opponent": {
+      "id": 6,
+      "name": "Foxtrot",
+      "acronym": "FOX",
+      "slug": "foxtrot",
+      "image_url": "https://cdn-api.pandascore.co/images/team/image/6/x.png",
+      "location": "EU",
+      "modified_at": "2026-01-01T00:00:00Z"
+     },
+     "type": "Team"
+    }
+   ],
+   "results": [],
+   "winner_id": null,
+   "winner_type": "Team",
+   "forfeit": false,
+   "draw": false,
+   "tournament_id": 701,
+   "serie_id": 50
+  }
+ ]
+}
