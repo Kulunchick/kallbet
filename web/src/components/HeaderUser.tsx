@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useMatch, useNavigate } from "react-router";
 
 import { signOut, startSession, useSession } from "../pages/account/session";
 import { Avatar } from "./Avatar";
@@ -9,14 +9,17 @@ import { Avatar } from "./Avatar";
 export function HeaderUser() {
   const { t } = useTranslation("account");
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const invite = useMatch("/join/:token");
   const { loading, user } = useSession();
 
   useEffect(startSession, []);
 
   if (loading) return null;
   if (!user) {
+    const login = invite ? `/login?next=${encodeURIComponent(pathname)}` : "/login";
     return (
-      <Link to="/login" className="btn-primary !px-4 !py-2 text-sm">
+      <Link to={login} className="btn-primary !px-4 !py-2 text-sm">
         {t("signIn")}
       </Link>
     );
