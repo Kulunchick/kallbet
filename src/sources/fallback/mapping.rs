@@ -549,7 +549,10 @@ pub fn merge(ctx: &Context<'_>, ext: &ExternalSnapshot, ids: &mut LocalIds) -> M
                 })
             });
             if m.has_hltv_data && (unresolved || no_teams || pair_known) {
-                flag_match(&mut m, em);
+                // Empty scheduled slots may become linkable once teams are announced.
+                if !no_teams || em.status != MatchStatus::Upcoming {
+                    flag_match(&mut m, em);
+                }
                 continue;
             }
             let stage = m.canonical_stage(ext, em.stage);

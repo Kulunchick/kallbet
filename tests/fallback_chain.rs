@@ -357,6 +357,46 @@ async fn a_record_that_cannot_be_linked_is_flagged_and_left_out() {
 }
 
 #[tokio::test]
+async fn an_empty_slot_is_silent_until_its_pandascore_team_aliases_can_be_linked() {
+    let c = chain().await;
+    let now = c.app.clock.now();
+    let start = now + Duration::hours(4);
+    c.hltv.put_event(
+        hltv_major(now)
+            .swiss_match(103, (1, 0, 0), "PARIVISION", "DENDELE", start)
+            .build(now),
+    );
+    let named = panda_major(now)
+        .swiss_match(9103, (1, 0, 0), "PVISION", "DENDELE CS", start)
+        .build(now);
+    let mut empty = named.clone();
+    let slot = empty.matches.iter_mut().find(|m| m.id == MatchId(9103)).unwrap();
+    slot.team_a = None;
+    slot.team_b = None;
+    c.panda.put_event(empty);
+    let alice = c.app.user("alice").await;
+    let league = create_league(&alice).await;
+    poller::tick(&c.app.state).await;
+    c.hltv.fail_with(SourceError::Unavailable("offline".into()));
+    poll_again(&c.app).await;
+
+    let view = matches(&alice, league).await;
+    assert_eq!(all_matches(&view).len(), 3);
+    assert_eq!(find_match(&view, 103)["source"], "hltv");
+    assert!(unmatched(&alice, league).await.is_empty());
+
+    c.panda.put_event(named);
+    poll_again(&c.app).await;
+    let view = matches(&alice, league).await;
+    assert_eq!(all_matches(&view).len(), 3);
+    let game = find_match(&view, 103);
+    assert_eq!(game["source"], "pandascore");
+    assert_eq!(game["team_a"]["name"], "PARIVISION");
+    assert_eq!(game["team_b"]["name"], "DENDELE");
+    assert!(unmatched(&alice, league).await.is_empty());
+}
+
+#[tokio::test]
 async fn a_manual_mapping_links_what_names_and_times_could_not() {
     let c = chain().await;
     let now = c.app.clock.now();

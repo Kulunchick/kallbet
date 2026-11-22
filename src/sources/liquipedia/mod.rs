@@ -24,6 +24,7 @@ use chrono::Duration;
 
 use crate::domain::DataSourceKind;
 use crate::ports::{Clock, SourceError};
+use crate::sources::fallback::mapping::choose_event;
 use crate::sources::fallback::{EventHint, ExternalEvent, ExternalSnapshot, ExternalSource};
 
 pub mod limiter;
@@ -207,6 +208,32 @@ impl LiquipediaSource {
         }
     }
 
+    async fn search_events(&self, query: &str) -> Result<Vec<ExternalEvent>, SourceError> {
+        let found = self
+            .request(
+                Class::Normal,
+                &[
+                    ("action", "query"),
+                    ("list", "search"),
+                    ("srsearch", query),
+                    ("srnamespace", "0"),
+                    ("srlimit", "8"),
+                    ("srprop", ""),
+                ],
+            )
+            .await?;
+        let titles = parse::listed_titles(&found)?;
+        if titles.is_empty() {
+            return Ok(Vec::new());
+        }
+        // The infobox sits in section 0; only league pages have one.
+        let pages = self.wikitext(&titles, true).await?;
+        Ok(pages
+            .iter()
+            .filter_map(|p| parse::event_header(&p.title, &p.wikitext))
+            .collect())
+    }
+
     async fn wikitext(&self, titles: &[String], section0: bool) -> Result<Vec<Page>, SourceError> {
         let joined = titles.join("|");
         let mut params = vec![
@@ -275,29 +302,43 @@ impl ExternalSource for LiquipediaSource {
         if hint.name.trim().is_empty() {
             return Ok(Vec::new());
         }
-        let found = self
-            .request(
-                Class::Normal,
-                &[
-                    ("action", "query"),
-                    ("list", "search"),
-                    ("srsearch", hint.name.as_str()),
-                    ("srnamespace", "0"),
-                    ("srlimit", "8"),
-                    ("srprop", ""),
-                ],
-            )
-            .await?;
-        let titles = parse::listed_titles(&found)?;
-        if titles.is_empty() {
-            return Ok(Vec::new());
+        let mut candidates = self.search_events(&hint.name).await?;
+        if choose_event(hint, &candidates).is_some() {
+            return Ok(candidates);
         }
-        // The infobox sits in section 0; only league pages have one.
-        let pages = self.wikitext(&titles, true).await?;
-        Ok(pages
-            .iter()
-            .filter_map(|p| parse::event_header(&p.title, &p.wikitext))
-            .collect())
+        // Full-text search can rank team pages above the tournament. Require
+        // a distinctive word in the page title, then validate names and dates.
+        let anchor = hint
+            .name
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|word| word.chars().all(char::is_alphabetic) && word.chars().count() >= 4)
+            .filter(|word| {
+                ![
+                    "major",
+                    "championship",
+                    "championships",
+                    "tournament",
+                    "stage",
+                    "playoffs",
+                ]
+                .iter()
+                .any(|noise| word.eq_ignore_ascii_case(noise))
+            })
+            .max_by_key(|word| word.chars().count());
+        if let Some(anchor) = anchor {
+            for event in self
+                .search_events(&format!("intitle:{anchor} {}", hint.name))
+                .await?
+            {
+                if !candidates
+                    .iter()
+                    .any(|candidate| candidate.external_id == event.external_id)
+                {
+                    candidates.push(event);
+                }
+            }
+        }
+        Ok(candidates)
     }
 
     async fn fetch_event(&self, external_id: &str) -> Result<ExternalSnapshot, SourceError> {

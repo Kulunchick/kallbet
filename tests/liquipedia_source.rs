@@ -88,6 +88,27 @@ impl Wiki for FakeWiki {
         if let Some(failure) = self.fail.lock().unwrap().clone() {
             return Err(failure);
         }
+        if let Some(query) = params.get("srsearch").filter(|q| q.contains("Singapore")) {
+            let title = if query.starts_with("intitle:Singapore ") {
+                "PGL/2026/Singapore"
+            } else {
+                "Team Spirit"
+            };
+            return Ok(json!({"query": {"search": [{"title": title}]}}).to_string());
+        }
+        if params.contains_key("rvsection") {
+            let title = params["titles"].as_str();
+            let wikitext = match title {
+                "Team Spirit" => Some("{{Infobox team|name=Team Spirit}}"),
+                "PGL/2026/Singapore" => Some("{{Infobox league|name=PGL Major Singapore 2026|sdate=2026-11-24|edate=2026-12-13}}"),
+                _ => None,
+            };
+            if let Some(content) = wikitext {
+                return Ok(json!({"query": {"pages": [{"title": title, "revisions": [
+                    {"slots": {"main": {"content": content}}}
+                ]}]}}).to_string());
+            }
+        }
         let file = match params["action"].as_str() {
             "expandtemplates" => "api-teamnames-cologne.json",
             _ => match params.get("list").map(String::as_str) {
@@ -355,6 +376,22 @@ async fn candidates_for_an_event_are_the_search_hits_that_have_a_league_infobox(
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].external_id, COLOGNE);
     assert_eq!(found[0].name, "IEM Cologne Major 2026");
+}
+
+#[tokio::test]
+async fn title_search_finds_singapore_when_full_text_search_only_returns_teams() {
+    let r = rig();
+    let hint = EventHint {
+        id: EventId(8302),
+        name: "PGL Major Singapore 2026".into(),
+        starts_at: Some(Utc.with_ymd_and_hms(2026, 11, 24, 11, 0, 0).unwrap()),
+        ends_at: Some(Utc.with_ymd_and_hms(2026, 12, 13, 11, 0, 0).unwrap()),
+    };
+
+    let found = r.source.find_events(&hint).await.unwrap();
+    assert_eq!(r.wiki.actions(), vec!["search", "query", "search", "query"]);
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].external_id, "PGL/2026/Singapore");
 }
 
 #[tokio::test]

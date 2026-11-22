@@ -27,10 +27,16 @@ pub fn team_key(name: &str) -> String {
         .iter()
         .filter(|w| !TEAM_NOISE.contains(&w.as_str()))
         .collect();
-    if kept.is_empty() {
+    let key = if kept.is_empty() {
         all.concat()
     } else {
         kept.into_iter().map(String::as_str).collect()
+    };
+    // The Singapore Major feeds used alternate names for these rosters.
+    match key.as_str() {
+        "pvision" => "parivision".into(),
+        "dendelecs" => "dendele".into(),
+        _ => key,
     }
 }
 
