@@ -4,8 +4,8 @@
 //! Swiss shape (#14) uses the kinds `ThreeNil`, `ZeroThree` and `Advance`
 //! (slot = position in the list); the Playoffs bracket (#15) adds a second
 //! shape with kind `Bracket` (slot = bracket slot) next to it: its own
-//! validation and scoring functions, but the same storage, [`lock`] and
-//! shared-place [`rank`].
+//! validation and scoring functions, but the same storage, Lock policy
+//! ([`evaluate_lock`]) and shared-place [`rank`].
 //!
 //! Everything reads the effective Match view ([`EventView`]), never raw data.
 //!
@@ -22,7 +22,7 @@ use std::collections::{HashMap, HashSet};
 use chrono::{DateTime, Utc};
 
 use super::effective_match::{EventView, SourcedMatch};
-use super::{MatchPlacement, MatchStatus, StageOrdinal, TeamId};
+use super::{MatchPlacement, MatchStatus, StageOrdinal, TeamId, UserId};
 
 pub const THREE_NIL_COUNT: usize = 2;
 pub const ZERO_THREE_COUNT: usize = 2;
@@ -245,20 +245,77 @@ pub fn score_swiss(pickem: &SwissPickem, outcomes: &HashMap<TeamId, SwissOutcome
         + correct(&pickem.advance, SwissOutcome::Advanced)
 }
 
-/// When a Stage's Pick'em Locks: the moment its first Match starts (shared by
-/// every Pick'em shape). `stored` is the Lock already on record, which never
-/// changes. Otherwise it is the earliest start among the Stage's Matches
-/// (actual start; "now" for one seen live without a time; else the Scheduled
-/// Start), provided that is not after `now`.
-pub fn lock(
+/// The Locks stored for a Stage's Pick'em, per League. Set once, never
+/// cleared (ADR-0003).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Stamps {
+    /// The Lock of the human Members: their early Lock or the Hard Lock,
+    /// whichever came first.
+    pub locked_at: Option<DateTime<Utc>>,
+    /// The Hard Lock: the Stage's first Match starting. It binds Bot Users
+    /// too. Never before `locked_at` is set.
+    pub hard_locked_at: Option<DateTime<Utc>>,
+}
+
+pub struct LockInputs<'a> {
+    /// The League's effective Match view.
+    pub view: &'a EventView,
+    pub stage: StageOrdinal,
+    pub stored: Stamps,
+    /// The human current Members: the ones an early Lock waits for.
+    pub awaited: &'a [UserId],
+    /// The current Members who have a Pick'em for the Stage.
+    pub submitted: &'a [UserId],
+    /// The end of the final edit window, once the last human has submitted.
+    pub edit_until: Option<DateTime<Utc>>,
+    pub now: DateTime<Utc>,
+}
+
+/// The Locks of a Stage's Pick'em at `now` (shared by every shape). A stored
+/// stamp is returned as it is.
+///
+/// The **Hard Lock** is the Stage's first Match starting ([`hard_lock_due`]).
+/// The humans may Lock earlier among themselves: once every human current
+/// Member has submitted, at the end of the last one's final edit window, or
+/// at once when a membership change completes the set with no window open.
+/// Bot Users (ADR-0003's amendment) are not waited for and are bound by the
+/// Hard Lock only, so a League without a human Member has no early Lock.
+pub fn evaluate_lock(inputs: &LockInputs<'_>) -> Stamps {
+    let LockInputs {
+        view,
+        stage,
+        stored,
+        awaited,
+        submitted,
+        edit_until,
+        now,
+    } = *inputs;
+    let hard_locked_at = stored
+        .hard_locked_at
+        .or_else(|| hard_lock_due(view, stage, now));
+    let early = match edit_until {
+        Some(ends) => (ends <= now).then_some(ends),
+        None => (!awaited.is_empty() && awaited.iter().all(|u| submitted.contains(u)))
+            .then_some(now),
+    };
+    Stamps {
+        locked_at: stored
+            .locked_at
+            .or_else(|| hard_locked_at.into_iter().chain(early).min()),
+        hard_locked_at,
+    }
+}
+
+/// When a Stage's Pick'em Hard Locked, if it should be by `now`: the moment
+/// its first Match starts. That is the earliest start among the Stage's
+/// Matches (actual start; "now" for one seen live without a time; else the
+/// Scheduled Start), provided that is not after `now`. Unlike a Match's Hard
+/// Lock it has no 15-minute lead.
+pub fn hard_lock_due(
     view: &EventView,
     stage: StageOrdinal,
-    stored: Option<DateTime<Utc>>,
     now: DateTime<Utc>,
 ) -> Option<DateTime<Utc>> {
-    if stored.is_some() {
-        return stored;
-    }
     view.matches
         .iter()
         .filter(|m| m.data.stage == stage && m.data.status != MatchStatus::Cancelled)
@@ -273,7 +330,7 @@ pub fn lock(
         .filter(|start| *start <= now)
 }
 
-/// The Scheduled Start of the Stage's earliest Match: when the Lock is
+/// The Scheduled Start of the Stage's earliest Match: when the Hard Lock is
 /// expected, for a countdown.
 pub fn expected_lock(view: &EventView, stage: StageOrdinal) -> Option<DateTime<Utc>> {
     view.matches
@@ -503,4 +560,158 @@ pub fn score_bracket(pickem: &BracketPickem, bracket: &Bracket) -> u32 {
         .iter()
         .filter(|s| s.winner.is_some() && pickem.winner_of(s.id()) == s.winner)
         .count() as u32
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::TimeZone;
+
+    use super::*;
+    use crate::domain::model::{DataSourceKind, Event};
+    use crate::domain::{EventId, Match, MatchFormat, MatchId};
+
+    const STAGE: StageOrdinal = StageOrdinal(1);
+
+    fn at(h: u32, m: u32) -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(2026, 1, 10, h, m, 0).unwrap()
+    }
+
+    /// A Stage of two Matches, the first with this Scheduled Start.
+    fn view(first_start: DateTime<Utc>) -> EventView {
+        let game = |id, start| SourcedMatch {
+            data: Match {
+                id: MatchId(id),
+                stage: STAGE,
+                placement: MatchPlacement::Unplaced,
+                team_a: None,
+                team_b: None,
+                format: MatchFormat::Bo3,
+                scheduled_start: Some(start),
+                actual_start: None,
+                status: MatchStatus::Upcoming,
+                winner: None,
+                score: None,
+            },
+            source: DataSourceKind::Hltv,
+            updated_at: at(0, 0),
+        };
+        EventView {
+            event: Event {
+                id: EventId(1),
+                name: "Test Major".into(),
+                starts_at: None,
+                ends_at: None,
+            },
+            stages: Vec::new(),
+            teams: Vec::new(),
+            matches: vec![game(1, first_start), game(2, first_start + chrono::Duration::hours(3))],
+        }
+    }
+
+    const ALICE: UserId = UserId(1);
+    const BOB: UserId = UserId(2);
+    const ORACLE: UserId = UserId(7);
+
+    fn run(
+        view: &EventView,
+        stored: Stamps,
+        awaited: &[UserId],
+        submitted: &[UserId],
+        edit_until: Option<DateTime<Utc>>,
+        now: DateTime<Utc>,
+    ) -> Stamps {
+        evaluate_lock(&LockInputs {
+            view,
+            stage: STAGE,
+            stored,
+            awaited,
+            submitted,
+            edit_until,
+            now,
+        })
+    }
+
+    #[test]
+    fn the_hard_lock_is_the_first_match_starting_with_no_lead() {
+        let v = view(at(14, 0));
+        let open = run(&v, Stamps::default(), &[ALICE], &[], None, at(13, 59));
+        assert_eq!(open, Stamps::default());
+
+        let locked = run(&v, Stamps::default(), &[ALICE], &[], None, at(15, 0));
+        assert_eq!(locked.locked_at, Some(at(14, 0)));
+        assert_eq!(locked.hard_locked_at, Some(at(14, 0)));
+    }
+
+    #[test]
+    fn an_early_lock_waits_for_the_humans_only_and_is_not_a_hard_lock() {
+        let v = view(at(14, 0));
+        // The Bot User has submitted, a human has not: nothing happens.
+        let waiting = run(
+            &v,
+            Stamps::default(),
+            &[ALICE, BOB],
+            &[ALICE, ORACLE],
+            None,
+            at(12, 0),
+        );
+        assert_eq!(waiting, Stamps::default());
+
+        // Every human has submitted (a membership change completed the
+        // set, so no window is open), the Bot User has not.
+        let out = run(
+            &v,
+            Stamps::default(),
+            &[ALICE, BOB],
+            &[BOB, ALICE],
+            None,
+            at(12, 0),
+        );
+        assert_eq!(out.locked_at, Some(at(12, 0)));
+        assert_eq!(out.hard_locked_at, None);
+    }
+
+    #[test]
+    fn the_final_edit_window_delays_the_early_lock_to_its_end() {
+        let v = view(at(14, 0));
+        let both = [ALICE, BOB];
+        let during = run(&v, Stamps::default(), &both, &both, Some(at(12, 5)), at(12, 4));
+        assert_eq!(during, Stamps::default());
+
+        let after = run(&v, Stamps::default(), &both, &both, Some(at(12, 5)), at(12, 30));
+        assert_eq!(after.locked_at, Some(at(12, 5)));
+        assert_eq!(after.hard_locked_at, None);
+
+        // The Stage starting caps the window.
+        let capped = run(&v, Stamps::default(), &both, &both, Some(at(14, 3)), at(14, 1));
+        assert_eq!(capped.locked_at, Some(at(14, 0)));
+        assert_eq!(capped.hard_locked_at, Some(at(14, 0)));
+    }
+
+    #[test]
+    fn a_league_of_bot_users_only_has_no_early_lock() {
+        let v = view(at(14, 0));
+        let out = run(&v, Stamps::default(), &[], &[ORACLE], None, at(12, 0));
+        assert_eq!(out, Stamps::default());
+    }
+
+    #[test]
+    fn the_hard_lock_comes_after_an_early_lock_and_both_are_kept() {
+        let early = Stamps {
+            locked_at: Some(at(12, 0)),
+            hard_locked_at: None,
+        };
+        let v = view(at(14, 0));
+        assert_eq!(run(&v, early, &[ALICE], &[ALICE], None, at(13, 59)), early);
+
+        let hard = run(&v, early, &[ALICE], &[ALICE], None, at(14, 10));
+        assert_eq!(hard.locked_at, Some(at(12, 0)));
+        assert_eq!(hard.hard_locked_at, Some(at(14, 0)));
+
+        // Postponed afterwards: both stay.
+        let postponed = view(at(18, 0));
+        assert_eq!(run(&postponed, hard, &[ALICE], &[ALICE], None, at(14, 20)), hard);
+        // Postponed before it came: the humans stay Locked, a Bot User has
+        // until the new start.
+        assert_eq!(run(&postponed, early, &[ALICE], &[ALICE], None, at(14, 20)), early);
+    }
 }
