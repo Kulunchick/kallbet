@@ -1,5 +1,6 @@
 import { api } from "../../api/client";
 import type { EventInfo } from "../leagues/api";
+import type { Rationale } from "./rationale";
 
 export type DataSource = "hltv" | "pandascore" | "liquipedia";
 export type MatchStatus = "upcoming" | "live" | "finished" | "cancelled";
@@ -16,6 +17,8 @@ export type RevealedPrediction = {
   is_bot: boolean;
   /** A Bot User's Prediction before Hard Lock: it may still change. */
   preliminary: boolean;
+  /** The Prediction's Rationale, if it has one (#23). */
+  rationale: Rationale | null;
 };
 
 /** "N of M predicted"; `revealed` stays null until Reveal (`PredictionsView`). */

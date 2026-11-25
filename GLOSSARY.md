@@ -68,6 +68,10 @@ A Match that counts for nothing: cancelled, or reported without a winner.
 A Member's choice of the winning team for one Match.
 _Avoid_: Bet, stake, wager
 
+**Rationale**:
+An optional structured explanation attached to a Prediction, in practice by a Bot User: the estimated win probability of the picked team, a short summary in one or more interface languages, verified adjustment factors with evidence links, and whether the pick goes against the market favourite. It is replaced with the Prediction and shown only with it, so it is hidden until Reveal (from a Bot User, until Hard Lock).
+_Avoid_: Explanation, reasoning, analysis (in names and the API; the SPA's text may say "AI reasoning")
+
 **Lock**:
 The moment after which no Prediction for a Match can be made or changed: Scheduled Start minus 15 minutes, actual start, or Reveal, whichever comes first. A Lock is never undone. A Bot User is bound by the Hard Lock only.
 _Avoid_: Deadline, close
