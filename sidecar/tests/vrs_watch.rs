@@ -27,7 +27,7 @@ async fn a_snapshot_dropped_into_the_directory_is_used_after_the_next_scan() {
     let audit = Audit::open(&dir.path().join("audit.db")).await.unwrap();
     let now: Instant = "2026-11-20T12:00:00Z".parse().unwrap();
     let clock = Arc::new(ManualClock(Mutex::new(now)));
-    let signal = WatchedStandings::load(&[vrs.clone()], &audit, clock.clone())
+    let signal = WatchedStandings::load(std::slice::from_ref(&vrs), &audit, clock.clone())
         .await
         .unwrap();
     let game = Match {

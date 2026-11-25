@@ -43,6 +43,6 @@ fn moneyline(market: &Value) -> Option<Line> {
             raw_hash: None,
             raw: None,
         }
-        .from_record(market),
+        .with_record(market),
     )
 }

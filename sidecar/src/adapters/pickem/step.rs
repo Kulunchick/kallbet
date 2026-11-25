@@ -198,6 +198,17 @@ impl Inputs {
     }
 }
 
+/// Who runs the Pick'em step, where and when.
+#[derive(Clone, Copy)]
+struct Step<'a> {
+    platform: &'a dyn LeaguePlatform,
+    token: &'a str,
+    bot: &'a BotProfile,
+    league: i64,
+    now: Instant,
+    audit: &'a Audit,
+}
+
 pub struct PickemRunner {
     clock: Arc<dyn Clock>,
     signal: Arc<dyn SignalEstimator>,
@@ -353,16 +364,15 @@ impl PickemRunner {
 impl PickemRunner {
     /// One Stage's Pick'em: submit it if missing, refresh it once in the last
     /// 30 minutes if its inputs changed.
-    async fn stage(
-        &self,
-        platform: &dyn LeaguePlatform,
-        token: &str,
-        bot: &BotProfile,
-        league: i64,
-        now: Instant,
-        audit: &Audit,
-        sp: StagePickem,
-    ) -> Result<()> {
+    async fn stage(&self, step: Step<'_>, sp: StagePickem) -> Result<()> {
+        let Step {
+            platform,
+            token,
+            bot,
+            league,
+            now,
+            audit,
+        } = step;
         if !sp.can_edit || sp.locked || sp.locks_at.is_some_and(|l| now >= l) {
             return Ok(());
         }
@@ -453,7 +463,15 @@ impl PickemStep for PickemRunner {
         let mut failures = Vec::new();
         for sp in platform.pickem_stages(token, league).await? {
             let stage = sp.ordinal;
-            match self.stage(platform, token, bot, league, now, audit, sp).await {
+            let step = Step {
+                platform,
+                token,
+                bot,
+                league,
+                now,
+                audit,
+            };
+            match self.stage(step, sp).await {
                 Ok(()) => {}
                 Err(e) if e.is::<TemporalLeakError>() => return Err(e),
                 Err(error) => failures.push(StageFailure { stage, error }),

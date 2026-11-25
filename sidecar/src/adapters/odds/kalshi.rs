@@ -58,7 +58,7 @@ fn event(event: &Value, captured_at: Instant) -> Option<Line> {
             raw_hash: None,
             raw: None,
         }
-        .from_record(event),
+        .with_record(event),
     )
 }
 

@@ -21,7 +21,7 @@ pub(super) struct Line {
 }
 impl Line {
     /// The line with the record it was read from.
-    pub fn from_record(mut self, record: &Value) -> Self {
+    pub fn with_record(mut self, record: &Value) -> Self {
         let raw = record.to_string().into_bytes();
         self.raw_hash = Some(crate::digest(&raw));
         self.raw = Some(raw);

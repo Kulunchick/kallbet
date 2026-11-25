@@ -34,7 +34,7 @@ fn live_line(fixture: &Value) -> Option<Line> {
             raw_hash: None,
             raw: None,
         }
-        .from_record(fixture),
+        .with_record(fixture),
     )
 }
 

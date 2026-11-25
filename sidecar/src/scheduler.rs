@@ -177,7 +177,7 @@ impl Sidecar {
             }
         }
         let mut submitted = 0;
-        for league in platform.leagues(&token).await? {
+        for league in platform.leagues(token).await? {
             let at = At {
                 league: Some(league),
                 ..At::default()
