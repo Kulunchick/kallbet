@@ -161,7 +161,7 @@ async fn the_health_command_reads_the_heartbeat_beside_the_audit_file() {
 }
 
 #[tokio::test]
-async fn an_unknown_command_shows_the_usage_and_backtest_waits_for_its_ticket() {
+async fn an_unknown_command_shows_the_usage() {
     let s = setup("http://127.0.0.1:1", &[]);
     let out = binary(&s, &["frobnicate"], None).output().await.unwrap();
     assert!(!out.status.success());
