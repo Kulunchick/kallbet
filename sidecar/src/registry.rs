@@ -18,7 +18,11 @@ impl Sidecar {
             signal: Arc::new(signal),
             odds: adapters::odds::build(&audit)?,
             context: adapters::context::build(&config.context, &audit, Arc::new(SystemClock)),
-            llm: adapters::debate::build(adapters::llm::build(&config.llm, Arc::new(SystemClock))),
+            llm: adapters::debate::build(
+                &config.debate,
+                adapters::llm::build(&config.llm, Arc::new(SystemClock)),
+                &audit,
+            )?,
             policy: Arc::new(ConfiguredPolicy),
             pickem: adapters::pickem::build(),
         };
@@ -33,6 +37,12 @@ impl Sidecar {
 }
 struct ConfiguredPolicy;
 impl DecisionPolicy for ConfiguredPolicy {
+    fn wants_adjustment(&self, bot: &BotProfile) -> bool {
+        match bot.policy {
+            Policy::VrsOnly | Policy::MarketOnly => false,
+            Policy::HybridAnchored => adapters::debate::HybridAnchored.wants_adjustment(bot),
+        }
+    }
     fn decide(
         &self,
         bot: &BotProfile,
@@ -43,6 +53,9 @@ impl DecisionPolicy for ConfiguredPolicy {
         match bot.policy {
             Policy::VrsOnly => VrsOnly.decide(bot, d, tier, adjustment),
             Policy::MarketOnly => adapters::odds::MarketOnly.decide(bot, d, tier, adjustment),
+            Policy::HybridAnchored => {
+                adapters::debate::HybridAnchored.decide(bot, d, tier, adjustment)
+            }
         }
     }
 }

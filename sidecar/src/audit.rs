@@ -28,6 +28,19 @@ impl Audit {
         Ok(())
     }
 }
+impl Audit {
+    /// The content address of a dossier: what `dossier_runs` and `debate_turns`
+    /// key on. The market probability is rounded so that a move inside one
+    /// rounding step does not count as a new input.
+    pub fn input_hash(dossier: &Dossier) -> Result<String> {
+        const MARKET_HASH_SCALE: f64 = 10_000.0;
+        let mut hash_input = dossier.clone();
+        hash_input.market = dossier
+            .market
+            .map(|p| (p * MARKET_HASH_SCALE).round() / MARKET_HASH_SCALE);
+        Ok(crate::digest(&serde_json::to_vec(&hash_input)?))
+    }
+}
 pub(crate) enum Decision {
     Pending,
     Submit(Prediction),
@@ -43,12 +56,7 @@ impl Audit {
         tier: Tier,
         cutoff: Instant,
     ) -> Result<(i64, Decision)> {
-        const MARKET_HASH_SCALE: f64 = 10_000.0;
-        let mut hash_input = dossier.clone();
-        hash_input.market = dossier
-            .market
-            .map(|p| (p * MARKET_HASH_SCALE).round() / MARKET_HASH_SCALE);
-        let hash = crate::digest(&serde_json::to_vec(&hash_input)?);
+        let hash = Self::input_hash(dossier)?;
         let encoded = serde_json::to_string(dossier)?;
         let game = dossier.game.id;
         let mut tx = self.db.begin().await?;

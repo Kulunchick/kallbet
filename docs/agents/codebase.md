@@ -515,6 +515,56 @@ The HTTP adapter sends no tools at all. **Who gets web access** (`ToolPolicy::ac
 
 **Tests.** Seam 2: `tests/llm_envelopes.rs` (every saved success, quota, auth, timeout, bad-schema and HTTP fixture through the pure parsers; provenance in `tests/fixtures/llm/README.md`), `tests/llm_commands.rs` (the flags of each builder in both tool modes). `tests/llm_process.rs`: `TokioRunner` against stand-in programs (a hanging process killed after 300 ms, a missing binary, stdin and files). `tests/llm_runtime.rs`: `Providers` from a config's `llm` section with a scripted runner and a local HTTP stand-in: Claude → Codex → Antigravity → HTTP failover on quota and timeout, cool-down skipping, half-open recovery and re-opening, unconfigured providers skipped, auth and invalid output failing over without cooling down, HTTP 429, who gets web access in which mode and tier. `tests/llm_sidecar.rs`: Seam 1, a sidecar tick (its policy `wants_adjustment`; the runtime is asked only then) whose bot chain fails over from Claude's weekly limit to Codex and skips Claude for the next Match. `tests/llm_live.rs` (ignored): the real signed-in CLIs through the adapters in both tool modes (`cargo test -p kallbet-ai --test llm_live -- --ignored --nocapture`; spends a little quota).
 
+## HybridAnchored and the Debate (ticket #29, spec #21) — read before #30 and #31
+
+Code: `sidecar/src/adapters/debate/` (`policy.rs` the decision policy, `tier.rs` risk flags and the pass rule, `roles.rs` the seats' prompts and the brief schema, `turns.rs` the audit, `mod.rs` the runtime and its config). Paths below are relative to `sidecar/`.
+
+**Using it.** A bot gets `"policy": "HybridAnchored"` and a `provider_chain` of names from `llm.providers`. That alone gives the default behaviour; the optional `debate` section of the config file changes it per bot key:
+
+```json
+"bots": [{"bot_key": "oracle", "nickname": "Oracle", "invite_links": ["..."],
+          "policy": "HybridAnchored", "provider_chain": ["claude", "codex", "antigravity"]}],
+"debate": {"bots": {"oracle": {
+  "mode": "tiered",
+  "lopsided": 0.80,
+  "fast": ["claude", "codex"],
+  "advocate": ["claude", "codex", "antigravity"],
+  "devil": ["codex", "antigravity", "claude"],
+  "arbiter": ["antigravity", "claude", "codex"]
+}}}
+```
+
+Every key is optional. `mode`: `tiered` (default), `always` (Draft runs debate too) or `never` (always one agent). `lopsided` (default 0.80, above 0.5, at most 1; anything else fails start-up). `fast` defaults to the bot's `provider_chain`; the seats default to that chain turned by one place per seat, which for `[claude, codex, antigravity]` is exactly the example above: Claude as Market Advocate, Codex as Devil's Advocate, Antigravity as Chief Arbiter, each falling back to the other two. A `HybridAnchored` bot with an empty `provider_chain` and no seats runs with no LLM and submits the anchored pick.
+
+**`HybridAnchored` (`policy.rs`, pure).** `base(&dossier)` is `p_base` for team A: `0.80 · logit(market) + 0.20 · logit(signal.series)` through the sigmoid; with one of the two missing, the other; with neither, `None` and no Prediction. `accept(p_base, &adjustment)` is the whole guardrail on an LLM answer, and `decide` applies nothing else:
+
+- A factor counts when its `kind` is one of the six (`FACTOR_KINDS`) and its `evidence_url` is an absolute http(s) URL in the server's sense (`domain::rationale::is_evidence_url`: so not empty, no whitespace, at most 512 bytes). Others are dropped; duplicates too; at most 8 are kept. The URL is checked for form only: nothing checks that it is one the dossier carries, so an invented URL passes (this is what the spec asks for; see the note for #31 below).
+- With at least one factor the shift is clamped to ±8 pp. Without one it is clamped to ±2 pp when `|p_base − 0.5| < 0.03` and to zero otherwise.
+- `p_final = p_base + delta/100`, kept inside 1%..99% when shifted. The pick is team A above 0.5, team B below; exactly 0.5 keeps the side `p_base` had (team A when that is even too). `override_market` is true exactly when a market line exists and the pick is not its favourite (team A at an even market, as for `MarketOnly`); the rating alone can cause that, with no LLM involved.
+- Rationale: `p_win` of the picked team, the factors that passed, `preliminary` = Draft tier. The summary is the model's (each of `en`/`ru`/`uk` kept when it is non-blank text, cut to 1000 characters), except when the model asked for a shift and all of it was refused: then a fixed text says so, because the model's text would argue for a pick the bot did not make. With no usable summary a fixed text is used too.
+- `wants_adjustment` is true, so the scheduler asks `ports.llm` before `decide`.
+
+**`TieredDebateLlm` (`mod.rs`), the sidecar's `ports.llm`.** `debate::build(&config.debate, providers, &audit)` wraps the `Arc<Providers>` of ticket #27 (`registry.rs` does this; #31 passes providers built with `Mode::Backtest`). It implements `LlmRuntime`, so the scheduler is unchanged: it still sends `RolePrompt::adjustment()` and gets an `LlmAdjustment` back. Per run:
+
+1. No anchor (`base` is `None`), or the bot has no provider for the pass: `Ok(None)`, no call.
+2. `tier::plan` picks the pass. `tiered`: a Draft run is **Fast**; a PreLock run (the scheduler's T−25..15 window) is a **Debate** unless the Match is a clean mismatch: `p_base ≥ lopsided` or `≤ 1 − lopsided`, no risk flag, and not a Bo1. So a competitive Match, a Bo1 and a flagged Match debate in the window, and nothing debates at Draft unless `mode` is `always`.
+3. **Fast**: the scheduler's prompt under the role `predict`, on the `fast` chain: one call.
+4. **Debate**: `advocate` and `devil` run concurrently (`tokio::join!`), each on its own `FallbackLlm` chain, each answering `brief_schema()` (`position`, `claims[{claim, kind, evidence_url, favours}]`, `delta`). Then `arbiter` gets the scheduler's prompt and schema with both briefs attached (`"Market Advocate brief"`, `"Devil's Advocate brief"`) and its answer is the run's. A seat whose whole chain fails leaves a `null` brief and the Arbiter still decides; a failed Arbiter fails the run with its `LlmError`.
+
+Every prompt also carries a `"Baseline"` attachment: `{p_base_team_a, risk_flags}`.
+
+**Risk flags (`tier::risk_flags`, pure)** read the #26 context facts by `kind`: `liquipedia_roster` with `has_stand_in`, a non-empty `stand_ins` or a coach with `emergency_sub` → `stand_in`; `vrs_roster_diff` with `changed` → `roster_change`; `news_item` whose title or description contains one of `NEWS_WORDS` (stand-in, bench, replace, roster, coach, visa, illness, forfeit, ...) → `news`. A plain result headline raises none. A new kind of context fact raises no flag until it is added there.
+
+**Audit (`turns.rs`, migration `2900_debate_turns.sql`).** One append-only row in `debate_turns` per seat that ran, also for the Fast pass: `bot`, `match_id`, `tier`, `input_hash` (`Audit::input_hash(&dossier)`, the same value `dossier_runs` keys on), `role` (`predict`, `advocate`, `devil`, `arbiter`), `provider` (who answered; for a failed seat the chain that was tried), `latency_ms`, `status` (`ok` or the error kind, e.g. `quota_exceeded`), `brief` (the seat's JSON). A failover inside a chain is one row, with the provider that answered. Read them with `audit.debate_turns()`. **The log is also the cache**: before a seat is asked, its latest `ok` answer for the same (bot, tier, input hash) is reused, so a bot in two Leagues on the same Match debates once, and a retry after a failed Arbiter does not repeat the two briefs. A turn that cannot be written to the audit is not used (`Transient`).
+
+**For #31.** An anonymizing runtime that wraps this one must hand `HybridAnchored::decide` factors whose `evidence_url` is still an absolute http(s) URL, or the shift is zeroed. If a stricter evidence rule is wanted later (the URL must be in the dossier, or on `WEB_DOMAINS`), `policy::is_evidence_url` is the one place.
+
+**Costs to know.** The reuse key is the dossier hash, which contains the market probability rounded to 0.0001. Inside the window every tick whose odds moved by more than that is a new run, and for a debating Match that is three calls again. OddsPapi batches live six hours, Polymarket and Kalshi two minutes, so with only those two a Match can debate several times between T−25 and T−15.
+
+**Tests.** Unit tests in `policy.rs` (blend against worked numbers, clamp, every malformed factor, tie-break band, `override_market`, summary) and `tier.rs` (the pass table, both sides of the threshold). `tests/debate_runtime.rs`: the runtime over three scripted providers with real breakers and a real audit file (one call or three per case, the two advocates started before either answers, the Arbiter's attachments, quota failover inside a seat's chain, configured seats, reuse, retry after a failed Arbiter, a seat with no provider left, risk flags from the saved Liquipedia revision and HLTV feed). `tests/debate_sidecar.rs`: Seam 1, the whole lifecycle on saved real CLI output (early single-agent Draft → human early Reveal → debate at T−22m in which Antigravity's quota is exhausted and the Arbiter seat falls back to Claude → the 52/48 favourite overturned on the stand-in → Rationale in three languages on the Match card → no call on later ticks → Hard Lock), a refused and a clamped shift seen on the Match card, and a `HybridAnchored` bot built by `Sidecar::from_config` with a `debate` section against a local Anthropic-compatible endpoint. `tests/debate_support/` holds that scenario; `tests/debate_live.rs` (ignored) runs it through the real CLIs and is how `tests/fixtures/debate/` was captured (provenance in its README).
+
+**Unverified.** `agy` never answered a debate prompt: its subscription was out of quota during the capture (which gave the repository its first real `agy` quota output, `tests/fixtures/debate/arbiter-agy.*`, and confirmed the `RESOURCE_EXHAUSTED` mapping of #27). The seats' instructions were run once per seat on one scenario; their quality as forecasters is for the backtest of #31 to measure.
+
 ## Known limitations
 
 - **A local duplicate next to a stored HLTV Match is not merged.** Adoption (`mapping::adoptions`) only re-keys a local Match to an HLTV id that is not stored yet (`rekey_match` refuses an existing target). Since B1, a local Match whose two teams HLTV shows in the same Swiss or Playoffs Stage is adopted whatever the time; but in a Groups Stage (where a pair can meet twice) a local Match HLTV first publishes outside the matching window stays a separate local Match, with its Predictions, next to HLTV's. A League Admin can hide one with an Override. Merging two stored Matches (Predictions, Lock/Reveal stamps, Overrides, notification keys) is not implemented.

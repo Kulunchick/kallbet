@@ -6,6 +6,7 @@ use std::path::PathBuf;
 pub enum Policy {
     VrsOnly,
     MarketOnly,
+    HybridAnchored,
 }
 #[derive(Clone, Deserialize)]
 pub struct BotProfile {
@@ -28,6 +29,8 @@ pub struct Config {
     pub context: adapters::context::ContextConfig,
     #[serde(default)]
     pub llm: adapters::llm::LlmConfig,
+    #[serde(default)]
+    pub debate: adapters::debate::DebateConfig,
 }
 impl Config {
     pub fn load(path: impl AsRef<std::path::Path>) -> Result<Self> {
