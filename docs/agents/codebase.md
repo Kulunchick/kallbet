@@ -406,7 +406,7 @@ A Prediction may carry a **Rationale** (`GLOSSARY.md`). It rides on the Predicti
 
 ## AI Sidecar (ticket #24, spec #21)
 
-The Cargo workspace runs both packages with `cargo test`. The server stays at the root. The standalone binary and library in `sidecar/` are named `kallbet-ai`. Only its integration tests depend on the server crate. The server image builds `-p kallbet` and embeds the root migrations. The sidecar embeds `sidecar/migrations/` and opens the SQLite file specified by `audit_file`.
+The Cargo workspace runs both packages with `cargo test`. The server stays at the root. The standalone binary and library in `sidecar/` are named `kallbet-ai`. Only its integration tests depend on the server crate. The server image builds `-p kallbet` and embeds the root migrations. The sidecar embeds `sidecar/migrations/` and opens the SQLite file specified by `audit_file`. Its migrations follow the server's rule ("Adding a migration"): one file per ticket, numbered ticket × 100 (`2400_audit.sql` is #24's, `2500_odds_batches.sql` #25's, `2900`/`2901` #29's), and a file is never edited once a sidecar database may hold it. `2400_audit.sql` was `0001_audit.sql` until the spec-21 review, before any sidecar database was deployed; an audit file created before that rename is refused by sqlx (a migration it applied is missing): delete it.
 
 Run `cargo run -p kallbet-ai` with `SIDECAR_CONFIG` pointing to a JSON file and `KALLBET_BOT_SECRET` set to the server's shared secret. File paths are relative to the process working directory. The parent of the audit file must exist. Keep the config private because Invite Links grant League membership.
 
