@@ -71,9 +71,10 @@ async fn one_tick_against_a_real_server_succeeds() {
 }
 
 #[tokio::test]
-async fn a_failing_join_is_reported_without_the_invite_code_or_the_secret() {
+async fn a_dead_invite_link_is_skipped_without_the_invite_code_or_the_secret() {
     let h = Harness::new().await;
-    // No League has this Invite Link: the join fails and so does the tick.
+    // No League has this Invite Link (reissued, say): the join fails, the rest
+    // of the tick goes on, and nothing in the output carries the code.
     let invite = format!("https://kallbet.example.com/join/{INVITE_CODE}");
     let s = setup(&h.base, &[&invite]);
     let out = binary(&s, &["run", "--once"], Some(TEST_BOT_SECRET))
@@ -85,7 +86,8 @@ async fn a_failing_join_is_reported_without_the_invite_code_or_the_secret() {
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
-    assert!(!out.status.success(), "{all}");
+    assert!(out.status.success(), "{all}");
+    assert!(all.contains("single tick ok"), "{all}");
     for secret in [TEST_BOT_SECRET, INVITE_CODE] {
         assert!(!all.contains(secret), "{secret} leaked: {all}");
     }

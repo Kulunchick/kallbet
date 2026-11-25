@@ -33,6 +33,7 @@ impl Sidecar {
             bots: config.bots,
             audit,
             ports,
+            on_failure: OnFailure::Isolate,
         };
 
         Ok(sidecar)
@@ -59,6 +60,20 @@ impl DecisionPolicy for ConfiguredPolicy {
             Policy::HybridAnchored => {
                 adapters::debate::HybridAnchored.decide(bot, d, tier, adjustment)
             }
+        }
+    }
+    fn decide_unadjusted(
+        &self,
+        bot: &BotProfile,
+        d: &Dossier,
+        tier: Tier,
+        error: LlmError,
+    ) -> Result<Option<Prediction>> {
+        match bot.policy {
+            Policy::HybridAnchored => {
+                adapters::debate::HybridAnchored.decide_unadjusted(bot, d, tier, error)
+            }
+            _ => self.decide(bot, d, tier, None),
         }
     }
 }

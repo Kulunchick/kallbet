@@ -130,7 +130,15 @@ fn model_summary(summary: &Value) -> Option<Value> {
 
 /// The fixed summary used when the model wrote none, or wrote one for a shift
 /// that was thrown out (its text would argue for a pick the bot did not make).
-fn anchored_summary(has_market: bool, rejected: bool) -> Value {
+#[derive(Clone, Copy, PartialEq)]
+enum Note {
+    None,
+    /// The model asked for a shift without a verified factor; it was discarded.
+    Rejected,
+    /// No LLM answer was available (every chain failed).
+    Unavailable,
+}
+fn anchored_summary(has_market: bool, note: Note) -> Value {
     let mut parts = if has_market {
         text(
             "Anchored to the de-vigged market line, blended with the Valve Regional Standings estimate.",
@@ -144,12 +152,20 @@ fn anchored_summary(has_market: bool, rejected: bool) -> Value {
             "Ринкової лінії немає, тому оцінка ґрунтується на рейтингу Valve.",
         )
     };
-    if rejected {
-        let note = text(
+    let note = match note {
+        Note::None => None,
+        Note::Rejected => Some(text(
             " The model proposed an adjustment without a verified factor and evidence; it was discarded.",
             " Модель предложила поправку без подтверждённого фактора и источника; она отклонена.",
             " Модель запропонувала поправку без підтвердженого чинника та джерела; її відхилено.",
-        );
+        )),
+        Note::Unavailable => Some(text(
+            " No LLM adjustment was available for this Prediction (the language models did not answer), so it is the anchor alone.",
+            " Поправка языковой модели для этого прогноза недоступна (модели не ответили), поэтому это только опорная оценка.",
+            " Поправка мовної моделі для цього прогнозу недоступна (моделі не відповіли), тому це лише опорна оцінка.",
+        )),
+    };
+    if let Some(note) = note {
         for (part, (_, note)) in parts.iter_mut().zip(note) {
             part.1.push_str(&note);
         }
@@ -241,6 +257,20 @@ fn on_web_whitelist(url: &str) -> bool {
 
 pub struct HybridAnchored;
 impl DecisionPolicy for HybridAnchored {
+    /// The anchor alone, and the Rationale says that no LLM adjustment was available.
+    fn decide_unadjusted(
+        &self,
+        bot: &BotProfile,
+        dossier: &Dossier,
+        tier: Tier,
+        _: LlmError,
+    ) -> Result<Option<Prediction>> {
+        let mut decided = self.decide(bot, dossier, tier, None)?;
+        if let Some(p) = &mut decided {
+            p.rationale["summary"] = anchored_summary(dossier.market.is_some(), Note::Unavailable);
+        }
+        Ok(decided)
+    }
     fn wants_adjustment(&self, _: &BotProfile) -> bool {
         true
     }
@@ -278,7 +308,10 @@ impl DecisionPolicy for HybridAnchored {
             .as_ref()
             .filter(|_| !rejected)
             .and_then(|a| model_summary(&a.summary))
-            .unwrap_or_else(|| anchored_summary(dossier.market.is_some(), rejected));
+            .unwrap_or_else(|| {
+                let note = if rejected { Note::Rejected } else { Note::None };
+                anchored_summary(dossier.market.is_some(), note)
+            });
         Ok(Some(Prediction {
             team_id: team.id,
             rationale: json!({

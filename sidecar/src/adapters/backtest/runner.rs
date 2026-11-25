@@ -238,6 +238,9 @@ impl Backtest {
                         Arc::new(Noop)
                     },
                 },
+                // The replay reads every failure from the tick: an LLM profile
+                // without an answer must not submit the anchor's pick.
+                on_failure: OnFailure::Abort,
             })
             .collect();
 

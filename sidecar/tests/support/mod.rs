@@ -89,9 +89,9 @@ impl PickemStep for Scripts {
         l: i64,
         n: Instant,
         _: &Audit,
-    ) -> Result<()> {
+    ) -> Result<Vec<StageFailure>> {
         self.stages.lock().unwrap().push((l, n));
-        Ok(())
+        Ok(vec![])
     }
 }
 
@@ -149,6 +149,7 @@ impl Harness {
                 .await
                 .unwrap(),
             ports,
+            on_failure: OnFailure::Isolate,
         }
     }
     pub async fn tick(&self, sidecar: &mut Sidecar, now: Instant) -> Result<usize> {

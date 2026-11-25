@@ -36,7 +36,7 @@ pub struct Dossier {
     pub market: Option<f64>,
     pub context: Vec<Value>,
 }
-#[derive(Clone, Copy, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub enum Tier {
     Draft,
     PreLock,

@@ -11,7 +11,15 @@ pub trait PickemStep: Send + Sync {
         league: i64,
         now: Instant,
         audit: &Audit,
-    ) -> Result<()>;
+    ) -> Result<Vec<StageFailure>>;
+}
+
+/// A Stage whose Pick'em step failed; the step went on with the next Stage.
+/// (A `TemporalLeakError` is not one: it ends the step.)
+#[derive(Debug)]
+pub struct StageFailure {
+    pub stage: u8,
+    pub error: Box<dyn std::error::Error + Send + Sync>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

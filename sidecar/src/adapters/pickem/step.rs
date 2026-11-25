@@ -264,6 +264,91 @@ impl PickemRunner {
     }
 }
 
+impl PickemRunner {
+    /// One Stage's Pick'em: submit it if missing, refresh it once in the last
+    /// 30 minutes if its inputs changed.
+    async fn stage(
+        &self,
+        platform: &dyn LeaguePlatform,
+        token: &str,
+        bot: &BotProfile,
+        league: i64,
+        now: Instant,
+        audit: &Audit,
+        sp: StagePickem,
+    ) -> Result<()> {
+        if !sp.can_edit || sp.locked || sp.locks_at.is_some_and(|l| now >= l) {
+            return Ok(());
+        }
+
+        let kind = sp.stage["stage"]["kind"].as_str().unwrap_or("");
+        match kind {
+            "swiss" if sp.teams.len() == 16 => {}
+            "playoffs" if sp.stage["bracket"]["ready"].as_bool() == Some(true) => {}
+            _ => return Ok(()),
+        }
+
+        let previous = if let Some(last_write) = sp.my_updated_at {
+            let Some(start) = sp.locks_at else { return Ok(()) };
+            let refresh_open = start - Duration::minutes(30);
+            if now < refresh_open {
+                return Ok(());
+            }
+            let hashes: Vec<String> = sqlx::query_scalar(
+                "SELECT input_hash FROM submitted_pickems
+                 WHERE bot = ? AND league = ? AND stage = ? ORDER BY id DESC LIMIT 2",
+            )
+            .bind(&bot.bot_key)
+            .bind(league)
+            .bind(i64::from(sp.ordinal))
+            .fetch_all(&audit.db)
+            .await?;
+            // Two successful writes are the draft and its refresh. If the audit was
+            // lost, use the server timestamp to avoid repeating an in-window write.
+            if hashes.len() == 2 || (hashes.is_empty() && last_write >= refresh_open) {
+                return Ok(());
+            }
+            hashes.into_iter().next()
+        } else {
+            None
+        };
+
+        let stage_cutoff = sp
+            .locks_at
+            .unwrap_or_else(|| now + Duration::nanoseconds(1));
+        let ratings = self.gather_ratings(&sp, now, stage_cutoff).await?;
+
+        let input_hash = compute_input_hash(&sp.stage, &ratings, stage_cutoff)?;
+        if previous.as_deref() == Some(input_hash.as_str()) {
+            return Ok(());
+        }
+
+        let stage_as_of = AsOf::new(sp.stage, now, stage_cutoff)?;
+        let Some(payload) = self.solver.solve(&stage_as_of, &ratings, stage_cutoff)? else {
+            return Ok(());
+        };
+
+        if platform
+            .submit_pickem(token, league, sp.ordinal, &payload)
+            .await?
+        {
+            sqlx::query(
+                "INSERT INTO submitted_pickems(bot, league, stage, submitted_at, input_hash, payload)
+                 VALUES(?, ?, ?, ?, ?, ?)",
+            )
+            .bind(&bot.bot_key)
+            .bind(league)
+            .bind(i64::from(sp.ordinal))
+            .bind(now)
+            .bind(&input_hash)
+            .bind(serde_json::to_string(&payload)?)
+            .execute(&audit.db)
+            .await?;
+        }
+        Ok(())
+    }
+}
+
 #[async_trait::async_trait]
 impl PickemStep for PickemRunner {
     async fn tick(
@@ -274,77 +359,16 @@ impl PickemStep for PickemRunner {
         league: i64,
         now: Instant,
         audit: &Audit,
-    ) -> Result<()> {
+    ) -> Result<Vec<StageFailure>> {
+        let mut failures = Vec::new();
         for sp in platform.pickem_stages(token, league).await? {
-            if !sp.can_edit || sp.locked || sp.locks_at.is_some_and(|l| now >= l) {
-                continue;
-            }
-
-            let kind = sp.stage["stage"]["kind"].as_str().unwrap_or("");
-            match kind {
-                "swiss" if sp.teams.len() == 16 => {}
-                "playoffs" if sp.stage["bracket"]["ready"].as_bool() == Some(true) => {}
-                _ => continue,
-            }
-
-            let previous = if let Some(last_write) = sp.my_updated_at {
-                let Some(start) = sp.locks_at else { continue };
-                let refresh_open = start - Duration::minutes(30);
-                if now < refresh_open {
-                    continue;
-                }
-                let hashes: Vec<String> = sqlx::query_scalar(
-                    "SELECT input_hash FROM submitted_pickems
-                     WHERE bot = ? AND league = ? AND stage = ? ORDER BY id DESC LIMIT 2",
-                )
-                .bind(&bot.bot_key)
-                .bind(league)
-                .bind(i64::from(sp.ordinal))
-                .fetch_all(&audit.db)
-                .await?;
-                // Two successful writes are the draft and its refresh. If the audit was
-                // lost, use the server timestamp to avoid repeating an in-window write.
-                if hashes.len() == 2 || (hashes.is_empty() && last_write >= refresh_open) {
-                    continue;
-                }
-                hashes.into_iter().next()
-            } else {
-                None
-            };
-
-            let stage_cutoff = sp
-                .locks_at
-                .unwrap_or_else(|| now + Duration::nanoseconds(1));
-            let ratings = self.gather_ratings(&sp, now, stage_cutoff).await?;
-
-            let input_hash = compute_input_hash(&sp.stage, &ratings, stage_cutoff)?;
-            if previous.as_deref() == Some(input_hash.as_str()) {
-                continue;
-            }
-
-            let stage_as_of = AsOf::new(sp.stage, now, stage_cutoff)?;
-            let Some(payload) = self.solver.solve(&stage_as_of, &ratings, stage_cutoff)? else {
-                continue;
-            };
-
-            if platform
-                .submit_pickem(token, league, sp.ordinal, &payload)
-                .await?
-            {
-                sqlx::query(
-                    "INSERT INTO submitted_pickems(bot, league, stage, submitted_at, input_hash, payload)
-                     VALUES(?, ?, ?, ?, ?, ?)",
-                )
-                .bind(&bot.bot_key)
-                .bind(league)
-                .bind(i64::from(sp.ordinal))
-                .bind(now)
-                .bind(&input_hash)
-                .bind(serde_json::to_string(&payload)?)
-                .execute(&audit.db)
-                .await?;
+            let stage = sp.ordinal;
+            match self.stage(platform, token, bot, league, now, audit, sp).await {
+                Ok(()) => {}
+                Err(e) if e.is::<TemporalLeakError>() => return Err(e),
+                Err(error) => failures.push(StageFailure { stage, error }),
             }
         }
-        Ok(())
+        Ok(failures)
     }
 }

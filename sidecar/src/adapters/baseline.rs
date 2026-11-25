@@ -36,8 +36,8 @@ impl PickemStep for Noop {
         _: i64,
         _: Instant,
         _: &Audit,
-    ) -> Result<()> {
-        Ok(())
+    ) -> Result<Vec<StageFailure>> {
+        Ok(vec![])
     }
 }
 #[async_trait]
