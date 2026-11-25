@@ -12,7 +12,8 @@
 //! Without it no provider is called: the LLM profiles answer only from
 //! `--answers` (recorded answers; the file is updated with every new answer).
 use super::runner::{Backtest, LlmPlan, export_answers, import_answers};
-use super::{ReplayArchive, archive};
+use super::{ReplayArchive, archive, record_run};
+use crate::adapters::baseline::SystemClock;
 use crate::adapters::llm::{LlmConfig, TokioRunner};
 use crate::*;
 use serde::Deserialize;
@@ -167,7 +168,10 @@ pub async fn run(args: &[String]) -> Result<String> {
         llm_matches = backtest.plan.matches().len(),
         "backtest starting"
     );
+    // When the run happened is the one wall-clock reading of a backtest.
+    let started_at = SystemClock.now();
     let outcome = backtest.run(&audit).await?;
+    record_run(&audit, started_at, SystemClock.now(), &outcome).await?;
     if let Some(path) = &o.answers {
         let turns = export_answers(&audit).await?;
         std::fs::write(path, serde_json::to_string_pretty(&turns)? + "\n")?;

@@ -15,12 +15,14 @@ pub mod feeds;
 pub mod platform;
 pub mod report;
 pub mod runner;
+pub mod runs;
 
 pub use anonymizer::{Blind, BlindAnonymizer};
 pub use archive::{ReplayArchive, ReplayMatch, ReplayStage, StageKind};
 pub use platform::{ReplayClock, ReplayPlatform, Submitted, SubmittedPickem};
 pub use report::Report;
 pub use runner::{Backtest, Feeds, LlmPlan, export_answers, import_answers};
+pub use runs::{BacktestRun, record_run};
 
 use crate::*;
 use chrono::Duration;

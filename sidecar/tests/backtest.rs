@@ -761,6 +761,20 @@ fn the_backtest_subcommand_writes_the_report() {
         serde_json::from_str(&std::fs::read_to_string(out.path().join("report.json")).unwrap())
             .unwrap();
     assert_eq!(json["stages"][0]["with_vrs"], 24);
+    // The run is recorded in the audit file beside the report.
+    let runs = tokio::runtime::Runtime::new().unwrap().block_on(async {
+        let audit = Audit::open(&out.path().join("audit.sqlite")).await.unwrap();
+        audit.backtest_runs().await.unwrap()
+    });
+    assert_eq!(runs.len(), 1);
+    let run = &runs[0];
+    assert_eq!(run.archive_sha256, json["archive_digest"].as_str().unwrap());
+    assert_eq!(run.archive_files, 3);
+    assert!(run.started_at <= run.finished_at);
+    assert_eq!(run.profiles, json["profiles"]);
+    assert_eq!(run.headline["predictions"]["vrs"], 24);
+    assert_eq!(run.headline["stages"], 1);
+    assert_eq!(run.headline["llm_calls"], serde_json::json!({}));
 
     let missing = std::process::Command::new(env!("CARGO_BIN_EXE_kallbet-ai"))
         .args(["backtest", "--archive", "no-such-directory"])
