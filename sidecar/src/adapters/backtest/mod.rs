@@ -25,7 +25,6 @@ pub use runner::{Backtest, Feeds, LlmPlan, export_answers, import_answers};
 pub use runs::{BacktestRun, record_run};
 
 use crate::*;
-use chrono::Duration;
 
 /// A saved datum and the instant it was observed (published, revised).
 #[derive(Clone, Debug)]
@@ -37,5 +36,5 @@ pub struct Dated<T> {
 /// A Match's evaluation cutoff in a retrospective run: the earlier of
 /// Scheduled Start − 15 minutes and the actual start.
 pub fn match_cutoff(scheduled: Instant, actual: Instant) -> Instant {
-    (scheduled - Duration::minutes(15)).min(actual)
+    hard_lock(scheduled).min(actual)
 }

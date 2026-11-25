@@ -308,7 +308,7 @@ impl PickemRunner {
                     None
                 } else if game
                     .scheduled_start
-                    .is_some_and(|start| now >= start - Duration::minutes(15))
+                    .is_some_and(|start| now >= hard_lock(start))
                 {
                     // Match odds collection ends at Match Hard Lock. Other Event
                     // batches can still supply a dated line before Stage Hard Lock.

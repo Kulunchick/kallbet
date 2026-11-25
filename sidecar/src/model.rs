@@ -3,6 +3,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 pub type Instant = DateTime<Utc>;
 pub type Result<T, E = Box<dyn std::error::Error + Send + Sync>> = std::result::Result<T, E>;
+/// How long before its Scheduled Start a Match Hard Locks (GLOSSARY.md): the
+/// last moment a Bot User may write its Prediction, and every cutoff's cap.
+pub const HARD_LOCK_LEAD: chrono::Duration = chrono::Duration::minutes(15);
+/// How long before its Scheduled Start the PreLock pass opens (T-25..15).
+pub const PRE_LOCK_LEAD: chrono::Duration = chrono::Duration::minutes(25);
+/// A Match's Hard Lock by the schedule (an earlier actual start or a
+/// cancellation locks it too; the server enforces those).
+pub fn hard_lock(scheduled_start: Instant) -> Instant {
+    scheduled_start - HARD_LOCK_LEAD
+}
 #[derive(Clone, Copy, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Format {

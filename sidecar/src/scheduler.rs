@@ -1,6 +1,5 @@
 use crate::audit::Decision;
 use crate::*;
-use chrono::Duration;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 pub(crate) fn digest(data: &[u8]) -> String {
@@ -209,10 +208,10 @@ impl Sidecar {
             };
             for (game, has_pick) in matches {
                 let until = game.scheduled_start.map(|start| start - now);
-                if until.is_some_and(|d| d <= Duration::minutes(15)) {
+                if until.is_some_and(|d| d <= HARD_LOCK_LEAD) {
                     continue;
                 }
-                let tier = if until.is_some_and(|d| d <= Duration::minutes(25)) {
+                let tier = if until.is_some_and(|d| d <= PRE_LOCK_LEAD) {
                     Tier::PreLock
                 } else if !has_pick {
                     Tier::Draft
@@ -265,7 +264,7 @@ impl Sidecar {
             .await?;
         if game
             .scheduled_start
-            .is_some_and(|start| start - now <= Duration::minutes(15))
+            .is_some_and(|start| now >= hard_lock(start))
         {
             return Ok(0);
         }

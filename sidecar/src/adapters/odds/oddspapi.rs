@@ -1,6 +1,5 @@
 use super::lines::{self, Line, normalize, timestamp};
 use crate::{AsOf, Instant, Match, Result};
-use chrono::Duration;
 use serde_json::Value;
 
 pub(super) const FREE_PINNACLE: &str = "pinnacle+30";
@@ -117,7 +116,7 @@ pub fn match_settled_fixture(body: &[u8], game: &Match) -> Result<Option<Settled
             SettledFixture {
                 id: item.0.into(),
                 side,
-                hard_lock: (scheduled - Duration::minutes(15)).min(item.3),
+                hard_lock: crate::hard_lock(scheduled).min(item.3),
             }
         }),
     )

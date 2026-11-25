@@ -197,7 +197,7 @@ impl FallbackOdds {
     ) -> Result<(Instant, Option<AsOf<f64>>)> {
         let Some(hard_lock) = game
             .scheduled_start
-            .map(|start| start - Duration::minutes(15))
+            .map(crate::hard_lock)
         else {
             return Ok((cutoff, None));
         };
