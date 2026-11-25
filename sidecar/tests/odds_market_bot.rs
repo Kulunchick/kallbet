@@ -3,7 +3,7 @@ mod support;
 use async_trait::async_trait;
 use kallbet::{domain::StageKind, poller, ports::Clock as _, testing::EventSnapshotBuilder};
 use kallbet_ai::{
-    Clock, Instant, Policy, Sidecar, TemporalLeakError,
+    AsOf, Clock, Instant, Policy, Sidecar, TemporalLeakError,
     adapters::odds::{FallbackOdds, FetchError, MarketOnly, OddsConfig, OddsTransport},
 };
 use reqwest::Url;
@@ -177,6 +177,30 @@ async fn market_bot_uses_valve_standings_if_neither_public_feed_has_a_line() {
     assert!(h.scripts.llm_calls.lock().unwrap().is_empty());
 }
 
+#[tokio::test]
+async fn market_bot_preserves_a_favourite_that_is_very_close_to_even() {
+    let h = Harness::new().await;
+    let now: Instant = "2026-11-25T17:20:00Z".parse().unwrap();
+    let (mut sidecar, path) = market_bot(
+        &h,
+        now,
+        ("Vitality", "MOUZ"),
+        OddsConfig::default(),
+        Arc::new(Feeds::default()),
+    )
+    .await;
+    *h.scripts.market.lock().unwrap() =
+        Some(AsOf::new(0.49999, now - chrono::Duration::seconds(1), now).unwrap());
+    sidecar.ports.odds = h.scripts.clone();
+    assert_eq!(h.tick(&mut sidecar, now).await.unwrap(), 1);
+    let bot = h.app.bot("vrs", "Baseline").await;
+    let view = bot.get(&path).await.json();
+    assert_eq!(
+        view["stages"][0]["groups"][0]["matches"][0]["my_prediction"],
+        2
+    );
+}
+
 // Model elapsed time during live ingestion while keeping platform time fixed
 // for the entire tick. The first read is the harness's exact tick time.
 struct AdvancingClock(Arc<kallbet::testing::FakeClock>, AtomicI64);
@@ -220,5 +244,5 @@ async fn market_bot_accepts_a_kalshi_quote_captured_in_the_tick_and_rejects_cuto
         2
     );
     let predictions = sidecar.audit.submissions().await.unwrap();
-    assert!((predictions[0].rationale["p_win"].as_f64().unwrap() - 0.5423).abs() < 1e-12);
+    assert!((predictions[0].rationale["p_win"].as_f64().unwrap() - 0.542288557).abs() < 1e-9);
 }

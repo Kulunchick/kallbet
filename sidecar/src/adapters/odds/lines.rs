@@ -8,7 +8,26 @@ pub(super) struct Line {
     pub teams: [String; 2],
     pub start: Instant,
     pub observed_at: Option<Instant>,
+    #[serde(with = "cached_probabilities")]
     pub probabilities: [f64; 2],
+}
+
+mod cached_probabilities {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+
+    // Round-trip the exact probabilities through SQLite so replaying a cache
+    // hit preserves the dossier hash even for a quote near an even split.
+    pub fn serialize<S: Serializer>(prices: &[f64; 2], serializer: S) -> Result<S::Ok, S::Error> {
+        prices.map(|price| price.to_string()).serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<[f64; 2], D::Error> {
+        let [a, b] = <[String; 2]>::deserialize(deserializer)?;
+        Ok([
+            a.parse().map_err(D::Error::custom)?,
+            b.parse().map_err(D::Error::custom)?,
+        ])
+    }
 }
 
 pub(super) fn timestamp(value: &Value) -> Option<Instant> {

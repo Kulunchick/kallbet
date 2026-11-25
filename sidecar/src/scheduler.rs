@@ -96,10 +96,7 @@ impl Sidecar {
         let dossier = Dossier {
             game,
             signal: signal.as_ref().map(|s| s.at(now).cloned()).transpose()?,
-            market: market
-                .as_ref()
-                .map(|m| m.at(now).map(|p| (p * 10000.).round() / 10000.))
-                .transpose()?,
+            market: market.as_ref().map(|m| m.at(now).copied()).transpose()?,
             context: facts,
         };
         let id = dossier.game.id;
