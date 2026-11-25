@@ -145,21 +145,19 @@ impl PickemSolver for MonteCarloPickemSolver {
 
 pub use step::{SubmittedPickem, submitted_pickems};
 
-pub fn build() -> Arc<dyn PickemStep> {
-    Arc::new(super::baseline::Noop)
-}
-
 pub fn new(
+    clock: Arc<dyn Clock>,
     signal: Arc<dyn SignalEstimator>,
     odds: Arc<dyn OddsSource>,
 ) -> Arc<dyn PickemStep> {
-    with_solver(signal, odds, Arc::new(MonteCarloPickemSolver::default()))
+    with_solver(clock, signal, odds, Arc::new(MonteCarloPickemSolver::default()))
 }
 
 pub fn with_solver(
+    clock: Arc<dyn Clock>,
     signal: Arc<dyn SignalEstimator>,
     odds: Arc<dyn OddsSource>,
     solver: Arc<dyn PickemSolver>,
 ) -> Arc<dyn PickemStep> {
-    Arc::new(step::PickemRunner::new(signal, odds, solver))
+    Arc::new(step::PickemRunner::new(clock, signal, odds, solver))
 }

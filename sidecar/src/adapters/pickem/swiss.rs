@@ -50,24 +50,6 @@ fn generate_matchings<const K: usize>(n: usize) -> Vec<[(usize, usize); K]> {
     let mut raw = Vec::new();
     rec(0, n, &mut Vec::with_capacity(K), &mut raw);
 
-    let target = (n - 1) as i32;
-    raw.sort_by(|m1, m2| {
-        let dev = |m: &[(usize, usize)]| -> i32 {
-            m.iter()
-                .map(|&(a, b)| ((a + b) as i32 - target).pow(2))
-                .sum()
-        };
-        dev(m1).cmp(&dev(m2)).then_with(|| {
-            for (&(_, b1), &(_, b2)) in m1.iter().zip(m2.iter()) {
-                match b2.cmp(&b1) {
-                    std::cmp::Ordering::Equal => continue,
-                    ord => return ord,
-                }
-            }
-            std::cmp::Ordering::Equal
-        })
-    });
-
     raw.into_iter()
         .map(|m| m.try_into().expect("matching size K"))
         .collect()
@@ -77,7 +59,18 @@ fn pairing_tables() -> &'static PairingTables {
     static TABLES: OnceLock<PairingTables> = OnceLock::new();
     TABLES.get_or_init(|| PairingTables {
         four: generate_matchings::<2>(4),
-        six: generate_matchings::<3>(6),
+        // Valve Major Supplemental Rulebook, Swiss Bracket priority table.
+        // Keep the published one-based seed numbers visible for review.
+        six: [
+            [(1,6),(2,5),(3,4)], [(1,6),(2,4),(3,5)],
+            [(1,5),(2,6),(3,4)], [(1,5),(2,4),(3,6)],
+            [(1,4),(2,6),(3,5)], [(1,4),(2,5),(3,6)],
+            [(1,6),(2,3),(4,5)], [(1,5),(2,3),(4,6)],
+            [(1,3),(2,6),(4,5)], [(1,3),(2,5),(4,6)],
+            [(1,4),(2,3),(5,6)], [(1,3),(2,4),(5,6)],
+            [(1,2),(3,6),(4,5)], [(1,2),(3,5),(4,6)],
+            [(1,2),(3,4),(5,6)],
+        ].map(|row| row.map(|(a,b)| (a-1,b-1))).to_vec(),
         eight: generate_matchings::<4>(8),
     })
 }

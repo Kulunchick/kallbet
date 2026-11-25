@@ -20,10 +20,10 @@ impl Sidecar {
             context: adapters::context::build(&config.context, &audit, Arc::new(SystemClock)),
             llm: adapters::debate::build(adapters::llm::build()),
             policy: Arc::new(ConfiguredPolicy),
-            pickem: adapters::pickem::build(),
+            pickem: Arc::new(Noop),
         };
         let ports = Ports {
-            pickem: adapters::pickem::new(ports.signal.clone(), ports.odds.clone()),
+            pickem: adapters::pickem::new(ports.clock.clone(), ports.signal.clone(), ports.odds.clone()),
             ..ports
         };
         let sidecar = Sidecar {

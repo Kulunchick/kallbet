@@ -36,7 +36,17 @@ impl PairOdds {
 
 #[async_trait]
 impl OddsSource for PairOdds {
-    async fn quote(&self, game: &AiMatch, _cutoff: Instant) -> AiResult<Option<AsOf<f64>>> {
+    async fn quote(&self, _: &AiMatch, _: Instant) -> AiResult<Option<AsOf<f64>>> {
+        Ok(None)
+    }
+
+    async fn live_quote(&self, game: &AiMatch, cutoff: Instant, _: &dyn kallbet_ai::Clock) -> AiResult<(Instant, Option<AsOf<f64>>)> {
+        Ok((cutoff, self.lookup(game)?))
+    }
+}
+
+impl PairOdds {
+    fn lookup(&self, game: &AiMatch) -> AiResult<Option<AsOf<f64>>> {
         let map = self.by_pair.lock().unwrap();
         let a = game.team_a.name.to_lowercase();
         let b = game.team_b.name.to_lowercase();
@@ -50,6 +60,20 @@ impl OddsSource for PairOdds {
             return Ok(Some(AsOf::new(p_rev, obs, future).unwrap()));
         }
         Ok(None)
+    }
+}
+
+// Script a change to statistical strength for future (as yet unscheduled) pairings.
+struct PairSignal(Arc<PairOdds>, Arc<dyn kallbet_ai::SignalEstimator>);
+
+#[async_trait]
+impl kallbet_ai::SignalEstimator for PairSignal {
+    async fn signal(&self, game: &AiMatch, cutoff: Instant) -> AiResult<Option<AsOf<kallbet_ai::Signal>>> {
+        if game.id == 0 && let Some(q) = self.0.lookup(game)? {
+            let map = *q.at(cutoff)?;
+            return Ok(Some(AsOf::new(kallbet_ai::Signal { map, series: map }, q.observed_at(), cutoff)?));
+        }
+        self.1.signal(game, cutoff).await
     }
 }
 
@@ -106,10 +130,12 @@ async fn swiss_stage_submits_refreshes_once_in_prelock_window_stops_after_lock_a
 
     let odds = Arc::new(PairOdds::default());
     let mut sidecar = h.sidecar(&invite).await;
+    sidecar.ports.signal = Arc::new(PairSignal(odds.clone(), sidecar.ports.signal.clone()));
     sidecar.ports.odds = odds.clone();
     // Use 4,000 simulations in the HTTP integration loop for fast test execution while exercising full Buchholz MC.
     let solver = Arc::new(MonteCarloPickemSolver::with_simulations(2026, 4_000));
     sidecar.ports.pickem = pickem::with_solver(
+        sidecar.ports.clock.clone(),
         sidecar.ports.signal.clone(),
         sidecar.ports.odds.clone(),
         solver,
@@ -332,8 +358,9 @@ async fn playoffs_stage_waits_until_ready_submits_refreshes_stops_after_lock_and
 
     let odds = Arc::new(PairOdds::default());
     let mut sidecar = h.sidecar(&invite).await;
+    sidecar.ports.signal = Arc::new(PairSignal(odds.clone(), sidecar.ports.signal.clone()));
     sidecar.ports.odds = odds.clone();
-    sidecar.ports.pickem = pickem::new(sidecar.ports.signal.clone(), sidecar.ports.odds.clone());
+    sidecar.ports.pickem = pickem::new(sidecar.ports.clock.clone(), sidecar.ports.signal.clone(), sidecar.ports.odds.clone());
 
     // 1. While bracket.ready == false, Sidecar::tick waits and submits nothing.
     h.tick(&mut sidecar, t0).await.unwrap();
@@ -345,7 +372,7 @@ async fn playoffs_stage_waits_until_ready_submits_refreshes_stops_after_lock_and
     assert_eq!(unready_view["submitted"], 0);
 
     // 2. Fill QF4 ("Vitality" vs "Falcons") so bracket.ready becomes true at T - 3h.
-    let t_ready = t0 + Duration::hours(1);
+    let t_ready = start - Duration::minutes(29);
     let ready_event = EventSnapshotBuilder::new(9001, "Major Playoffs")
         .stage(StageKind::Playoffs, "Playoffs")
         .playoff_match(1, (2, 0), "MOUZ", "PARIVISION", start)
@@ -412,9 +439,9 @@ async fn playoffs_stage_waits_until_ready_submits_refreshes_stops_after_lock_and
     // MOUZ (id 1, VRS #1 with 1960 pts) is the VRS favourite to win the Final initially.
     assert_eq!(final_winner(&bot_initial), 1);
 
-    // 3. At T - 25m with UNCHANGED inputs, bot does NOT re-submit.
-    let t_minus_25m = start - Duration::minutes(25);
-    h.tick(&mut sidecar, t_minus_25m).await.unwrap();
+    // 3. At T - 22m with UNCHANGED inputs, bot does NOT re-submit.
+    let t_minus_22m = start - Duration::minutes(22);
+    h.tick(&mut sidecar, t_minus_22m).await.unwrap();
     let view_unchanged = alice
         .get(&format!("/api/leagues/{league_id}/stages/1/pickem"))
         .await
@@ -566,6 +593,7 @@ async fn pickem_tick_rejects_post_cutoff_odds_and_from_config_wires_pickem_step(
     // Inject post-cutoff odds (observed_at == eval_time) at T - 10m (where only PickemStep runs) -> TemporalLeakError!
     let eval_time = start - Duration::minutes(10);
     harness_sidecar.ports.pickem = pickem::new(
+        harness_sidecar.ports.clock.clone(),
         harness_sidecar.ports.signal.clone(),
         harness_sidecar.ports.odds.clone(),
     );

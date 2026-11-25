@@ -1,4 +1,4 @@
-use super::swiss::{parse_format, series_win_prob};
+use super::swiss::series_win_prob;
 use crate::*;
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
@@ -158,6 +158,7 @@ fn compute_input_hash(stage_val: &Value, ratings: &[AsOf<PairwiseProbability>], 
 }
 
 pub struct PickemRunner {
+    clock: Arc<dyn Clock>,
     signal: Arc<dyn SignalEstimator>,
     odds: Arc<dyn OddsSource>,
     solver: Arc<dyn PickemSolver>,
@@ -165,11 +166,13 @@ pub struct PickemRunner {
 
 impl PickemRunner {
     pub fn new(
+        clock: Arc<dyn Clock>,
         signal: Arc<dyn SignalEstimator>,
         odds: Arc<dyn OddsSource>,
         solver: Arc<dyn PickemSolver>,
     ) -> Self {
         Self {
+            clock,
             signal,
             odds,
             solver,
@@ -203,10 +206,10 @@ impl PickemRunner {
                 let key = (ta.id, tb.id);
 
                 if let Some(opening) = opening_by_pair.get(&key)
-                    && let Some(q) = self.odds.quote(opening, now).await?
+                    && let (as_of, Some(q)) = self.odds.live_quote(opening, now, self.clock.as_ref()).await?
                 {
                     let obs = q.observed_at();
-                    let p_series_a = *q.at(now)?;
+                    let p_series_a = *q.at(as_of)?;
                     let p_map_a = invert_series_prob(opening.format, p_series_a);
                     let map = if opening.team_a.id == ta.id {
                         p_map_a
@@ -234,21 +237,6 @@ impl PickemRunner {
                     scheduled_start: sp.locks_at,
                 };
 
-                if let Some(q) = self.odds.quote(&synth, now).await? {
-                    let obs = q.observed_at();
-                    let map = (*q.at(now)?).clamp(0.0, 1.0);
-                    ratings.push(AsOf::new(
-                        PairwiseProbability {
-                            first: ta.id,
-                            second: tb.id,
-                            map,
-                        },
-                        obs,
-                        stage_cutoff,
-                    )?);
-                    continue;
-                }
-
                 if let Some(sig) = self.signal.signal(&synth, now).await? {
                     let obs = sig.observed_at();
                     let map = sig.at(now)?.map.clamp(0.0, 1.0);
@@ -265,8 +253,6 @@ impl PickemRunner {
             }
         }
 
-        // Propagate optional explicit format metadata properly.
-        let _ = parse_format(None);
         Ok(ratings)
     }
 }
@@ -294,15 +280,30 @@ impl PickemStep for PickemRunner {
                 _ => continue,
             }
 
-            if let Some(last_wrote) = sp.my_updated_at {
-                let Some(locks_at) = sp.locks_at else {
-                    continue;
-                };
-                let refresh_open = locks_at - Duration::minutes(30);
-                if now < refresh_open || last_wrote >= refresh_open {
+            let previous = if let Some(last_write) = sp.my_updated_at {
+                let Some(start) = sp.locks_at else { continue };
+                let refresh_open = start - Duration::minutes(30);
+                if now < refresh_open {
                     continue;
                 }
-            }
+                let hashes: Vec<String> = sqlx::query_scalar(
+                    "SELECT input_hash FROM submitted_pickems
+                     WHERE bot = ? AND league = ? AND stage = ? ORDER BY id DESC LIMIT 2",
+                )
+                .bind(&bot.bot_key)
+                .bind(league)
+                .bind(i64::from(sp.ordinal))
+                .fetch_all(&audit.db)
+                .await?;
+                // Two successful writes are the draft and its refresh. If the audit was
+                // lost, use the server timestamp to avoid repeating an in-window write.
+                if hashes.len() == 2 || (hashes.is_empty() && last_write >= refresh_open) {
+                    continue;
+                }
+                hashes.into_iter().next()
+            } else {
+                None
+            };
 
             let stage_cutoff = sp
                 .locks_at
@@ -313,18 +314,7 @@ impl PickemStep for PickemRunner {
             }
 
             let input_hash = compute_input_hash(&sp.stage, &ratings, stage_cutoff)?;
-            let last_hash: Option<String> = sqlx::query_scalar(
-                "SELECT input_hash FROM submitted_pickems
-                 WHERE bot = ? AND league = ? AND stage = ?
-                 ORDER BY id DESC LIMIT 1",
-            )
-            .bind(&bot.bot_key)
-            .bind(league)
-            .bind(i64::from(sp.ordinal))
-            .fetch_optional(&audit.db)
-            .await?;
-
-            if sp.my_updated_at.is_some() && last_hash.as_deref() == Some(input_hash.as_str()) {
+            if previous.as_deref() == Some(input_hash.as_str()) {
                 continue;
             }
 

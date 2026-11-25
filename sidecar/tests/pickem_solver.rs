@@ -525,9 +525,9 @@ fn solves_real_pgl_singapore_2026_stage1_pre_start_liquipedia_fixture() {
     use kallbet::sources::liquipedia::parse::{self, TeamNames};
 
     const ROOT_JSON: &str =
-        include_str!("fixtures/pickem/pgl-singapore-2026-rev-before-start.json");
+        include_str!("fixtures/context/liquipedia/pgl-singapore-2026-rev-before-start.json");
     const STAGE1_JSON: &str =
-        include_str!("fixtures/pickem/pgl-singapore-stage1-before-start.json");
+        include_str!("fixtures/context/liquipedia/pgl-singapore-stage1-before-start.json");
 
     let mut pages = parse::query_pages(ROOT_JSON.trim_start_matches('\u{feff}')).unwrap();
     pages.extend(parse::query_pages(STAGE1_JSON.trim_start_matches('\u{feff}')).unwrap());
@@ -639,4 +639,30 @@ fn solves_real_pgl_singapore_2026_stage1_pre_start_liquipedia_fixture() {
     };
     let all_ids: Vec<TeamId> = ordered_teams.iter().map(|(id, _)| TeamId(*id)).collect();
     assert_eq!(pickem.validate(&all_ids), Ok(()));
+}
+#[test]
+fn swiss_pairing_priorities_determine_the_last_advancer() {
+    use kallbet_ai::RandomSource;
+
+    // One tournament, with equal strengths. 0 selects the first side of a pairing.
+    struct Outcomes(std::str::Bytes<'static>);
+    impl RandomSource for Outcomes {
+        fn next_u64(&mut self) -> u64 {
+            match self.0.next().unwrap() {
+                b'0' => 0,
+                _ => u64::MAX,
+            }
+        }
+    }
+
+    let cut = cutoff();
+    let before = cut - Duration::minutes(1);
+    let teams: Vec<_> = (1..=16).map(|id| (id, "team")).collect();
+    let pairs: Vec<_> = (1..=8).map(|id| (id,id+8)).collect();
+    let stage = AsOf::new(swiss_stage_json(&teams, "bo1", &pairs), before, cut).unwrap();
+    let rating = AsOf::new(PairwiseProbability {first:1, second:2, map:0.5}, before, cut).unwrap();
+    let mut outcomes = Outcomes("010011101011110100111000101110001".bytes());
+    let pick = MonteCarloPickemSolver::with_simulations(0,1)
+        .solve_with_rng(&stage,&[rating],cut,&mut outcomes).unwrap().unwrap();
+    assert_eq!(pick["advance"], json!([6,9,12,13,14,15]));
 }
