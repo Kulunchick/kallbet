@@ -1,6 +1,6 @@
 # Retrospective benchmark
 
-Archive: 272 files, SHA-256 `5859272e4b7f1177801b4f389e6801f7a046d0b822dbbd99eeb7d3fa9b4effe9`. Regenerate with `cargo run -p kallbet-ai -- backtest` (see `docs/agents/codebase.md`, ticket #31).
+Archive: 272 files, SHA-256 `25459d150e1fac87409e38d17a73ab2110444401703a056b1c4d4c846c4df782`. Regenerate with `cargo run -p kallbet-ai -- backtest` (see `docs/agents/codebase.md`, ticket #31).
 
 Profiles:
 - `vrs`: VrsOnly
@@ -16,9 +16,9 @@ Profiles:
 | PGL Major Copenhagen 2024 / Opening Stage | Swiss | yes | 33 | 1 | 0 | 0 | 0 | Liquipedia revision before the Stage |
 | PGL Major Copenhagen 2024 / Elimination Stage | Swiss | yes | 33 | 0 | 0 | 0 | 0 | Liquipedia revision before the Stage |
 | PGL Major Copenhagen 2024 / Playoffs | Playoffs | yes | 7 | 0 | 0 | 0 | 0 | Liquipedia revision before the Stage |
-| Perfect World Major Shanghai Major 2024 / Opening Stage | Swiss | yes | 33 | 0 | 33 | 0 | 0 | Liquipedia revision before the Stage |
-| Perfect World Major Shanghai Major 2024 / Elimination Stage | Swiss | yes | 33 | 0 | 33 | 0 | 0 | Liquipedia revision before the Stage |
-| Perfect World Major Shanghai Major 2024 / Playoffs | Playoffs | yes | 7 | 0 | 7 | 0 | 0 | Liquipedia revision before the Stage |
+| Perfect World Major Shanghai Major 2024 / Opening Stage | Swiss | yes | 33 | 0 | 33 | 0 | 33 | Liquipedia revision before the Stage |
+| Perfect World Major Shanghai Major 2024 / Elimination Stage | Swiss | yes | 33 | 0 | 33 | 0 | 33 | Liquipedia revision before the Stage |
+| Perfect World Major Shanghai Major 2024 / Playoffs | Playoffs | yes | 7 | 0 | 7 | 0 | 7 | Liquipedia revision before the Stage |
 | BLAST.tv Major Austin 2025 / Stage 1 | Swiss | yes | 33 | 3 | 33 | 0 | 0 | Liquipedia revision before the Stage |
 | BLAST.tv Major Austin 2025 / Stage 2 | Swiss | yes | 33 | 0 | 33 | 0 | 0 | Liquipedia revision before the Stage |
 | BLAST.tv Major Austin 2025 / Stage 3 | Swiss | yes | 33 | 0 | 33 | 0 | 0 | Liquipedia revision before the Stage |
@@ -27,10 +27,10 @@ Profiles:
 | StarLadder Major Budapest 2025 / Stage 2 | Swiss | yes | 33 | 0 | 33 | 0 | 0 | Liquipedia revision before the Stage |
 | StarLadder Major Budapest 2025 / Stage 3 | Swiss | yes | 33 | 0 | 33 | 0 | 0 | Liquipedia revision before the Stage |
 | StarLadder Major Budapest 2025 / Playoffs | Playoffs | yes | 7 | 0 | 7 | 0 | 0 | Liquipedia revision before the Stage |
-| IEM Cologne Major 2026 / Stage 1 | Swiss | yes | 33 | 0 | 33 | 21 | 0 | Liquipedia revision before the Stage |
-| IEM Cologne Major 2026 / Stage 2 | Swiss | yes | 33 | 0 | 33 | 27 | 0 | Liquipedia revision before the Stage |
-| IEM Cologne Major 2026 / Stage 3 | Swiss | yes | 33 | 0 | 33 | 33 | 0 | Liquipedia revision before the Stage |
-| IEM Cologne Major 2026 / Playoffs | Playoffs | yes | 7 | 0 | 7 | 7 | 0 | Liquipedia revision before the Stage |
+| IEM Cologne Major 2026 / Stage 1 | Swiss | yes | 33 | 0 | 33 | 21 | 33 | Liquipedia revision before the Stage |
+| IEM Cologne Major 2026 / Stage 2 | Swiss | yes | 33 | 0 | 33 | 27 | 33 | Liquipedia revision before the Stage |
+| IEM Cologne Major 2026 / Stage 3 | Swiss | yes | 33 | 0 | 33 | 33 | 33 | Liquipedia revision before the Stage |
+| IEM Cologne Major 2026 / Playoffs | Playoffs | yes | 7 | 0 | 7 | 7 | 7 | Liquipedia revision before the Stage |
 | PGL Major Singapore 2026 / Stage 1 | Swiss | no | 24 | 9 | 24 | 24 | 24 | Liquipedia revision before the Stage |
 
 ## Non-LLM track: every completed Match
@@ -111,7 +111,7 @@ All five profiles, only on the Matches every one of them predicted.
 
 ## LLM track: anonymized historical slice (BlindAnonymizer)
 
-All five profiles, only on the Matches every one of them predicted. The LLM seats saw TEAM_ALPHA/TEAM_BETA, PLAYER_01..10, no Event title and no dates.
+All five profiles, only on the Matches every one of them predicted. The LLM seats saw TEAM_ALPHA/TEAM_BETA, PLAYER_01..10 for the rosters of all 6 Matches, no news item, no Event title and no dates.
 
 | Profile | Format | Matches | Correct | Accuracy | Log-loss | Brier | Overrides | Override hits |
 |---|---|--:|--:|--:|--:|--:|--:|--:|
@@ -164,6 +164,54 @@ Every profile submits the same Pick'em: the sidecar's Pick'em step is the Monte-
 | IEM Cologne Major 2026 / Stage 3 | Swiss | final | 4 | 10/10 | 120 |
 | IEM Cologne Major 2026 / Playoffs | Playoffs | final | 4 | 7/7 | 28 |
 | PGL Major Singapore 2026 / Stage 1 | Swiss | pending: Stage not finished (1 Points on 1 decided picks so far) | – | 1/10 | 120 |
+
+## PGL Major Singapore 2026: every Match
+
+Each profile's pick and the probability it gave its pick; ✓ correct, ✗ wrong, – no Prediction.
+
+| Stage | Match | Format | Scheduled Start (UTC) | Winner | vrs | market | anchor | single | debate |
+|---|---|---|---|---|---|---|---|---|---|
+| Stage 1 | 9z vs Lynn Vision | BO1 | 2026-11-24 04:00 | Lynn Vision | ✗ 9z 78% | ✗ 9z 64% | ✗ 9z 67% | ✗ 9z 63% | ✗ 9z 65% |
+| Stage 1 | Heroic vs Imperial | BO1 | 2026-11-24 04:00 | Imperial | ✗ Heroic 69% | ✗ Heroic 67% | ✗ Heroic 67% | ✗ Heroic 67% | ✗ Heroic 67% |
+| Stage 1 | NIP vs M80 | BO1 | 2026-11-24 05:00 | NIP | ✓ NIP 60% | ✓ NIP 56% | ✓ NIP 57% | ✓ NIP 57% | ✓ NIP 57% |
+| Stage 1 | 100 Thieves vs Chinggis Warriors | BO1 | 2026-11-24 05:25 | 100 Thieves | ✓ 100 Thieves 79% | ✓ 100 Thieves 80% | ✓ 100 Thieves 80% | ✓ 100 Thieves 80% | ✓ 100 Thieves 80% |
+| Stage 1 | Liquid vs GOSH | BO1 | 2026-11-24 06:10 | Liquid | ✓ Liquid 74% | ✓ Liquid 56% | ✓ Liquid 60% | ✓ Liquid 60% | ✓ Liquid 60% |
+| Stage 1 | PVISION vs DENDELE CS | BO1 | 2026-11-24 06:25 | PVISION | ✓ PVISION 63% | ✓ PVISION 61% | ✓ PVISION 61% | ✓ PVISION 61% | ✓ PVISION 61% |
+| Stage 1 | FaZe vs Wildcard | BO1 | 2026-11-24 07:00 | Wildcard | ✗ FaZe 70% | ✗ FaZe 68% | ✗ FaZe 68% | ✗ FaZe 68% | ✗ FaZe 68% |
+| Stage 1 | Eternal Fire vs FlyQuest | BO1 | 2026-11-24 07:15 | FlyQuest | ✗ Eternal Fire 75% | ✗ Eternal Fire 58% | ✗ Eternal Fire 62% | ✗ Eternal Fire 62% | ✗ Eternal Fire 62% |
+| Stage 1 | NIP vs Lynn Vision | BO1 | 2026-11-24 08:45 | NIP | ✓ NIP 84% | ✓ NIP 71% | ✓ NIP 74% | ✓ NIP 74% | ✓ NIP 74% |
+| Stage 1 | Heroic vs Chinggis Warriors | BO1 | 2026-11-24 08:45 | Heroic | ✓ Heroic 82% | ✓ Heroic 79% | ✓ Heroic 80% | ✓ Heroic 80% | ✓ Heroic 80% |
+| Stage 1 | 9z vs M80 | BO1 | 2026-11-24 09:35 | M80 | ✗ 9z 50% | ✓ M80 51% | ✓ M80 51% | ✓ M80 53% | ✓ M80 52% |
+| Stage 1 | 100 Thieves vs Imperial | BO1 | 2026-11-24 10:00 | Imperial | ✗ 100 Thieves 64% | ✗ 100 Thieves 63% | ✗ 100 Thieves 63% | ✗ 100 Thieves 63% | ✗ 100 Thieves 63% |
+| Stage 1 | Eternal Fire vs DENDELE CS | BO1 | 2026-11-24 10:50 | Eternal Fire | ✓ Eternal Fire 57% | ✓ Eternal Fire 53% | ✓ Eternal Fire 54% | ✓ Eternal Fire 54% | ✓ Eternal Fire 54% |
+| Stage 1 | PVISION vs FlyQuest | BO1 | 2026-11-24 11:00 | FlyQuest | ✗ PVISION 79% | ✗ PVISION 67% | ✗ PVISION 70% | ✗ PVISION 70% | ✗ PVISION 70% |
+| Stage 1 | Liquid vs Wildcard | BO1 | 2026-11-24 12:00 | Liquid | ✓ Liquid 68% | ✓ Liquid 69% | ✓ Liquid 69% | ✓ Liquid 69% | ✓ Liquid 69% |
+| Stage 1 | FaZe vs GOSH | BO1 | 2026-11-24 12:10 | FaZe | ✓ FaZe 76% | ✓ FaZe 56% | ✓ FaZe 61% | ✓ FaZe 61% | ✓ FaZe 61% |
+| Stage 1 | Eternal Fire vs 100 Thieves | BO1 | 2026-11-25 06:00 | Eternal Fire | ✓ Eternal Fire 50% | ✗ 100 Thieves 59% | ✗ 100 Thieves 57% | ✗ 100 Thieves 57% | ✗ 100 Thieves 57% |
+| Stage 1 | Heroic vs M80 | BO1 | 2026-11-25 06:00 | M80 | ✗ Heroic 58% | ✗ Heroic 61% | ✗ Heroic 60% | ✗ Heroic 60% | ✗ Heroic 60% |
+| Stage 1 | Wildcard vs Lynn Vision | BO1 | 2026-11-25 07:00 | Lynn Vision | ✗ Wildcard 67% | ✗ Wildcard 50% | ✗ Wildcard 53% | ✗ Wildcard 53% | ✗ Wildcard 53% |
+| Stage 1 | PVISION vs FaZe | BO1 | 2026-11-25 07:15 | PVISION | ✓ PVISION 53% | ✓ PVISION 55% | ✓ PVISION 55% | ✓ PVISION 55% | ✓ PVISION 55% |
+| Stage 1 | 9z vs DENDELE CS | BO3 | 2026-11-25 08:10 | 9z | ✓ 9z 55% | ✗ DENDELE CS 50% | ✓ 9z 51% | ✗ DENDELE CS 52% | ✗ DENDELE CS 51% |
+| Stage 1 | Imperial vs FlyQuest | BO3 | 2026-11-25 08:30 | FlyQuest | ✗ Imperial 68% | ✗ Imperial 53% | ✗ Imperial 56% | ✗ Imperial 56% | ✗ Imperial 56% |
+| Stage 1 | GOSH vs Chinggis Warriors | BO3 | 2026-11-25 10:10 | Chinggis Warriors | ✗ GOSH 63% | ✗ GOSH 82% | ✗ GOSH 79% | ✗ GOSH 79% | ✗ GOSH 79% |
+| Stage 1 | NIP vs Liquid | BO3 | 2026-11-25 11:00 | NIP | ✓ NIP 58% | ✗ Liquid 52% | ✗ Liquid 50% | ✗ Liquid 50% | ✗ Liquid 50% |
+
+## PGL Major Singapore 2026 / Stage 1: the solver's Pick'em
+
+pending: the Stage is not finished (1 of the 10 picked teams have finished it); 1 Points so far.
+
+| Pick | Team | Record | State |
+|---|---|---|---|
+| three_nil | NIP | 3-0 | correct |
+| three_nil | Heroic | 1-2 | wrong |
+| zero_three | Chinggis Warriors | 1-2 | wrong |
+| zero_three | Lynn Vision | 2-1 | wrong |
+| advance | PVISION | 2-1 | undecided |
+| advance | Liquid | 2-1 | undecided |
+| advance | FaZe | 1-2 | undecided |
+| advance | 100 Thieves | 1-2 | undecided |
+| advance | Eternal Fire | 2-1 | undecided |
+| advance | M80 | 2-1 | undecided |
 
 ## LLM track
 

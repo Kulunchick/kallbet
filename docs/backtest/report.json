@@ -1,5 +1,5 @@
 {
-  "archive_digest": "5859272e4b7f1177801b4f389e6801f7a046d0b822dbbd99eeb7d3fa9b4effe9",
+  "archive_digest": "25459d150e1fac87409e38d17a73ab2110444401703a056b1c4d4c846c4df782",
   "archive_files": 272,
   "profiles": [
     [
@@ -65,7 +65,7 @@
       "unscored_matches": 0,
       "with_vrs": 33,
       "with_market": 0,
-      "with_rosters": 0,
+      "with_rosters": 33,
       "opening_view": null
     },
     {
@@ -76,7 +76,7 @@
       "unscored_matches": 0,
       "with_vrs": 33,
       "with_market": 0,
-      "with_rosters": 0,
+      "with_rosters": 33,
       "opening_view": null
     },
     {
@@ -87,7 +87,7 @@
       "unscored_matches": 0,
       "with_vrs": 7,
       "with_market": 0,
-      "with_rosters": 0,
+      "with_rosters": 7,
       "opening_view": null
     },
     {
@@ -186,7 +186,7 @@
       "unscored_matches": 0,
       "with_vrs": 33,
       "with_market": 21,
-      "with_rosters": 0,
+      "with_rosters": 33,
       "opening_view": null
     },
     {
@@ -197,7 +197,7 @@
       "unscored_matches": 0,
       "with_vrs": 33,
       "with_market": 27,
-      "with_rosters": 0,
+      "with_rosters": 33,
       "opening_view": null
     },
     {
@@ -208,7 +208,7 @@
       "unscored_matches": 0,
       "with_vrs": 33,
       "with_market": 33,
-      "with_rosters": 0,
+      "with_rosters": 33,
       "opening_view": null
     },
     {
@@ -219,7 +219,7 @@
       "unscored_matches": 0,
       "with_vrs": 7,
       "with_market": 7,
-      "with_rosters": 0,
+      "with_rosters": 7,
       "opening_view": null
     },
     {
@@ -933,7 +933,7 @@
     },
     {
       "title": "LLM track: anonymized historical slice (BlindAnonymizer)",
-      "note": "All five profiles, only on the Matches every one of them predicted. The LLM seats saw TEAM_ALPHA/TEAM_BETA, PLAYER_01..10, no Event title and no dates.",
+      "note": "All five profiles, only on the Matches every one of them predicted. The LLM seats saw TEAM_ALPHA/TEAM_BETA, PLAYER_01..10 for the rosters of all 6 Matches, no news item, no Event title and no dates.",
       "rows": [
         {
           "profile": "VrsOnly",
@@ -1337,6 +1337,901 @@
       "rated_pairs": 120
     }
   ],
+  "major": {
+    "event": "PGL Major Singapore 2026",
+    "matches": [
+      {
+        "stage": "Stage 1",
+        "game": "9z vs Lynn Vision",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T04:00:00Z",
+        "winner": "Lynn Vision",
+        "picks": {
+          "anchor": {
+            "team": "9z",
+            "p_win": 0.6678909286901477,
+            "correct": false
+          },
+          "debate": {
+            "team": "9z",
+            "p_win": 0.6478909286901476,
+            "correct": false
+          },
+          "market": {
+            "team": "9z",
+            "p_win": 0.6367131186929361,
+            "correct": false
+          },
+          "single": {
+            "team": "9z",
+            "p_win": 0.6328909286901476,
+            "correct": false
+          },
+          "vrs": {
+            "team": "9z",
+            "p_win": 0.7770923668491492,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Heroic vs Imperial",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T04:00:00Z",
+        "winner": "Imperial",
+        "picks": {
+          "anchor": {
+            "team": "Heroic",
+            "p_win": 0.6749518359261328,
+            "correct": false
+          },
+          "debate": {
+            "team": "Heroic",
+            "p_win": 0.6749518359261328,
+            "correct": false
+          },
+          "market": {
+            "team": "Heroic",
+            "p_win": 0.6714023831347388,
+            "correct": false
+          },
+          "single": {
+            "team": "Heroic",
+            "p_win": 0.6749518359261328,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Heroic",
+            "p_win": 0.6889470161791494,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "NIP vs M80",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T05:00:00Z",
+        "winner": "NIP",
+        "picks": {
+          "anchor": {
+            "team": "NIP",
+            "p_win": 0.5695603197019479,
+            "correct": true
+          },
+          "debate": {
+            "team": "NIP",
+            "p_win": 0.5695603197019479,
+            "correct": true
+          },
+          "market": {
+            "team": "NIP",
+            "p_win": 0.5609631147540983,
+            "correct": true
+          },
+          "single": {
+            "team": "NIP",
+            "p_win": 0.5695603197019479,
+            "correct": true
+          },
+          "vrs": {
+            "team": "NIP",
+            "p_win": 0.6034833894974426,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "100 Thieves vs Chinggis Warriors",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T05:25:00Z",
+        "winner": "100 Thieves",
+        "picks": {
+          "anchor": {
+            "team": "100 Thieves",
+            "p_win": 0.7994814731138297,
+            "correct": true
+          },
+          "debate": {
+            "team": "100 Thieves",
+            "p_win": 0.7994814731138297,
+            "correct": true
+          },
+          "market": {
+            "team": "100 Thieves",
+            "p_win": 0.8012651555086979,
+            "correct": true
+          },
+          "single": {
+            "team": "100 Thieves",
+            "p_win": 0.7994814731138297,
+            "correct": true
+          },
+          "vrs": {
+            "team": "100 Thieves",
+            "p_win": 0.7922270049693828,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Liquid vs GOSH",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T06:10:00Z",
+        "winner": "Liquid",
+        "picks": {
+          "anchor": {
+            "team": "Liquid",
+            "p_win": 0.5964356405162379,
+            "correct": true
+          },
+          "debate": {
+            "team": "Liquid",
+            "p_win": 0.5964356405162379,
+            "correct": true
+          },
+          "market": {
+            "team": "Liquid",
+            "p_win": 0.555,
+            "correct": true
+          },
+          "single": {
+            "team": "Liquid",
+            "p_win": 0.5964356405162379,
+            "correct": true
+          },
+          "vrs": {
+            "team": "Liquid",
+            "p_win": 0.7445211221060142,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "PVISION vs DENDELE CS",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T06:25:00Z",
+        "winner": "PVISION",
+        "picks": {
+          "anchor": {
+            "team": "PVISION",
+            "p_win": 0.6127681847293728,
+            "correct": true
+          },
+          "debate": {
+            "team": "PVISION",
+            "p_win": 0.6127681847293728,
+            "correct": true
+          },
+          "market": {
+            "team": "PVISION",
+            "p_win": 0.6087602078693393,
+            "correct": true
+          },
+          "single": {
+            "team": "PVISION",
+            "p_win": 0.6127681847293728,
+            "correct": true
+          },
+          "vrs": {
+            "team": "PVISION",
+            "p_win": 0.6286432491917464,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "FaZe vs Wildcard",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T07:00:00Z",
+        "winner": "Wildcard",
+        "picks": {
+          "anchor": {
+            "team": "FaZe",
+            "p_win": 0.6835585839965544,
+            "correct": false
+          },
+          "debate": {
+            "team": "FaZe",
+            "p_win": 0.6835585839965544,
+            "correct": false
+          },
+          "market": {
+            "team": "FaZe",
+            "p_win": 0.6803797468354431,
+            "correct": false
+          },
+          "single": {
+            "team": "FaZe",
+            "p_win": 0.6835585839965544,
+            "correct": false
+          },
+          "vrs": {
+            "team": "FaZe",
+            "p_win": 0.6961013799556869,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Eternal Fire vs FlyQuest",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T07:15:00Z",
+        "winner": "FlyQuest",
+        "picks": {
+          "anchor": {
+            "team": "Eternal Fire",
+            "p_win": 0.6165249897609356,
+            "correct": false
+          },
+          "debate": {
+            "team": "Eternal Fire",
+            "p_win": 0.6165249897609356,
+            "correct": false
+          },
+          "market": {
+            "team": "Eternal Fire",
+            "p_win": 0.5794534412955467,
+            "correct": false
+          },
+          "single": {
+            "team": "Eternal Fire",
+            "p_win": 0.6165249897609356,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Eternal Fire",
+            "p_win": 0.7487584329363818,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "NIP vs Lynn Vision",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T08:45:00Z",
+        "winner": "NIP",
+        "picks": {
+          "anchor": {
+            "team": "NIP",
+            "p_win": 0.7400017996669171,
+            "correct": true
+          },
+          "debate": {
+            "team": "NIP",
+            "p_win": 0.7400017996669171,
+            "correct": true
+          },
+          "market": {
+            "team": "NIP",
+            "p_win": 0.7092350546389544,
+            "correct": true
+          },
+          "single": {
+            "team": "NIP",
+            "p_win": 0.7400017996669171,
+            "correct": true
+          },
+          "vrs": {
+            "team": "NIP",
+            "p_win": 0.8406674069499905,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Heroic vs Chinggis Warriors",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T08:45:00Z",
+        "winner": "Heroic",
+        "picks": {
+          "anchor": {
+            "team": "Heroic",
+            "p_win": 0.8002669534292328,
+            "correct": true
+          },
+          "debate": {
+            "team": "Heroic",
+            "p_win": 0.8002669534292328,
+            "correct": true
+          },
+          "market": {
+            "team": "Heroic",
+            "p_win": 0.7938931297709924,
+            "correct": true
+          },
+          "single": {
+            "team": "Heroic",
+            "p_win": 0.8002669534292328,
+            "correct": true
+          },
+          "vrs": {
+            "team": "Heroic",
+            "p_win": 0.824277637385116,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "9z vs M80",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T09:35:00Z",
+        "winner": "M80",
+        "picks": {
+          "anchor": {
+            "team": "M80",
+            "p_win": 0.5068835799860159,
+            "correct": true
+          },
+          "debate": {
+            "team": "M80",
+            "p_win": 0.5218835799860159,
+            "correct": true
+          },
+          "market": {
+            "team": "M80",
+            "p_win": 0.5089540617700493,
+            "correct": true
+          },
+          "single": {
+            "team": "M80",
+            "p_win": 0.5318835799860159,
+            "correct": true
+          },
+          "vrs": {
+            "team": "9z",
+            "p_win": 0.5013999982864173,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "100 Thieves vs Imperial",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T10:00:00Z",
+        "winner": "Imperial",
+        "picks": {
+          "anchor": {
+            "team": "100 Thieves",
+            "p_win": 0.6313911653084537,
+            "correct": false
+          },
+          "debate": {
+            "team": "100 Thieves",
+            "p_win": 0.6313911653084537,
+            "correct": false
+          },
+          "market": {
+            "team": "100 Thieves",
+            "p_win": 0.6284882310118902,
+            "correct": false
+          },
+          "single": {
+            "team": "100 Thieves",
+            "p_win": 0.6313911653084537,
+            "correct": false
+          },
+          "vrs": {
+            "team": "100 Thieves",
+            "p_win": 0.6429063089118064,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Eternal Fire vs DENDELE CS",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T10:50:00Z",
+        "winner": "Eternal Fire",
+        "picks": {
+          "anchor": {
+            "team": "Eternal Fire",
+            "p_win": 0.5376599312091408,
+            "correct": true
+          },
+          "debate": {
+            "team": "Eternal Fire",
+            "p_win": 0.5376599312091408,
+            "correct": true
+          },
+          "market": {
+            "team": "Eternal Fire",
+            "p_win": 0.5306756406937613,
+            "correct": true
+          },
+          "single": {
+            "team": "Eternal Fire",
+            "p_win": 0.5376599312091408,
+            "correct": true
+          },
+          "vrs": {
+            "team": "Eternal Fire",
+            "p_win": 0.5654228491952843,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "PVISION vs FlyQuest",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T11:00:00Z",
+        "winner": "FlyQuest",
+        "picks": {
+          "anchor": {
+            "team": "PVISION",
+            "p_win": 0.6971680279163203,
+            "correct": false
+          },
+          "debate": {
+            "team": "PVISION",
+            "p_win": 0.6971680279163203,
+            "correct": false
+          },
+          "market": {
+            "team": "PVISION",
+            "p_win": 0.6689655172413794,
+            "correct": false
+          },
+          "single": {
+            "team": "PVISION",
+            "p_win": 0.6971680279163203,
+            "correct": false
+          },
+          "vrs": {
+            "team": "PVISION",
+            "p_win": 0.7949787712552727,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Liquid vs Wildcard",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T12:00:00Z",
+        "winner": "Liquid",
+        "picks": {
+          "anchor": {
+            "team": "Liquid",
+            "p_win": 0.6896618421305071,
+            "correct": true
+          },
+          "debate": {
+            "team": "Liquid",
+            "p_win": 0.6896618421305071,
+            "correct": true
+          },
+          "market": {
+            "team": "Liquid",
+            "p_win": 0.6913361400398848,
+            "correct": true
+          },
+          "single": {
+            "team": "Liquid",
+            "p_win": 0.6896618421305071,
+            "correct": true
+          },
+          "vrs": {
+            "team": "Liquid",
+            "p_win": 0.6829151173158743,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "FaZe vs GOSH",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T12:10:00Z",
+        "winner": "FaZe",
+        "picks": {
+          "anchor": {
+            "team": "FaZe",
+            "p_win": 0.6071681407618222,
+            "correct": true
+          },
+          "debate": {
+            "team": "FaZe",
+            "p_win": 0.6071681407618222,
+            "correct": true
+          },
+          "market": {
+            "team": "FaZe",
+            "p_win": 0.565,
+            "correct": true
+          },
+          "single": {
+            "team": "FaZe",
+            "p_win": 0.6071681407618222,
+            "correct": true
+          },
+          "vrs": {
+            "team": "FaZe",
+            "p_win": 0.7560605767106526,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Eternal Fire vs 100 Thieves",
+        "format": "bo1",
+        "scheduled_start": "2026-11-25T06:00:00Z",
+        "winner": "Eternal Fire",
+        "picks": {
+          "anchor": {
+            "team": "100 Thieves",
+            "p_win": 0.5718608062208996,
+            "correct": false
+          },
+          "debate": {
+            "team": "100 Thieves",
+            "p_win": 0.5718608062208996,
+            "correct": false
+          },
+          "market": {
+            "team": "100 Thieves",
+            "p_win": 0.5901557006529382,
+            "correct": false
+          },
+          "single": {
+            "team": "100 Thieves",
+            "p_win": 0.5718608062208996,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Eternal Fire",
+            "p_win": 0.5027999746210874,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Heroic vs M80",
+        "format": "bo1",
+        "scheduled_start": "2026-11-25T06:00:00Z",
+        "winner": "M80",
+        "picks": {
+          "anchor": {
+            "team": "Heroic",
+            "p_win": 0.6022832729090959,
+            "correct": false
+          },
+          "debate": {
+            "team": "Heroic",
+            "p_win": 0.6022832729090959,
+            "correct": false
+          },
+          "market": {
+            "team": "Heroic",
+            "p_win": 0.6073376301437778,
+            "correct": false
+          },
+          "single": {
+            "team": "Heroic",
+            "p_win": 0.6022832729090959,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Heroic",
+            "p_win": 0.5818568115037938,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Wildcard vs Lynn Vision",
+        "format": "bo1",
+        "scheduled_start": "2026-11-25T07:00:00Z",
+        "winner": "Lynn Vision",
+        "picks": {
+          "anchor": {
+            "team": "Wildcard",
+            "p_win": 0.5346643498191962,
+            "correct": false
+          },
+          "debate": {
+            "team": "Wildcard",
+            "p_win": 0.5346643498191962,
+            "correct": false
+          },
+          "market": {
+            "team": "Wildcard",
+            "p_win": 0.5,
+            "correct": false
+          },
+          "single": {
+            "team": "Wildcard",
+            "p_win": 0.5346643498191962,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Wildcard",
+            "p_win": 0.6669452271329639,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "PVISION vs FaZe",
+        "format": "bo1",
+        "scheduled_start": "2026-11-25T07:15:00Z",
+        "winner": "PVISION",
+        "picks": {
+          "anchor": {
+            "team": "PVISION",
+            "p_win": 0.5495371278596165,
+            "correct": true
+          },
+          "debate": {
+            "team": "PVISION",
+            "p_win": 0.5495371278596165,
+            "correct": true
+          },
+          "market": {
+            "team": "PVISION",
+            "p_win": 0.5545571245186136,
+            "correct": true
+          },
+          "single": {
+            "team": "PVISION",
+            "p_win": 0.5495371278596165,
+            "correct": true
+          },
+          "vrs": {
+            "team": "PVISION",
+            "p_win": 0.5293662045877111,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "9z vs DENDELE CS",
+        "format": "bo3",
+        "scheduled_start": "2026-11-25T08:10:00Z",
+        "winner": "9z",
+        "picks": {
+          "anchor": {
+            "team": "9z",
+            "p_win": 0.5074810742621272,
+            "correct": true
+          },
+          "debate": {
+            "team": "DENDELE CS",
+            "p_win": 0.5075189257378728,
+            "correct": false
+          },
+          "market": {
+            "team": "DENDELE CS",
+            "p_win": 0.5032526671870934,
+            "correct": false
+          },
+          "single": {
+            "team": "DENDELE CS",
+            "p_win": 0.5225189257378728,
+            "correct": false
+          },
+          "vrs": {
+            "team": "9z",
+            "p_win": 0.5502488154276207,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Imperial vs FlyQuest",
+        "format": "bo3",
+        "scheduled_start": "2026-11-25T08:30:00Z",
+        "winner": "FlyQuest",
+        "picks": {
+          "anchor": {
+            "team": "Imperial",
+            "p_win": 0.5614040938619581,
+            "correct": false
+          },
+          "debate": {
+            "team": "Imperial",
+            "p_win": 0.5614040938619581,
+            "correct": false
+          },
+          "market": {
+            "team": "Imperial",
+            "p_win": 0.5306756406937613,
+            "correct": false
+          },
+          "single": {
+            "team": "Imperial",
+            "p_win": 0.5614040938619581,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Imperial",
+            "p_win": 0.6776263656902153,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "GOSH vs Chinggis Warriors",
+        "format": "bo3",
+        "scheduled_start": "2026-11-25T10:10:00Z",
+        "winner": "Chinggis Warriors",
+        "picks": {
+          "anchor": {
+            "team": "GOSH",
+            "p_win": 0.7941258729073746,
+            "correct": false
+          },
+          "debate": {
+            "team": "GOSH",
+            "p_win": 0.7941258729073746,
+            "correct": false
+          },
+          "market": {
+            "team": "GOSH",
+            "p_win": 0.825,
+            "correct": false
+          },
+          "single": {
+            "team": "GOSH",
+            "p_win": 0.7941258729073746,
+            "correct": false
+          },
+          "vrs": {
+            "team": "GOSH",
+            "p_win": 0.6335543333231626,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "NIP vs Liquid",
+        "format": "bo3",
+        "scheduled_start": "2026-11-25T11:00:00Z",
+        "winner": "NIP",
+        "picks": {
+          "anchor": {
+            "team": "Liquid",
+            "p_win": 0.504295811799679,
+            "correct": false
+          },
+          "debate": {
+            "team": "Liquid",
+            "p_win": 0.504295811799679,
+            "correct": false
+          },
+          "market": {
+            "team": "Liquid",
+            "p_win": 0.5242668050869452,
+            "correct": false
+          },
+          "single": {
+            "team": "Liquid",
+            "p_win": 0.504295811799679,
+            "correct": false
+          },
+          "vrs": {
+            "team": "NIP",
+            "p_win": 0.57509162540446,
+            "correct": true
+          }
+        }
+      }
+    ],
+    "pickems": [
+      {
+        "stage": "PGL Major Singapore 2026 / Stage 1",
+        "status": "pending: the Stage is not finished (1 of the 10 picked teams have finished it)",
+        "points": 1,
+        "picks": [
+          [
+            "three_nil",
+            [
+              {
+                "team": "NIP",
+                "record": "3-0",
+                "state": "correct"
+              },
+              {
+                "team": "Heroic",
+                "record": "1-2",
+                "state": "wrong"
+              }
+            ]
+          ],
+          [
+            "zero_three",
+            [
+              {
+                "team": "Chinggis Warriors",
+                "record": "1-2",
+                "state": "wrong"
+              },
+              {
+                "team": "Lynn Vision",
+                "record": "2-1",
+                "state": "wrong"
+              }
+            ]
+          ],
+          [
+            "advance",
+            [
+              {
+                "team": "PVISION",
+                "record": "2-1",
+                "state": "undecided"
+              },
+              {
+                "team": "Liquid",
+                "record": "2-1",
+                "state": "undecided"
+              },
+              {
+                "team": "FaZe",
+                "record": "1-2",
+                "state": "undecided"
+              },
+              {
+                "team": "100 Thieves",
+                "record": "1-2",
+                "state": "undecided"
+              },
+              {
+                "team": "Eternal Fire",
+                "record": "2-1",
+                "state": "undecided"
+              },
+              {
+                "team": "M80",
+                "record": "2-1",
+                "state": "undecided"
+              }
+            ]
+          ]
+        ]
+      }
+    ]
+  },
   "llm": {
     "providers": [],
     "planned": {

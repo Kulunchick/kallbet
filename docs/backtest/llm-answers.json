@@ -2,510 +2,6 @@
   {
     "bot": "single",
     "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier contains no verified late-breaking factors such as stand-ins, roster changes, visa issues or illness. With an empty context and no risk flags, the baseline probability is left unchanged.",
-        "ru": "В досье нет подтверждённых поздних факторов: замен, изменений состава, проблем с визами или болезней. Контекст пуст и флагов риска нет, поэтому базовая вероятность остаётся без изменений.",
-        "uk": "У досьє немає підтверджених пізніх факторів: замін, змін складу, проблем з візами чи хвороб. Контекст порожній і прапорців ризику немає, тому базова ймовірність залишається без змін."
-      }
-    },
-    "input_hash": "acea3217a84a3f3217735de5e65817e1f9e9e93ad55dc2f3aa9b56b949293cf4",
-    "latency_ms": 6176,
-    "match_id": 267631461571383,
-    "provider": "claude",
-    "reuse_key": "fb10b285203bb19e9dd98502df4ff1bdef48016346724d23a640f6edcc703c6b",
-    "role": "predict",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "single",
-    "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier contains no late-breaking factors: the context is empty and there are no risk flags. With no verified stand-ins, roster changes, travel problems or other events to adjust for, the baseline probability stays unchanged.",
-        "ru": "В досье нет поздних факторов: контекст пуст, флагов риска нет. Нет подтверждённых замен, изменений состава, проблем с поездкой или других событий, поэтому базовая вероятность остаётся без изменений.",
-        "uk": "У досьє немає пізніх факторів: контекст порожній, прапорців ризику немає. Немає підтверджених замін, змін складу, проблем із поїздкою чи інших подій, тому базова ймовірність залишається без змін."
-      }
-    },
-    "input_hash": "a1e61fdd45373a7192993c4aed2144bdf51cdee89fbb19a6e6082374cefbd6c2",
-    "latency_ms": 6016,
-    "match_id": 3200678728695,
-    "provider": "claude",
-    "reuse_key": "23376e9626b90acf43c54032e3ff79a61b46be11afee2849736e0977af8f33fd",
-    "role": "predict",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [],
-      "delta": 0,
-      "position": "The dossier contains no roster, stand-in, coach, travel or illness items. The context array is empty and there are no risk flags. The 52.9% baseline already blends the market (55.6%) with the Valve standings estimate (42.0%). Nothing verified justifies moving off it. The gap between market and standings is a rating disagreement the market has already priced in, not news."
-    },
-    "input_hash": "acea3217a84a3f3217735de5e65817e1f9e9e93ad55dc2f3aa9b56b949293cf4",
-    "latency_ms": 4567,
-    "match_id": 267631461571383,
-    "provider": "claude",
-    "reuse_key": "fb10b285203bb19e9dd98502df4ff1bdef48016346724d23a640f6edcc703c6b",
-    "role": "advocate",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [
-        {
-          "claim": "The Valve Regional Standings model rates TEAM_ALPHA at only 41.95%, demonstrating that official ranking performance strongly favors TEAM_BETA compared to the market consensus.",
-          "evidence_url": "",
-          "favours": "team_b",
-          "kind": "other"
-        },
-        {
-          "claim": "The match format is a best-of-one (bo1), introducing high map and pistol variance that dampens TEAM_ALPHA's theoretical edge and disproportionately aids TEAM_BETA.",
-          "evidence_url": "",
-          "favours": "team_b",
-          "kind": "other"
-        }
-      ],
-      "delta": -6,
-      "position": "The baseline probability of 52.91% for TEAM_ALPHA is excessively high because it over-indexes on the market price while discounting the Valve Regional Standings signal of 41.95%. In addition, the best-of-one format introduces significant single-map variance that heavily compresses competitive margins toward a coin flip. Consequently, the baseline should be shifted substantially in favor of TEAM_BETA."
-    },
-    "input_hash": "acea3217a84a3f3217735de5e65817e1f9e9e93ad55dc2f3aa9b56b949293cf4",
-    "latency_ms": 28638,
-    "match_id": 267631461571383,
-    "provider": "antigravity",
-    "reuse_key": "fb10b285203bb19e9dd98502df4ff1bdef48016346724d23a640f6edcc703c6b",
-    "role": "devil",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier contains no verified late-breaking factors: the context is empty and there are no risk flags. The Devil's Advocate claims have no evidence URLs and use non-permitted kinds, so they are discarded. The gap between the market and the Valve standings is already reflected in the baseline blend, so no adjustment is made.",
-        "ru": "В досье нет подтверждённых поздних факторов: контекст пуст, флагов риска нет. Утверждения Devil's Advocate не имеют ссылок на доказательства и относятся к недопустимым типам, поэтому отброшены. Расхождение между рынком и рейтингом Valve уже учтено в базовой смеси, поэтому корректировка не нужна.",
-        "uk": "У досьє немає підтверджених пізніх чинників: контекст порожній, прапорців ризику немає. Твердження Devil's Advocate не мають посилань на докази й належать до недопустимих типів, тому відхилені. Розбіжність між ринком і рейтингом Valve вже враховано в базовому змішуванні, тож коригування не потрібне."
-      }
-    },
-    "input_hash": "acea3217a84a3f3217735de5e65817e1f9e9e93ad55dc2f3aa9b56b949293cf4",
-    "latency_ms": 7086,
-    "match_id": 267631461571383,
-    "provider": "claude",
-    "reuse_key": "fb10b285203bb19e9dd98502df4ff1bdef48016346724d23a640f6edcc703c6b",
-    "role": "arbiter",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [],
-      "delta": 0,
-      "position": "The dossier lists no roster, stand-in, coach, travel or illness items, and the context array is empty. The baseline of 62.79% already blends the market (57.0%) with the Valve standings estimate (81.6%). Nothing verified justifies moving away from it. The gap between market and standings is a rating disagreement that the bookmakers have already priced in, not new information. It is also a bo1, which adds variance but gives no directional edge."
-    },
-    "input_hash": "a1e61fdd45373a7192993c4aed2144bdf51cdee89fbb19a6e6082374cefbd6c2",
-    "latency_ms": 5133,
-    "match_id": 3200678728695,
-    "provider": "claude",
-    "reuse_key": "23376e9626b90acf43c54032e3ff79a61b46be11afee2849736e0977af8f33fd",
-    "role": "advocate",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [
-        {
-          "claim": "The match format is best-of-one (bo1), which carries high single-map variance that compresses win probabilities toward 50% and benefits underdog TEAM_BETA.",
-          "evidence_url": "",
-          "favours": "team_b",
-          "kind": "other"
-        },
-        {
-          "claim": "The de-vigged market price for TEAM_ALPHA is 57.00%, indicating that the baseline of 62.79% overweights the unadjusted standings signal in a volatile bo1 setting.",
-          "evidence_url": "",
-          "favours": "team_b",
-          "kind": "other"
-        }
-      ],
-      "delta": -5.8,
-      "position": "The baseline probability of 62.79% for TEAM_ALPHA is substantially inflated by the Valve Regional Standings signal compared to the sharper market price of 57.00%. Because this match is scheduled as a best-of-one format, inherent single-map variance and map-veto volatility significantly compress competitive edges in favor of the underdog TEAM_BETA. A downward adjustment is warranted to correct for this single-map variance and align closer to the bookmaker consensus."
-    },
-    "input_hash": "a1e61fdd45373a7192993c4aed2144bdf51cdee89fbb19a6e6082374cefbd6c2",
-    "latency_ms": 25929,
-    "match_id": 3200678728695,
-    "provider": "antigravity",
-    "reuse_key": "23376e9626b90acf43c54032e3ff79a61b46be11afee2849736e0977af8f33fd",
-    "role": "devil",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier contains no verified late-breaking factors: the context array is empty and there are no risk flags. The Devil's Advocate claims about bo1 variance and the market-versus-standings gap have no evidence URL and are not valid factor kinds, so they are discarded. The Market Advocate also sees no basis for a change. The baseline of 62.79% stands with no adjustment.",
-        "ru": "В досье нет подтверждённых поздних факторов: массив context пуст, флагов риска нет. Доводы адвоката дьявола о дисперсии bo1 и расхождении рынка со стандингами не имеют evidence URL и не относятся к допустимым типам факторов, поэтому отброшены. Адвокат рынка тоже не видит оснований для изменений. Базовая вероятность 62,79% остаётся без корректировки.",
-        "uk": "У досьє немає підтверджених пізніх факторів: масив context порожній, прапорців ризику немає. Аргументи адвоката диявола про дисперсію bo1 та розбіжність ринку зі стендінгами не мають evidence URL і не належать до допустимих типів факторів, тому відкинуті. Адвокат ринку також не бачить підстав для змін. Базова ймовірність 62,79% залишається без коригування."
-      }
-    },
-    "input_hash": "a1e61fdd45373a7192993c4aed2144bdf51cdee89fbb19a6e6082374cefbd6c2",
-    "latency_ms": 8123,
-    "match_id": 3200678728695,
-    "provider": "claude",
-    "reuse_key": "23376e9626b90acf43c54032e3ff79a61b46be11afee2849736e0977af8f33fd",
-    "role": "arbiter",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "single",
-    "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier contains no verified late-breaking factors: the context is empty and there are no risk flags. No stand-ins, roster changes, travel problems or other issues are supported, so the baseline probability is left unchanged.",
-        "ru": "В досье нет подтверждённых поздних факторов: контекст пуст, флагов риска нет. Нет данных о замене, изменениях состава, проблемах с поездкой и других событиях, поэтому базовая вероятность остаётся без изменений.",
-        "uk": "У досьє немає підтверджених пізніх факторів: контекст порожній, прапорців ризику немає. Немає даних про заміну, зміни складу, проблеми з поїздкою чи інші події, тому базова ймовірність залишається без змін."
-      }
-    },
-    "input_hash": "5599143773437dd659d55e6bbf3e97c7174b528d801d468bd342629791d4ff72",
-    "latency_ms": 5855,
-    "match_id": 23432948047501,
-    "provider": "claude",
-    "reuse_key": "ba005eecf8038214b390d29f0d4caddd64eecc286d96f05edb1ad4b0cadba692",
-    "role": "predict",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [],
-      "delta": 0,
-      "position": "The dossier lists no roster, stand-in, coach, travel or illness items, and the context array is empty. The baseline of 78.8% already blends the 75.9% market price with the 87.9% standings estimate. Nothing verified justifies moving away from it, so I defend the baseline as is. The standings and market both favour team_a, and the market already prices public ratings and form."
-    },
-    "input_hash": "5599143773437dd659d55e6bbf3e97c7174b528d801d468bd342629791d4ff72",
-    "latency_ms": 4633,
-    "match_id": 23432948047501,
-    "provider": "claude",
-    "reuse_key": "ba005eecf8038214b390d29f0d4caddd64eecc286d96f05edb1ad4b0cadba692",
-    "role": "advocate",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [
-        {
-          "claim": "The match format is a Best-of-One (bo1), which introduces substantial round-to-round variance and pistol snowball potential under MR12, significantly eroding the expected edge of a heavy favorite.",
-          "evidence_url": "",
-          "favours": "team_b",
-          "kind": "other"
-        }
-      ],
-      "delta": -4,
-      "position": "The baseline probability of 78.81% for TEAM_ALPHA substantially overstates their advantage in a Best-of-One (bo1) format. Single-map matches inherently carry high round volatility and pistol-round leverage under MR12, compressing heavy favorites toward the mean. Given that the baseline is excessively buoyed by the static Valve Regional Standings signal (87.89%) relative to market pricing (75.88%), a downward correction for TEAM_ALPHA is warranted."
-    },
-    "input_hash": "5599143773437dd659d55e6bbf3e97c7174b528d801d468bd342629791d4ff72",
-    "latency_ms": 89305,
-    "match_id": 23432948047501,
-    "provider": "antigravity",
-    "reuse_key": "ba005eecf8038214b390d29f0d4caddd64eecc286d96f05edb1ad4b0cadba692",
-    "role": "devil",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier contains no verified late-breaking factors: the context array is empty and there are no risk flags. The Devil's Advocate's bo1 variance claim has no evidence URL and is not an allowed factor kind, so it is discarded. The baseline of 78.8% for TEAM_ALPHA stands unchanged.",
-        "ru": "В досье нет подтверждённых поздних факторов: массив контекста пуст, флагов риска нет. Довод Адвоката дьявола о дисперсии bo1 не имеет ссылки на источник и не относится к допустимым типам факторов, поэтому отклонён. Базовая вероятность 78,8% для TEAM_ALPHA остаётся без изменений.",
-        "uk": "У досьє немає підтверджених пізніх факторів: масив контексту порожній, прапорців ризику немає. Аргумент Адвоката диявола про дисперсію bo1 не має посилання на джерело й не належить до допустимих типів факторів, тому відхилений. Базова ймовірність 78,8% для TEAM_ALPHA залишається без змін."
-      }
-    },
-    "input_hash": "5599143773437dd659d55e6bbf3e97c7174b528d801d468bd342629791d4ff72",
-    "latency_ms": 6797,
-    "match_id": 23432948047501,
-    "provider": "claude",
-    "reuse_key": "ba005eecf8038214b390d29f0d4caddd64eecc286d96f05edb1ad4b0cadba692",
-    "role": "arbiter",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "single",
-    "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier contains no verified late-breaking factors: the context is empty and there are no risk flags. No adjustment is made to the baseline probability for team_a.",
-        "ru": "В досье нет подтверждённых поздних факторов: контекст пуст, флагов риска нет. Базовая вероятность победы team_a не корректируется.",
-        "uk": "У досьє немає підтверджених пізніх факторів: контекст порожній, прапорців ризику немає. Базова ймовірність перемоги team_a не коригується."
-      }
-    },
-    "input_hash": "37c4b7e21773fa27813d7ec983a12204e99e9f1fc9b0be858ca3acc579a15f13",
-    "latency_ms": 5013,
-    "match_id": 180006508176185,
-    "provider": "claude",
-    "reuse_key": "4256eb5eaae7ae2af862be77a4379f5cd752996f331ea56f2c640b0e7e6aa3a0",
-    "role": "predict",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [],
-      "delta": 0,
-      "position": "The dossier contains no roster, stand-in, coach, travel or illness items. The context array is empty and there are no risk flags, so there is nothing to call stale, priced in or rumour, and nothing to concede. The baseline of 60.5% already blends the 56.8% market with the 74.0% standings estimate. The gap between those two is a ratings-versus-market disagreement, not a verified news edge. I'd keep the baseline."
-    },
-    "input_hash": "37c4b7e21773fa27813d7ec983a12204e99e9f1fc9b0be858ca3acc579a15f13",
-    "latency_ms": 4766,
-    "match_id": 180006508176185,
-    "provider": "claude",
-    "reuse_key": "4256eb5eaae7ae2af862be77a4379f5cd752996f331ea56f2c640b0e7e6aa3a0",
-    "role": "advocate",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [
-        {
-          "claim": "The scheduled match format is a best-of-one ('bo1'), which introduces significant single-map variance that compresses the favorite's competitive edge and increases upset potential.",
-          "evidence_url": "",
-          "favours": "team_b",
-          "kind": "other"
-        },
-        {
-          "claim": "The de-vigged market probability for TEAM_ALPHA is 56.77%, demonstrating that the baseline of 60.52% is over-indexed on the 74.02% Valve Regional Standings signal.",
-          "evidence_url": "",
-          "favours": "team_b",
-          "kind": "other"
-        }
-      ],
-      "delta": -3.75,
-      "position": "The baseline estimate of 60.52% overrates TEAM_ALPHA due to heavy weighting toward the Valve Regional Standings signal of 74.02%. In a best-of-one format, elevated round-to-round variance and map veto dynamics compress win probabilities toward 50%, favoring the underdog TEAM_BETA. The baseline should shift downward toward the de-vigged market price of 56.77% to reflect this single-map volatility."
-    },
-    "input_hash": "37c4b7e21773fa27813d7ec983a12204e99e9f1fc9b0be858ca3acc579a15f13",
-    "latency_ms": 65548,
-    "match_id": 180006508176185,
-    "provider": "antigravity",
-    "reuse_key": "4256eb5eaae7ae2af862be77a4379f5cd752996f331ea56f2c640b0e7e6aa3a0",
-    "role": "devil",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier has no verified late-breaking factors: the context is empty and there are no risk flags. The Devil's Advocate claims have no evidence URLs and use a kind outside the allowed factor kinds, so they are discarded. The bo1 format and the gap between the market and the standings are already reflected in the baseline blend. No adjustment is made.",
-        "ru": "В досье нет подтверждённых поздних факторов: контекст пуст, флагов риска нет. Аргументы Адвоката дьявола не имеют ссылок на доказательства и относятся к недопустимому типу, поэтому отброшены. Формат bo1 и расхождение между рынком и рейтингом уже учтены в базовой смеси. Поправка не вносится.",
-        "uk": "У досьє немає підтверджених пізніх факторів: контекст порожній, прапорів ризику немає. Аргументи Адвоката диявола не мають посилань на докази та належать до недопустимого типу, тому відхилені. Формат bo1 і розбіжність між ринком та рейтингом уже враховані в базовому змішуванні. Поправка не вноситься."
-      }
-    },
-    "input_hash": "37c4b7e21773fa27813d7ec983a12204e99e9f1fc9b0be858ca3acc579a15f13",
-    "latency_ms": 5002,
-    "match_id": 180006508176185,
-    "provider": "claude",
-    "reuse_key": "4256eb5eaae7ae2af862be77a4379f5cd752996f331ea56f2c640b0e7e6aa3a0",
-    "role": "arbiter",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "single",
-    "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier contains no verified late-breaking factors: the context is empty and there are no risk flags. The baseline probability for TEAM_ALPHA of about 59% is left unchanged.",
-        "ru": "В досье нет подтверждённых поздних факторов: контекст пуст, флагов риска нет. Базовая вероятность победы TEAM_ALPHA около 59% остаётся без изменений.",
-        "uk": "У досьє немає підтверджених пізніх факторів: контекст порожній, прапорців ризику немає. Базова ймовірність перемоги TEAM_ALPHA близько 59% залишається без змін."
-      }
-    },
-    "input_hash": "bd49912ac1a9b949f993a7af88223555b1fb92d66b0b3b510ff102e0c0d4ac27",
-    "latency_ms": 5228,
-    "match_id": 202564766216540,
-    "provider": "claude",
-    "reuse_key": "2db7572de007c84a4ec081706759c63f8ffb71deae251618ba6c9d364a30ce19",
-    "role": "predict",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [],
-      "delta": 0,
-      "position": "The dossier contains no roster, stand-in, coach, travel or illness items, and the risk flags are empty. There is also no market price, so the baseline rests on the Valve standings estimate of about 59%. With nothing verified to move it, I defend the baseline and propose no shift."
-    },
-    "input_hash": "bd49912ac1a9b949f993a7af88223555b1fb92d66b0b3b510ff102e0c0d4ac27",
-    "latency_ms": 4262,
-    "match_id": 202564766216540,
-    "provider": "claude",
-    "reuse_key": "2db7572de007c84a4ec081706759c63f8ffb71deae251618ba6c9d364a30ce19",
-    "role": "advocate",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [
-        {
-          "claim": "The fixture is set to a best-of-one (bo1) format, introducing substantial single-map variance that blunts TEAM_ALPHA's theoretical advantage.",
-          "evidence_url": "",
-          "favours": "team_b",
-          "kind": "other"
-        },
-        {
-          "claim": "No market probability is present in the dossier, leaving the 59.14% baseline unanchored by bookmaker consensus and dependent solely on coarse standings signal data.",
-          "evidence_url": "",
-          "favours": "team_b",
-          "kind": "other"
-        }
-      ],
-      "delta": -5,
-      "position": "The baseline overestimates TEAM_ALPHA's probability by relying entirely on standings signals without any market consensus to validate the edge. In a best-of-one format, single-map volatility, pistol rounds, and economic swings substantially compress the favorite's expected win rate toward coin-flip territory. Accordingly, the projection should be regressed closer to even odds in favor of TEAM_BETA."
-    },
-    "input_hash": "bd49912ac1a9b949f993a7af88223555b1fb92d66b0b3b510ff102e0c0d4ac27",
-    "latency_ms": 24097,
-    "match_id": 202564766216540,
-    "provider": "antigravity",
-    "reuse_key": "2db7572de007c84a4ec081706759c63f8ffb71deae251618ba6c9d364a30ce19",
-    "role": "devil",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier contains no verified late-breaking factors such as stand-ins, roster or coach changes, travel problems, illness or technical issues. The Devil's Advocate claims have no evidence URL and use a kind outside the allowed factor kinds, so they are discarded. The baseline of about 59.1% for TEAM_ALPHA stands unchanged.",
-        "ru": "В досье нет подтверждённых поздних факторов: замен, изменений состава или тренера, проблем с поездкой, болезней или технических сбоев. Доводы Адвоката дьявола не имеют ссылки на доказательства и относятся к недопустимому типу, поэтому отклоняются. Базовая оценка около 59,1% для TEAM_ALPHA остаётся без изменений.",
-        "uk": "У досьє немає підтверджених пізніх факторів: замін, змін складу чи тренера, проблем з поїздкою, хвороб або технічних збоїв. Аргументи Адвоката диявола не мають посилання на докази та належать до недопустимого типу, тому відхиляються. Базова оцінка близько 59,1% для TEAM_ALPHA залишається без змін."
-      }
-    },
-    "input_hash": "bd49912ac1a9b949f993a7af88223555b1fb92d66b0b3b510ff102e0c0d4ac27",
-    "latency_ms": 7335,
-    "match_id": 202564766216540,
-    "provider": "claude",
-    "reuse_key": "2db7572de007c84a4ec081706759c63f8ffb71deae251618ba6c9d364a30ce19",
-    "role": "arbiter",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "single",
-    "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier contains no verified late-breaking factors: the context list is empty and there are no risk flags. No stand-ins, roster changes, travel problems or other events are supported by evidence. The baseline probability is left unchanged.",
-        "ru": "В досье нет подтверждённых поздних факторов: список контекста пуст, флагов риска нет. Нет подтверждённых замен, изменений состава, проблем с поездками и других событий. Базовая вероятность остаётся без изменений.",
-        "uk": "У досьє немає підтверджених пізніх факторів: список контексту порожній, прапорців ризику немає. Немає підтверджених замін, змін складу, проблем із поїздками чи інших подій. Базова ймовірність залишається без змін."
-      }
-    },
-    "input_hash": "ca1b0d8a193a281470e18cba51f035c89be290c34ae655105ef16628655f3b43",
-    "latency_ms": 8957,
-    "match_id": 222859394512094,
-    "provider": "claude",
-    "reuse_key": "3f81237fe74b58a36a399835c9130f091d6dfeb4880f313f103f8b08e356720b",
-    "role": "predict",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [],
-      "delta": 0,
-      "position": "The dossier contains no roster, stand-in, coach, travel or illness items. The context list is empty and there are no risk flags, so there is nothing to concede or to dismiss as stale. The baseline of 74.07% already blends the market's 65.6% with the standings' 93.5%. The standings figure is a rating-based estimate, and the market already prices public ratings and form, so I see no verified reason to move off the baseline."
-    },
-    "input_hash": "ca1b0d8a193a281470e18cba51f035c89be290c34ae655105ef16628655f3b43",
-    "latency_ms": 4791,
-    "match_id": 222859394512094,
-    "provider": "claude",
-    "reuse_key": "3f81237fe74b58a36a399835c9130f091d6dfeb4880f313f103f8b08e356720b",
-    "role": "advocate",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "claims": [
-        {
-          "claim": "The match format is a best-of-one (bo1), introducing high variance that compresses win probability toward the underdog TEAM_BETA.",
-          "evidence_url": "",
-          "favours": "team_b",
-          "kind": "other"
-        },
-        {
-          "claim": "The de-vigged bookmaker market assesses TEAM_ALPHA's win probability at 65.58%, well below the 74.07% baseline.",
-          "evidence_url": "",
-          "favours": "team_b",
-          "kind": "other"
-        }
-      ],
-      "delta": -8,
-      "position": "The baseline of 74.07% substantially overstates TEAM_ALPHA's win probability by failing to adequately account for the high variance inherent to the best-of-one format. In a single-map setting, tactical volatility and pistol rounds disproportionately favour the underdog TEAM_BETA. Furthermore, the de-vigged market price sits at only 65.58%, indicating strong betting market consensus that TEAM_ALPHA is significantly more vulnerable than the standings signal suggests."
-    },
-    "input_hash": "ca1b0d8a193a281470e18cba51f035c89be290c34ae655105ef16628655f3b43",
-    "latency_ms": 23852,
-    "match_id": 222859394512094,
-    "provider": "antigravity",
-    "reuse_key": "3f81237fe74b58a36a399835c9130f091d6dfeb4880f313f103f8b08e356720b",
-    "role": "devil",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "debate",
-    "brief": {
-      "delta": 0,
-      "factors": [],
-      "summary": {
-        "en": "The dossier has no late-breaking factors: the context is empty and there are no risk flags. The Devil's Advocate claims (bo1 variance, market price) have no evidence URL and use a kind outside the allowed factor kinds, so they are discarded. The market price is already in the baseline. No adjustment to the baseline of 74.07%.",
-        "ru": "В досье нет поздних факторов: контекст пуст, флагов риска нет. Аргументы Адвоката дьявола (дисперсия bo1, рыночная цена) не имеют evidence URL и относятся к недопустимому виду фактора, поэтому отброшены. Рыночная цена уже учтена в базовой оценке. Поправка к базовым 74,07% не нужна.",
-        "uk": "У досьє немає пізніх факторів: контекст порожній, прапорців ризику немає. Аргументи Адвоката диявола (дисперсія bo1, ринкова ціна) не мають evidence URL і належать до недопустимого виду фактора, тому відкинуті. Ринкова ціна вже врахована в базовій оцінці. Поправка до базових 74,07% не потрібна."
-      }
-    },
-    "input_hash": "ca1b0d8a193a281470e18cba51f035c89be290c34ae655105ef16628655f3b43",
-    "latency_ms": 7056,
-    "match_id": 222859394512094,
-    "provider": "claude",
-    "reuse_key": "3f81237fe74b58a36a399835c9130f091d6dfeb4880f313f103f8b08e356720b",
-    "role": "arbiter",
-    "status": "ok",
-    "tier": "PreLock"
-  },
-  {
-    "bot": "single",
-    "brief": {
       "delta": -3.5,
       "factors": [
         {
@@ -3049,6 +2545,648 @@
     "match_id": 1816920,
     "provider": "claude",
     "reuse_key": "baa2ad0441b97e7119f3922eccd2f87700b91a891ac347fd025ba67c02f38181",
+    "role": "arbiter",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "single",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "The dossier shows both rosters with five active players each, no stand-ins, no benched players and no roster changes. The only extra player is an unused substitute for team A, and team B's coach is listed as an emergency sub, but neither affects the lineup. No verified late-breaking factor supports moving the probability, so the delta is 0.",
+        "ru": "В досье у обеих команд по пять активных игроков, без стенд-инов, без игроков на скамейке и без изменений состава. Единственный дополнительный игрок — неиспользуемая замена у команды A, а тренер команды B указан как аварийная замена, но на состав это не влияет. Подтверждённых поздних факторов для изменения вероятности нет, поэтому дельта равна 0.",
+        "uk": "У досьє в обох команд по п'ять активних гравців, без стенд-інів, без гравців на лаві та без змін складу. Єдиний додатковий гравець — невикористана заміна в команди A, а тренер команди B зазначений як аварійна заміна, але на склад це не впливає. Підтверджених пізніх факторів для зміни ймовірності немає, тому дельта дорівнює 0."
+      }
+    },
+    "input_hash": "5594ddfd8749592e5d39240f1436dfcc7f38ade439bdda49d364a1e5c2e6d9ab",
+    "latency_ms": 7374,
+    "match_id": 267631461571383,
+    "provider": "claude",
+    "reuse_key": "765578b7fa71e2f7adba23fa0224e1187479e9808d48ee5a2e8b5c3ce0613968",
+    "role": "predict",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "single",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "Both rosters show five active players with no stand-ins, no recent roster changes and no coach or IGL changes. TEAM_ALPHA has an unused substitute (PLAYER_11), and TEAM_BETA's coach is listed as an emergency sub, but neither is a verified late-breaking factor. No adjustment is made to the baseline.",
+        "ru": "У обеих команд в составе по пять активных игроков, без стенд-инов, недавних изменений состава и смены тренера или IGL. У TEAM_ALPHA есть неиспользованный запасной (PLAYER_11), а тренер TEAM_BETA указан как аварийная замена, но это не подтверждённые поздние факторы. Базовая оценка не корректируется.",
+        "uk": "В обох команд у складі по п'ять активних гравців, без стенд-інів, нещодавніх змін складу та зміни тренера чи IGL. У TEAM_ALPHA є невикористаний запасний (PLAYER_11), а тренер TEAM_BETA вказаний як аварійна заміна, але це не підтверджені пізні фактори. Базова оцінка не коригується."
+      }
+    },
+    "input_hash": "783000e87c670b48362f9c04ab8609cd133ebcb88d289d534c85ccd93c60ca98",
+    "latency_ms": 7225,
+    "match_id": 3200678728695,
+    "provider": "claude",
+    "reuse_key": "234a71c3bcb2edf2b15947e3a884ee273bfbb550fb162f67b5d6b40abdb41e05",
+    "role": "predict",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "The stand_in risk flag is contradicted by the roster data: has_stand_in is false and stand_ins is empty for both TEAM_ALPHA and TEAM_BETA, so the flag is unsupported.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_a",
+          "kind": "stand_in"
+        },
+        {
+          "claim": "PLAYER_11 is listed only as an unused substitute for TEAM_ALPHA. The five active players are unchanged, so this is not a lineup change and is already priced in.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_a",
+          "kind": "roster_change_30d"
+        },
+        {
+          "claim": "COACH_02 of TEAM_BETA carries an emergency_sub flag, but there are no stand-ins or benched players, so this is a latent possibility and not a verified coaching change. It is public and priced in.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_b",
+          "kind": "igl_or_coach_change"
+        }
+      ],
+      "delta": 0,
+      "position": "The baseline of 52.9% already blends the market (55.6%) with the standings estimate (42.0%), and the dossier verifies no roster disruption. Both Liquipedia roster entries show five active players, no stand-ins, no benched players and no notes. The 'stand_in' risk flag has no support in the dossier, because has_stand_in is false for both teams. The only loose items are an unused substitute for Team Alpha and an emergency-sub coach tag for Team Beta. Neither is an actual lineup change, and both are public information the market has already priced. I argue for no shift."
+    },
+    "input_hash": "5594ddfd8749592e5d39240f1436dfcc7f38ade439bdda49d364a1e5c2e6d9ab",
+    "latency_ms": 8453,
+    "match_id": 267631461571383,
+    "provider": "claude",
+    "reuse_key": "765578b7fa71e2f7adba23fa0224e1187479e9808d48ee5a2e8b5c3ce0613968",
+    "role": "advocate",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "Valve Regional Standings assign TEAM_ALPHA only a 41.95% series win probability, indicating TEAM_BETA is ranked significantly higher by official performance metrics than the market reflects.",
+          "evidence_url": "",
+          "favours": "team_b",
+          "kind": "other"
+        },
+        {
+          "claim": "The match is played in a best-of-one format, which maximizes single-map variance and tactical volatility against the market favorite.",
+          "evidence_url": "",
+          "favours": "team_b",
+          "kind": "other"
+        },
+        {
+          "claim": "Although COACH_02 is flagged as an emergency substitute on TEAM_BETA, neither team has an active stand-in and both field their complete five-player starting lineups.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_b",
+          "kind": "stand_in"
+        }
+      ],
+      "delta": -5.5,
+      "position": "The baseline overvalues TEAM_ALPHA at 52.91% by leaning heavily on market odds and heavily discounting the Valve Regional Standings signal of 41.95%, which indicates TEAM_BETA is the stronger team. Moreover, neither team is fielding an active stand-in on server, so TEAM_BETA suffers no actual roster disruption despite the emergency substitute coach listing. In a volatile best-of-one format, the baseline should be shifted substantially toward TEAM_BETA."
+    },
+    "input_hash": "5594ddfd8749592e5d39240f1436dfcc7f38ade439bdda49d364a1e5c2e6d9ab",
+    "latency_ms": 65111,
+    "match_id": 267631461571383,
+    "provider": "antigravity",
+    "reuse_key": "765578b7fa71e2f7adba23fa0224e1187479e9808d48ee5a2e8b5c3ce0613968",
+    "role": "devil",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "The dossier shows no verified late-breaking factors: both rosters have five active players, no stand-ins and no benched players. The 'stand_in' risk flag is not supported, and the unused substitute and the emergency-sub coach tag are latent and already public. The Devil's Advocate claims about standings and best-of-one format have no evidence URL and are already reflected in the baseline, so the baseline stays unchanged.",
+        "ru": "В досье нет подтверждённых поздних факторов: у обеих команд по пять активных игроков, без стенд-инов и скамейки. Флаг риска «stand_in» не подтверждается, а неиспользованный запасной и пометка тренера как аварийной замены — это скрытые и уже публичные данные. Доводы Адвоката дьявола о рейтинге и формате bo1 не имеют ссылки на доказательства и уже учтены в базовой оценке, поэтому она остаётся без изменений.",
+        "uk": "У досьє немає підтверджених пізніх факторів: обидві команди мають по п'ять активних гравців, без стенд-інів і лавки. Прапорець ризику «stand_in» не підтверджується, а невикористаний запасний і позначка тренера як аварійної заміни — це приховані та вже публічні дані. Аргументи Адвоката диявола про рейтинг і формат bo1 не мають посилання на докази й уже враховані в базовій оцінці, тож вона лишається без змін."
+      }
+    },
+    "input_hash": "5594ddfd8749592e5d39240f1436dfcc7f38ade439bdda49d364a1e5c2e6d9ab",
+    "latency_ms": 11438,
+    "match_id": 267631461571383,
+    "provider": "claude",
+    "reuse_key": "765578b7fa71e2f7adba23fa0224e1187479e9808d48ee5a2e8b5c3ce0613968",
+    "role": "arbiter",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "The 'stand_in' risk flag is not supported by the dossier. Both Liquipedia rosters show has_stand_in=false and empty stand_ins lists, and both have five active players.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_a",
+          "kind": "stand_in"
+        },
+        {
+          "claim": "TEAM_ALPHA lists PLAYER_11 as an unused substitute. This is bench depth, not a lineup change. The five active players are unchanged and the market already prices it in.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_a",
+          "kind": "roster_change_30d"
+        },
+        {
+          "claim": "TEAM_BETA's coach COACH_01 is marked as an emergency_sub. This is a contingency label, not a reported substitution. The roster shows five active players and no benched players, so there is nothing to price beyond the market.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_a",
+          "kind": "igl_or_coach_change"
+        },
+        {
+          "claim": "The standings estimate of 81.6% is well above the market's 57.0%. The market is the more informed source and already carries 80% of the baseline weight. This gap is a rating disagreement, not roster news, so it is no reason to move further toward team_a.",
+          "evidence_url": "",
+          "favours": "team_b",
+          "kind": "other"
+        }
+      ],
+      "delta": 0,
+      "position": "The baseline of 62.8% already blends a 57.0% market price with an 81.6% standings estimate. The market has priced in all public roster information. The dossier verifies no stand-in, roster change, coach change, travel problem or illness for either side. The only roster-related item is an unused substitute on TEAM_ALPHA's bench, and that is routine depth. I argue for no shift."
+    },
+    "input_hash": "783000e87c670b48362f9c04ab8609cd133ebcb88d289d534c85ccd93c60ca98",
+    "latency_ms": 13050,
+    "match_id": 3200678728695,
+    "provider": "claude",
+    "reuse_key": "234a71c3bcb2edf2b15947e3a884ee273bfbb550fb162f67b5d6b40abdb41e05",
+    "role": "advocate",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "The match format is a best-of-one (bo1), which introduces substantial round variance and map volatility that compresses the competitive gap in favor of underdog TEAM_BETA.",
+          "evidence_url": "",
+          "favours": "team_b",
+          "kind": "other"
+        },
+        {
+          "claim": "TEAM_BETA is competing with its complete starting five (PLAYER_06 through PLAYER_10) and has no active stand-in playing, as COACH_01 is only listed as a non-playing emergency substitute.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_b",
+          "kind": "stand_in"
+        }
+      ],
+      "delta": -5.79,
+      "position": "The baseline overvalues TEAM_ALPHA at 62.79% by incorporating Valve Regional Standings into a single-map contest where high best-of-one variance heavily favors the underdog. Additionally, the baseline's stand-in risk flag is misleading because TEAM_BETA is fielding their full five-man active roster with COACH_01 acting strictly as a designated emergency substitute rather than entering the server. Correcting for bo1 volatility and the lack of an actual active stand-in warrants shifting probability away from TEAM_ALPHA toward the market consensus."
+    },
+    "input_hash": "783000e87c670b48362f9c04ab8609cd133ebcb88d289d534c85ccd93c60ca98",
+    "latency_ms": 66644,
+    "match_id": 3200678728695,
+    "provider": "antigravity",
+    "reuse_key": "234a71c3bcb2edf2b15947e3a884ee273bfbb550fb162f67b5d6b40abdb41e05",
+    "role": "devil",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "The dossier verifies no stand-in, roster change, coach change, travel issue or illness for either side. Both rosters show five active players and has_stand_in=false. TEAM_ALPHA's unused substitute is routine bench depth, and COACH_01's emergency_sub label is a contingency, not an actual substitution. The Devil's Advocate's bo1-variance claim has no evidence URL and is not a valid factor kind, so no adjustment is made.",
+        "ru": "В досье не подтверждены ни замена игрока, ни изменение состава, ни смена тренера, ни проблемы с поездкой или болезнь у какой-либо из команд. В обоих составах пять активных игроков и has_stand_in=false. Неиспользованный запасной TEAM_ALPHA — обычная глубина скамейки, а пометка emergency_sub у COACH_01 — лишь резервный вариант, а не фактическая замена. Довод Адвоката дьявола о дисперсии bo1 не имеет ссылки на источник и не относится к допустимым типам факторов, поэтому корректировка не вносится.",
+        "uk": "У досьє не підтверджено ні заміни гравця, ні зміни складу, ні зміни тренера, ні проблем із поїздкою чи хвороби в жодної з команд. В обох складах п'ять активних гравців і has_stand_in=false. Невикористаний запасний TEAM_ALPHA — звичайна глибина лави, а позначка emergency_sub у COACH_01 — лише резервний варіант, а не фактична заміна. Аргумент Адвоката диявола про дисперсію bo1 не має посилання на джерело і не належить до допустимих типів факторів, тому коригування не вноситься."
+      }
+    },
+    "input_hash": "783000e87c670b48362f9c04ab8609cd133ebcb88d289d534c85ccd93c60ca98",
+    "latency_ms": 9341,
+    "match_id": 3200678728695,
+    "provider": "claude",
+    "reuse_key": "234a71c3bcb2edf2b15947e3a884ee273bfbb550fb162f67b5d6b40abdb41e05",
+    "role": "arbiter",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "single",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "The dossier shows no verified late-breaking factors. Both rosters list five active players with no stand-ins. Team Beta's coach is flagged as an emergency substitute, and Team Alpha has an unused substitute, but neither changes the active lineup. The baseline stays as is.",
+        "ru": "В досье нет подтверждённых срочных факторов. В обоих составах по пять активных игроков, замен нет. Тренер Team Beta отмечен как экстренная замена, а у Team Alpha есть неиспользуемый запасной, но на активный состав это не влияет. Базовая оценка остаётся без изменений.",
+        "uk": "У досьє немає підтверджених термінових чинників. В обох складах по п'ять активних гравців, замін немає. Тренера Team Beta позначено як екстрену заміну, а в Team Alpha є запасний, який не використовується, але на активний склад це не впливає. Базова оцінка лишається без змін."
+      }
+    },
+    "input_hash": "4af3ca4b6c6bfd38c2919e318c912a8489f21874b3b16cd28497902490b25717",
+    "latency_ms": 6527,
+    "match_id": 23432948047501,
+    "provider": "claude",
+    "reuse_key": "cac359a474abe7502fea8e5bf00202e08ed9323cc10da66a6b2ed9b9996461a7",
+    "role": "predict",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "TEAM_ALPHA lists PLAYER_11 only as an unused substitute. No stand-in is playing and the five active players are unchanged, so this is routine bench depth that the market already prices.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_b",
+          "kind": "stand_in"
+        },
+        {
+          "claim": "TEAM_BETA has five active players, no stand-ins and no benched players. The roster is stable and nothing needs pricing beyond the market line.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_a",
+          "kind": "stand_in"
+        },
+        {
+          "claim": "COACH_01 of TEAM_BETA is flagged as an emergency sub. This is a standing contingency tag, not a reported use, and no coach change is documented. It is priced in or irrelevant.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_a",
+          "kind": "igl_or_coach_change"
+        }
+      ],
+      "delta": 0,
+      "position": "The baseline of 78.8% already blends a 75.9% market price with an 87.9% standings estimate. The dossier verifies no live roster disruption. Both teams show five active players, has_stand_in is false for both, and no stand-ins are listed. The 'stand_in' risk flag is not supported by the roster data. The only item is an unused substitute for TEAM_ALPHA, which is routine bench depth, and the market has already priced it. I would not move from the baseline."
+    },
+    "input_hash": "4af3ca4b6c6bfd38c2919e318c912a8489f21874b3b16cd28497902490b25717",
+    "latency_ms": 8156,
+    "match_id": 23432948047501,
+    "provider": "claude",
+    "reuse_key": "cac359a474abe7502fea8e5bf00202e08ed9323cc10da66a6b2ed9b9996461a7",
+    "role": "advocate",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "The match format is a best-of-one (bo1), which introduces high single-map round and veto variance that compresses win probabilities toward 50% and favors underdog TEAM_BETA.",
+          "evidence_url": "",
+          "favours": "team_b",
+          "kind": "other"
+        },
+        {
+          "claim": "TEAM_BETA is fielding their full five-man active roster (PLAYER_06, PLAYER_07, PLAYER_08, PLAYER_09, PLAYER_10) with has_stand_in confirmed as false, indicating no active stand-in disruption despite COACH_01 being listed as an emergency substitute.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_b",
+          "kind": "stand_in"
+        }
+      ],
+      "delta": -5,
+      "position": "The baseline probability of 78.81% significantly overstates TEAM_ALPHA's likelihood of victory by failing to account for the substantial variance inherent to a best-of-one format. Additionally, while the baseline flags a stand-in risk, TEAM_BETA's active roster is entirely intact with five confirmed players and no active stand-ins playing. Given the volatility of a single map and TEAM_BETA fielding their complete starting lineup, the forecast should be adjusted downward toward the underdog."
+    },
+    "input_hash": "4af3ca4b6c6bfd38c2919e318c912a8489f21874b3b16cd28497902490b25717",
+    "latency_ms": 141459,
+    "match_id": 23432948047501,
+    "provider": "antigravity",
+    "reuse_key": "cac359a474abe7502fea8e5bf00202e08ed9323cc10da66a6b2ed9b9996461a7",
+    "role": "devil",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "The dossier shows no verified late-breaking factors. Both teams have five active players and no stand-ins, and PLAYER_11 is only an unused substitute for TEAM_ALPHA. The Devil's Advocate's bo1-variance claim has no evidence URL and isn't a valid factor kind, so it is discarded. Its other claim only confirms a stable TEAM_BETA roster. The baseline stands.",
+        "ru": "В досье нет подтверждённых поздних факторов. У обеих команд по пять активных игроков и нет замен, а PLAYER_11 — лишь неиспользуемый запасной TEAM_ALPHA. Довод Devil's Advocate о дисперсии bo1 не имеет ссылки на источник и не относится к допустимым типам факторов, поэтому отбрасывается. Его второй довод лишь подтверждает стабильный состав TEAM_BETA. Базовая оценка остаётся без изменений.",
+        "uk": "У досьє немає підтверджених пізніх факторів. Обидві команди мають по п'ять активних гравців і не мають замін, а PLAYER_11 — лише невикористаний запасний TEAM_ALPHA. Аргумент Devil's Advocate про дисперсію bo1 не має посилання на джерело і не належить до допустимих типів факторів, тому відкидається. Його другий аргумент лише підтверджує стабільний склад TEAM_BETA. Базова оцінка залишається без змін."
+      }
+    },
+    "input_hash": "4af3ca4b6c6bfd38c2919e318c912a8489f21874b3b16cd28497902490b25717",
+    "latency_ms": 7829,
+    "match_id": 23432948047501,
+    "provider": "claude",
+    "reuse_key": "cac359a474abe7502fea8e5bf00202e08ed9323cc10da66a6b2ed9b9996461a7",
+    "role": "arbiter",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "single",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "Both rosters are full five-player lineups with no stand-ins, benched players, or recent roster changes. Only unused substitutes are listed, and no risk flags are present. There are no verified late-breaking factors, so the baseline probability is unchanged.",
+        "ru": "Оба состава полные, по пять игроков, без стендинов, игроков на скамейке и недавних изменений. Указаны только неиспользуемые запасные, флагов риска нет. Проверенных поздних факторов нет, поэтому базовая вероятность не меняется.",
+        "uk": "Обидва склади повні, по п'ять гравців, без стендінів, гравців на лаві та нещодавніх змін. Вказані лише невикористані запасні, прапорців ризику немає. Перевірених пізніх факторів немає, тому базова ймовірність не змінюється."
+      }
+    },
+    "input_hash": "8a37bbae9dd7bcab596c8a9ebbacecd2654d04e3b57b1ebc39815da2025af0ae",
+    "latency_ms": 6257,
+    "match_id": 180006508176185,
+    "provider": "claude",
+    "reuse_key": "d59174f7dc365b0f72d0522fe9cf355ab427e9a67aee790ebe887b2d2647f339",
+    "role": "predict",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "TEAM_ALPHA has a full active five, no stand-in, no benched players and a regular coach. Nothing here is new information beyond what bookmakers have already priced.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_a",
+          "kind": "stand_in"
+        },
+        {
+          "claim": "TEAM_BETA also has a full active five, no stand-in and a regular coach. The unused substitute PLAYER_11 is routine and does not change the lineup.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_b",
+          "kind": "stand_in"
+        },
+        {
+          "claim": "The gap between the standings estimate (74.0%) and the market (56.8%) is a rating disagreement, not roster news. The 80% market weight in the blend already handles it, and the market has the more current information.",
+          "evidence_url": "",
+          "favours": "team_a",
+          "kind": "other"
+        }
+      ],
+      "delta": 0,
+      "position": "The baseline of 60.5% already blends the market (56.8%) with the Valve standings estimate (74.0%). The dossier shows no roster, stand-in, coach, travel or illness news that the market might have missed. Both Liquipedia roster snapshots, taken 1 hour before the match, show five active players, no stand-ins, no benched players and no emergency coaches. The only extra names are unused substitutes, which are routine. I see no reason to move off the baseline."
+    },
+    "input_hash": "8a37bbae9dd7bcab596c8a9ebbacecd2654d04e3b57b1ebc39815da2025af0ae",
+    "latency_ms": 8252,
+    "match_id": 180006508176185,
+    "provider": "claude",
+    "reuse_key": "d59174f7dc365b0f72d0522fe9cf355ab427e9a67aee790ebe887b2d2647f339",
+    "role": "advocate",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "The match format is a best-of-one (bo1), which inherently introduces substantial single-map variance and elevates upset probability, favoring underdog TEAM_BETA against TEAM_ALPHA.",
+          "evidence_url": "",
+          "favours": "team_b",
+          "kind": "other"
+        },
+        {
+          "claim": "The de-vigged bookmaker market prices TEAM_ALPHA at only 56.77%, indicating that the 60.52% baseline is inflated by the Valve Regional Standings signal despite single-map volatility.",
+          "evidence_url": "",
+          "favours": "team_b",
+          "kind": "other"
+        }
+      ],
+      "delta": -4.5,
+      "position": "The baseline overvalues TEAM_ALPHA at 60.52% by heavily factoring in Valve Regional Standings that overestimate favorite conversion in a single map. Because the match is a best-of-one (bo1), elevated round variance and pistol round swings significantly favor the underdog TEAM_BETA. Additionally, the de-vigged market probability sits lower at 56.77%, demonstrating that the blended baseline is overly optimistic for TEAM_ALPHA."
+    },
+    "input_hash": "8a37bbae9dd7bcab596c8a9ebbacecd2654d04e3b57b1ebc39815da2025af0ae",
+    "latency_ms": 64714,
+    "match_id": 180006508176185,
+    "provider": "antigravity",
+    "reuse_key": "d59174f7dc365b0f72d0522fe9cf355ab427e9a67aee790ebe887b2d2647f339",
+    "role": "devil",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "Both Liquipedia roster snapshots, taken 1 hour before the match, show full active fives, no stand-ins, no benched players and regular coaches for both teams. The Devil's Advocate's claims (bo1 variance, market versus standings gap) have no evidence URL and are not valid late-breaking factor kinds, so they are discarded. No verified factor justifies moving off the 60.5% baseline.",
+        "ru": "Оба снимка составов Liquipedia за час до матча показывают полные активные пятерки, отсутствие стендинов, скамейки запасных и смены тренеров у обеих команд. Доводы Адвоката дьявола (дисперсия bo1, разрыв между рынком и рейтингом) не имеют ссылки на доказательства и не относятся к допустимым типам факторов, поэтому отброшены. Подтвержденных факторов для отклонения от базовых 60,5% нет.",
+        "uk": "Обидва знімки складів Liquipedia за годину до матчу показують повні активні п'ятірки, відсутність стендінів, лави запасних і зміни тренерів в обох команд. Аргументи Адвоката диявола (дисперсія bo1, розрив між ринком і рейтингом) не мають посилання на докази та не належать до допустимих типів факторів, тому відкинуті. Підтверджених факторів для відхилення від базових 60,5% немає."
+      }
+    },
+    "input_hash": "8a37bbae9dd7bcab596c8a9ebbacecd2654d04e3b57b1ebc39815da2025af0ae",
+    "latency_ms": 8740,
+    "match_id": 180006508176185,
+    "provider": "claude",
+    "reuse_key": "d59174f7dc365b0f72d0522fe9cf355ab427e9a67aee790ebe887b2d2647f339",
+    "role": "arbiter",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "single",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "Both rosters show five active players each, with no stand-ins, no benched players and no roster changes noted. The dossier has no evidence of coach or IGL changes, travel problems, illness or technical issues. No verified late-breaking factors support moving the baseline, so the delta is 0.",
+        "ru": "У обеих команд в составе по пять активных игроков, без замен, скамейки и изменений состава. В досье нет данных о смене тренера или IGL, проблемах с поездкой, болезнях или технических проблемах. Подтверждённых поздних факторов для сдвига базовой вероятности нет, поэтому дельта равна 0.",
+        "uk": "В обох команд у складі по п'ять активних гравців, без замін, лави запасних і змін складу. У досьє немає даних про зміну тренера чи IGL, проблеми з поїздкою, хвороби або технічні проблеми. Підтверджених пізніх факторів для зсуву базової ймовірності немає, тому дельта дорівнює 0."
+      }
+    },
+    "input_hash": "0dc530e683bf504133d801cda974ed3a3d143e7131d0faba2b777fcbd8d0c033",
+    "latency_ms": 6839,
+    "match_id": 202564766216540,
+    "provider": "claude",
+    "reuse_key": "910e58a11e07f70be79e12e8834e81c3029dc7fb5ec38c2d229b71a49ed22ca1",
+    "role": "predict",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "TEAM_ALPHA has five active players, no stand-in and no benched players. Its unused substitute PLAYER_12 is routine depth and not a roster change.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_a",
+          "kind": "stand_in"
+        },
+        {
+          "claim": "TEAM_BETA also has five active players and no stand-in. Its unused substitute PLAYER_11 is routine, and its coach COACH_01 is a regular non-emergency coach. There is no basis for an adjustment against team_b.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_b",
+          "kind": "stand_in"
+        },
+        {
+          "claim": "The dossier has no verified coach or IGL change, travel or visa issue, illness or technical problem for either team. The roster pages were updated T-2h, so any roster news is current and already priced in.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_a",
+          "kind": "other"
+        }
+      ],
+      "delta": 0,
+      "position": "The dossier shows no roster risk for either side. Both Liquipedia rosters are five-player, current as of T-2h, with no stand-ins, no benched players and no emergency coaches. There is no market price, so the baseline is the standings estimate of 59.1%. Nothing in the dossier supports moving off it."
+    },
+    "input_hash": "0dc530e683bf504133d801cda974ed3a3d143e7131d0faba2b777fcbd8d0c033",
+    "latency_ms": 7606,
+    "match_id": 202564766216540,
+    "provider": "claude",
+    "reuse_key": "910e58a11e07f70be79e12e8834e81c3029dc7fb5ec38c2d229b71a49ed22ca1",
+    "role": "advocate",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "The series format is a best-of-one (bo1), introducing elevated variance and round volatility that benefits the underdog.",
+          "evidence_url": "",
+          "favours": "team_b",
+          "kind": "other"
+        },
+        {
+          "claim": "Market pricing is absent, leaving the baseline reliant solely on standings-based modeling without market verification.",
+          "evidence_url": "",
+          "favours": "team_b",
+          "kind": "other"
+        }
+      ],
+      "delta": -4,
+      "position": "The baseline overstates TEAM_ALPHA's win probability at 59.14% by relying entirely on the Valve Regional Standings signal in the complete absence of bookmaker market data. In a best-of-one series, high single-map variance, pistol round volatility, and side bias substantially compress win probabilities toward 50%. With both rosters fielding their standard starting fives, TEAM_BETA has a much stronger opportunity to upset the favorite than the unadjusted baseline indicates."
+    },
+    "input_hash": "0dc530e683bf504133d801cda974ed3a3d143e7131d0faba2b777fcbd8d0c033",
+    "latency_ms": 32901,
+    "match_id": 202564766216540,
+    "provider": "antigravity",
+    "reuse_key": "910e58a11e07f70be79e12e8834e81c3029dc7fb5ec38c2d229b71a49ed22ca1",
+    "role": "devil",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "Both Liquipedia rosters (updated T-2h) show five active players, no stand-ins, no benched players and no coach changes for either team. The Devil's Advocate claims about bo1 variance and missing market data have no evidence URL and are not valid factor kinds, so they are discarded. No verified late-breaking factor supports moving off the baseline of about 59.1%.",
+        "ru": "Оба ростера Liquipedia (обновлены T-2h) показывают по пять активных игроков, без замен, без игроков на скамейке и без смены тренеров у обеих команд. Доводы Адвоката дьявола о дисперсии bo1 и отсутствии рыночных данных не имеют ссылки на источник и не относятся к допустимым типам факторов, поэтому отброшены. Подтверждённых поздних факторов для отхода от базовой оценки около 59,1% нет.",
+        "uk": "Обидва ростери Liquipedia (оновлені T-2h) показують по п'ять активних гравців, без замін, без гравців на лаві та без зміни тренерів в обох команд. Аргументи Адвоката диявола щодо дисперсії bo1 та відсутності ринкових даних не мають посилання на джерело і не належать до допустимих типів факторів, тому відкинуті. Підтверджених пізніх факторів для відхилення від базової оцінки близько 59,1% немає."
+      }
+    },
+    "input_hash": "0dc530e683bf504133d801cda974ed3a3d143e7131d0faba2b777fcbd8d0c033",
+    "latency_ms": 7910,
+    "match_id": 202564766216540,
+    "provider": "claude",
+    "reuse_key": "910e58a11e07f70be79e12e8834e81c3029dc7fb5ec38c2d229b71a49ed22ca1",
+    "role": "arbiter",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "single",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "The dossier shows no verified late-breaking factors. Both rosters list five active players with no stand-ins, no benched players and no recent roster changes. The only unused substitute is on team A's bench, and the 'stand_in' risk flag is not backed by any roster evidence. The baseline is unchanged.",
+        "ru": "В досье нет подтверждённых поздних факторов. В обоих составах по пять активных игроков, без стендинов, без игроков на скамейке и без недавних изменений. Единственный неиспользованный запасной находится у команды A, а флаг риска «stand_in» не подкреплён данными о составах. Базовая вероятность остаётся без изменений.",
+        "uk": "У досьє немає підтверджених пізніх факторів. В обох складах по п'ять активних гравців, без стендінів, без гравців на лаві та без нещодавніх змін. Єдиний невикористаний запасний є у команди A, а прапорець ризику «stand_in» не підкріплений даними про склади. Базова ймовірність залишається без змін."
+      }
+    },
+    "input_hash": "9fcc9c5c9cae6790d25253feb76f6afc33a54d82b2ebb6c9c868dd61f907a8de",
+    "latency_ms": 7284,
+    "match_id": 222859394512094,
+    "provider": "claude",
+    "reuse_key": "ef2d31997e692f7a4aeacd19bc223c2d89a10b8c190b8460d5975c033ac75f2c",
+    "role": "predict",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "The 'stand_in' risk flag is unsupported. TEAM_ALPHA's roster shows has_stand_in=false, an empty stand_ins list and five active players. PLAYER_11 is an unused substitute, not a stand-in.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_a",
+          "kind": "stand_in"
+        },
+        {
+          "claim": "TEAM_BETA's roster also shows has_stand_in=false, no stand-ins, no benched players and five active players. No roster-change or stand-in discount applies to either side.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_b",
+          "kind": "stand_in"
+        },
+        {
+          "claim": "COACH_02 is listed with emergency_sub=true, but they are a current coach and not a player substitute. No game-time roster change is documented, so the listing is a standing flag and already known to the market.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_b",
+          "kind": "igl_or_coach_change"
+        },
+        {
+          "claim": "The dossier contains no travel, visa, illness or technical items for either team. The 93.5% standings signal (map and series are identical) is a public rating the market has already absorbed, so it should not pull the baseline above the market's 65.6%.",
+          "evidence_url": "",
+          "favours": "team_b",
+          "kind": "other"
+        }
+      ],
+      "delta": -3,
+      "position": "The baseline of 74.07% already blends the 65.6% market price with a 93.5% standings estimate. The dossier verifies no roster disruption for either side. Both Liquipedia rosters, fetched 3 hours before the match, list five active players, no stand-ins, no benched players and no roster notes. The 'stand_in' risk flag has nothing behind it, and the market already prices the known roster. The standings pull is the only thing that lifts the baseline above the market, so I argue for a small shift back toward the market."
+    },
+    "input_hash": "9fcc9c5c9cae6790d25253feb76f6afc33a54d82b2ebb6c9c868dd61f907a8de",
+    "latency_ms": 9608,
+    "match_id": 222859394512094,
+    "provider": "claude",
+    "reuse_key": "ef2d31997e692f7a4aeacd19bc223c2d89a10b8c190b8460d5975c033ac75f2c",
+    "role": "advocate",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "claims": [
+        {
+          "claim": "The match format is a best-of-one (bo1), which increases variance and reduces the favorite's structural series edge.",
+          "evidence_url": "",
+          "favours": "team_b",
+          "kind": "other"
+        },
+        {
+          "claim": "TEAM_BETA has all five primary active players available with has_stand_in reported false, despite COACH_02 carrying an emergency substitute designation.",
+          "evidence_url": "https://evidence.invalid/1",
+          "favours": "team_b",
+          "kind": "stand_in"
+        }
+      ],
+      "delta": -5,
+      "position": "The baseline overvalues TEAM_ALPHA at 74.07% by over-weighting the regional standings signal compared to the market consensus of 65.58%. Because this match is a best-of-one, map volatility and round variance significantly compress the favorite's advantage and favor the underdog. Additionally, both teams retain their full five active starting players with no active roster compromise to justify such an inflated projection."
+    },
+    "input_hash": "9fcc9c5c9cae6790d25253feb76f6afc33a54d82b2ebb6c9c868dd61f907a8de",
+    "latency_ms": 45975,
+    "match_id": 222859394512094,
+    "provider": "antigravity",
+    "reuse_key": "ef2d31997e692f7a4aeacd19bc223c2d89a10b8c190b8460d5975c033ac75f2c",
+    "role": "devil",
+    "status": "ok",
+    "tier": "PreLock"
+  },
+  {
+    "bot": "debate",
+    "brief": {
+      "delta": 0,
+      "factors": [],
+      "summary": {
+        "en": "The dossier shows no verified late-breaking factors for either team. Both Liquipedia rosters list five active players, no stand-ins and no benched players. PLAYER_11 is an unused substitute, and COACH_02's emergency_sub flag is a standing listing, not a documented change. The bo1 format and the gap between the standings and the market have no qualifying evidence behind them, so the baseline stays unchanged.",
+        "ru": "В досье нет подтверждённых поздних факторов ни для одной из команд. В обоих составах на Liquipedia по пять активных игроков, без стендинов и без игроков на скамейке. PLAYER_11 — неиспользуемая замена, а отметка emergency_sub у COACH_02 — постоянная запись, а не задокументированное изменение. У формата bo1 и расхождения между рейтингом и рынком нет подходящих доказательств, поэтому базовая оценка остаётся без изменений.",
+        "uk": "У досьє немає підтверджених пізніх чинників для жодної з команд. В обох складах на Liquipedia по п'ять активних гравців, без стенд-інів і без гравців на лаві. PLAYER_11 — невикористана заміна, а позначка emergency_sub у COACH_02 — постійний запис, а не задокументована зміна. Для формату bo1 та розбіжності між рейтингом і ринком немає відповідних доказів, тож базова оцінка залишається без змін."
+      }
+    },
+    "input_hash": "9fcc9c5c9cae6790d25253feb76f6afc33a54d82b2ebb6c9c868dd61f907a8de",
+    "latency_ms": 8384,
+    "match_id": 222859394512094,
+    "provider": "claude",
+    "reuse_key": "ef2d31997e692f7a4aeacd19bc223c2d89a10b8c190b8460d5975c033ac75f2c",
     "role": "arbiter",
     "status": "ok",
     "tier": "PreLock"

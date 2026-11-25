@@ -1,4 +1,4 @@
-# Retrospective benchmark, 2026-11-25 (ticket #31)
+# Retrospective benchmark, 2026-11-25 (ticket #31, anonymized slice rerun the same evening)
 
 `report.md` (and the same data in `report.json`) is the benchmark of spec #21:
 the sidecar's live pipeline replayed over every completed CS2 Major Stage we
@@ -23,6 +23,16 @@ at or after its cutoff. How the runner works is in `docs/agents/codebase.md`,
   Major 2026 Stage 1 (`BlindAnonymizer`). 30 of 30 planned Matches answered by
   both LLM profiles; 120 CLI runs, no quota error, no tool and no web access
   (`Mode::Backtest`).
+- **Anonymized slice rerun**, on 2026-11-25 from 22:43 to 22:55 UTC, after the
+  spec-21 review taught the roster parser the older `{{TeamCard}}` template:
+  the six Cologne dossiers now carry both teams' rosters (masked as
+  `PLAYER_01..10`), so the recorded answers of the first run no longer matched
+  them and those six Matches were asked again, with the same seating and
+  models: 24 CLI runs (6 x single agent + three seats), no quota error. The
+  run was restarted once after its first three Claude answers to add agy's
+  `download_url(*)` rule to the no-tools settings (below); those three answers
+  were kept, not asked again. The six stale answers were removed from
+  `llm-answers.json`, which holds the 120 answers the report uses.
   - Single agent: Claude (`claude -p`, model `sonnet`).
   - 3-agent debate (mode `always`): Market Advocate Claude, Devil's Advocate
     Antigravity (`agy`, `gemini-3.8-flash-medium`, with Claude as its
@@ -30,6 +40,14 @@ at or after its cutoff. How the runner works is in `docs/agents/codebase.md`,
 - Probes before the run (one tiny call each): Claude answered; Codex answered
   "You've hit your usage limit"; Antigravity answered "Individual quota
   reached ... Resets in 18m56s", and answered after the reset at 20:25 UTC.
+  Before the rerun: Claude and Antigravity answered (22:42 UTC).
+- **Tool lockdown, a caveat on the first run.** The review found that the agy
+  no-tools settings denied six permission rules but not `download_url(*)`,
+  which `agy.exe` also knows. The 24 Singapore Devil's Advocate answers of the
+  first run (Antigravity) were made under those settings; whether any of those
+  runs fetched a page cannot be told from the saved answers. The rerun
+  of the anonymized slice ran with `download_url(*)` denied. Claude's runs were
+  never affected (`--tools ""`).
 
 ## What did not run
 
@@ -48,9 +66,9 @@ at or after its cutoff. How the runner works is in `docs/agents/codebase.md`,
   since answers are reused per profile and dossier, not per provider.)
 - **Singapore Stage 1 Pick'em Points**: pending; the Stage was not finished.
   Rerun after a fresh PandaScore list (`collect_backtest.py pandascore 22378`).
-- No news in any dossier (no dated news archive); rosters only for Singapore
-  (older Liquipedia pages use `{{TeamCard}}`, not read by the #26 parser), so
-  the anonymized slice carried market, rating and team placeholders only.
+- No news in any dossier (no dated news archive). Rosters for Singapore,
+  Cologne 2026 and Shanghai 2024 (the Rosters column of the report); the
+  other Majors' Matches have no saved Event revision.
 - No anonymized comparison of the Singapore Matches (`--blind-direct`): not in
   the budget.
 
@@ -69,6 +87,13 @@ at or after its cutoff. How the runner works is in `docs/agents/codebase.md`,
   numbers neither the single agent nor the debate improves on the anchor
   (Singapore: 11 correct each against the anchor's 12, log-loss 0.744 / 0.745
   against 0.747). 24 and 6 Matches are far too few to tell the two apart.
+- On the anonymized slice, now with rosters, neither LLM profile moved the
+  anchor on any of the six Matches (3 correct each, as the anchor).
+- The report now also lists every Singapore Match with each profile's pick,
+  and the solver's Stage 1 Pick'em with each picked team's record and state.
+- The archive's SHA-256 in the report's first line changed with this rerun
+  because the archive's own README (part of the hashed archive) was corrected;
+  no data file changed.
 
 ## Reproducing it
 
@@ -87,4 +112,5 @@ are the same number for number.
 
 OddsPapi requests: the account counter was 6 of 250 before this ticket's second
 implementer started and 9 after (three fixture lists; the history endpoint and
-`/v4/account` are free).
+`/v4/account` are free). The spec-21 review made no OddsPapi request: the counter read 9 of 250
+before and after it (2026-11-25, through the free `/v4/account`).
