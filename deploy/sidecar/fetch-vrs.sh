@@ -3,7 +3,8 @@
 # the ones already there. Usage: fetch-vrs.sh <directory> [year ...]
 # (years default to the current one and the previous one). Needs curl and no key;
 # GitHub's unauthenticated API allows 60 requests an hour, one per year here.
-# Then restart the sidecar: it reads the directory at start-up.
+# Run it on a schedule (docs/sidecar.md): the sidecar lists the directory
+# again every 10 minutes and reads new snapshots without a restart.
 set -eu
 dir=${1:?usage: fetch-vrs.sh <directory> [year ...]}
 shift

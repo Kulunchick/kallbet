@@ -9,13 +9,10 @@ impl Sidecar {
     /// clock; tests: their fake).
     pub async fn from_config(config: Config, secret: String, clock: Arc<dyn Clock>) -> Result<Self> {
         let audit = Audit::open(&config.audit_file).await?;
-        let mut signal = vrs::Standings::default();
-        for path in vrs_paths(&config.vrs_files)? {
-            let markdown = std::fs::read_to_string(path)?;
-            let observed_at = signal.add(&markdown)?;
-            audit.record_vrs(&markdown, observed_at).await?;
-        }
-        let signal = Arc::new(signal);
+        let signal = Arc::new(
+            adapters::vrs_files::WatchedStandings::load(&config.vrs_files, &audit, clock.clone())
+                .await?,
+        );
         let odds = adapters::odds::build(&audit)?;
         let context = adapters::context::build(&config.context, &audit, clock.clone());
         let ports = Ports {
@@ -77,28 +74,4 @@ impl DecisionPolicy for ConfiguredPolicy {
             _ => self.decide(bot, d, tier, None),
         }
     }
-}
-
-/// `vrs_files` entries are Markdown files or directories of them: a directory
-/// contributes its Valve global files (`standings_global_*.md`), so a new Valve snapshot is one more file in a
-/// volume and a restart, not a config edit.
-fn vrs_paths(entries: &[std::path::PathBuf]) -> Result<Vec<std::path::PathBuf>> {
-    let mut paths = Vec::new();
-    for entry in entries {
-        if entry.is_dir() {
-            let mut files = std::fs::read_dir(entry)?
-                .map(|f| f.map(|f| f.path()))
-                .collect::<std::io::Result<Vec<_>>>()?;
-            files.retain(|f| {
-                f.file_name()
-                    .and_then(|n| n.to_str())
-                    .is_some_and(|n| n.starts_with("standings_global_") && n.ends_with(".md"))
-            });
-            files.sort();
-            paths.extend(files);
-        } else {
-            paths.push(entry.clone());
-        }
-    }
-    Ok(paths)
 }

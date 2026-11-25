@@ -7,3 +7,4 @@ pub mod llm;
 pub mod odds;
 pub mod pickem;
 pub mod production;
+pub mod vrs_files;
