@@ -6,7 +6,7 @@ use sqlx::{FromRow, SqlitePool};
 use crate::domain::user::NotificationPrefs;
 use crate::domain::{Language, TelegramId, User, UserId};
 
-const COLUMNS: &str = "id, telegram_id, nickname, avatar_url, language, notify_reminder, notify_reveal, notify_digest";
+const COLUMNS: &str = "id, telegram_id, nickname, avatar_url, language, notify_reminder, notify_reveal, notify_digest, is_bot";
 
 #[derive(FromRow)]
 struct UserRow {
@@ -18,6 +18,7 @@ struct UserRow {
     notify_reminder: bool,
     notify_reveal: bool,
     notify_digest: bool,
+    is_bot: bool,
 }
 
 impl From<UserRow> for User {
@@ -33,6 +34,7 @@ impl From<UserRow> for User {
                 reveal: row.notify_reveal,
                 digest: row.notify_digest,
             },
+            is_bot: row.is_bot,
         }
     }
 }
@@ -55,7 +57,7 @@ pub async fn create(
         "INSERT INTO users (telegram_id, nickname, avatar_url, language, created_at) \
          VALUES (?, ?, ?, ?, ?) \
          RETURNING id, telegram_id, nickname, avatar_url, language, \
-                   notify_reminder, notify_reveal, notify_digest",
+                   notify_reminder, notify_reveal, notify_digest, is_bot",
     )
     .bind(new_user.telegram_id)
     .bind(&new_user.nickname)
@@ -135,7 +137,7 @@ pub async fn update_profile(
         "UPDATE users SET nickname = COALESCE(?, nickname), language = COALESCE(?, language) \
          WHERE id = ? \
          RETURNING id, telegram_id, nickname, avatar_url, language, \
-                   notify_reminder, notify_reveal, notify_digest",
+                   notify_reminder, notify_reveal, notify_digest, is_bot",
     )
     .bind(nickname)
     .bind(language.map(Language::code))
@@ -154,7 +156,7 @@ pub async fn update_avatar(
     let row: UserRow = sqlx::query_as(
         "UPDATE users SET avatar_url = COALESCE(?, avatar_url) WHERE id = ? \
          RETURNING id, telegram_id, nickname, avatar_url, language, \
-                   notify_reminder, notify_reveal, notify_digest",
+                   notify_reminder, notify_reveal, notify_digest, is_bot",
     )
     .bind(avatar_url)
     .bind(id)
@@ -182,7 +184,7 @@ pub async fn update_notification_prefs(
                           notify_digest = COALESCE(?, notify_digest) \
          WHERE id = ? \
          RETURNING id, telegram_id, nickname, avatar_url, language, \
-                   notify_reminder, notify_reveal, notify_digest",
+                   notify_reminder, notify_reveal, notify_digest, is_bot",
     )
     .bind(change.reminder)
     .bind(change.reveal)

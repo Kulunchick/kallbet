@@ -23,3 +23,7 @@ pub use telegram::TelegramLogin;
 /// The bot token of the test configuration: sign Telegram login payloads
 /// with it to exercise the real HMAC verification.
 pub const TEST_BOT_TOKEN: &str = "123456:TEST-BOT-TOKEN";
+
+/// The shared bot secret (`KALLBET_BOT_SECRET`) of the test configuration:
+/// what a sidecar presents to `POST /api/auth/bot`.
+pub const TEST_BOT_SECRET: &str = "test-shared-bot-secret";

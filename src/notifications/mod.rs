@@ -63,7 +63,9 @@ async fn deliver(
     let Some(user) = users::find_by_id(&state.db, item.user).await? else {
         return Ok(());
     };
-    if !wanted(item.kind, user.notifications) {
+    // A Bot User has no Telegram chat: nothing is ever sent to one, whatever
+    // its switches say (they are off from its registration on).
+    if user.is_bot || !wanted(item.kind, user.notifications) {
         return Ok(());
     }
     let notification = Notification {

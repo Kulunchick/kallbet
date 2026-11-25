@@ -48,5 +48,11 @@
     "team_not_in_match": "That team does not play in this Match.",
     "not_found": "This League or Match was not found."
   },
-  "editWindow": "You can change your prediction for {{time}}"
+  "editWindow": "You can change your prediction for {{time}}",
+  "bot": {
+    "badge": "Bot",
+    "pick": "{{nickname}} (bot)",
+    "preliminaryPick": "{{nickname}} (bot): preliminary pick, it may still change",
+    "preliminaryHint": "Bot picks are preliminary: a bot may change its Prediction until 15 minutes before the start."
+  }
 }

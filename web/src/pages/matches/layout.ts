@@ -11,6 +11,24 @@ export function cardState(card: { status: string; winner: number | null }): Card
   return "upcoming";
 }
 
+/**
+ * How a revealed Prediction is marked on a card. A Bot User's carries a bot
+ * badge, and until Hard Lock it is preliminary: the bot may still change it.
+ */
+export type PickMark = "human" | "bot" | "bot_preliminary";
+
+type MarkedPick = { is_bot?: boolean; preliminary?: boolean };
+
+export function pickMark(pick: MarkedPick): PickMark {
+  if (!pick.is_bot) return "human";
+  return pick.preliminary ? "bot_preliminary" : "bot";
+}
+
+/** Whether a card must say that bot picks may still change. */
+export function hasPreliminaryPick(revealed: MarkedPick[] | null): boolean {
+  return revealed !== null && revealed.some((pick) => pickMark(pick) === "bot_preliminary");
+}
+
 type DatedMatch = {
   status: string;
   scheduled_start: string | null;

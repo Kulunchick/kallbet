@@ -10,10 +10,11 @@ use axum_extra::extract::cookie::{Cookie, SameSite};
 use chrono::Duration;
 use sha2::{Digest, Sha256};
 
+use super::bot;
 use crate::domain::{User, UserId};
 use crate::error::ApiError;
 use crate::state::AppState;
-use crate::store::{sessions, users};
+use crate::store::{bots, sessions, users};
 
 pub const SESSION_COOKIE: &str = "kallbet_session";
 
@@ -57,8 +58,13 @@ fn time_duration(d: Duration) -> time::Duration {
     time::Duration::seconds(d.num_seconds())
 }
 
-/// The signed-in User. Use it as a handler argument to require a session:
-/// without a valid one the request is answered with 401 `unauthorized`.
+/// The authenticated User. Use it as a handler argument to require one:
+/// without a valid session (or, for a Bot User, a valid Bearer token) the
+/// request is answered with 401 `unauthorized`.
+///
+/// A session cookie, when present, decides alone. Only a request without one
+/// is looked up by its `Authorization: Bearer` token among the Bot Users
+/// (`User::is_bot` tells the two kinds of User apart).
 #[derive(Debug, Clone)]
 pub struct CurrentUser(pub User);
 
@@ -67,10 +73,16 @@ impl FromRequestParts<AppState> for CurrentUser {
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
         let jar = CookieJar::from_headers(&parts.headers);
-        let token = jar.get(SESSION_COOKIE).ok_or(ApiError::unauthorized())?;
-        let user_id = sessions::find_user(&state.db, &hash(token.value()), state.clock.now())
-            .await?
-            .ok_or(ApiError::unauthorized())?;
+        let user_id = match jar.get(SESSION_COOKIE) {
+            Some(token) => {
+                sessions::find_user(&state.db, &hash(token.value()), state.clock.now()).await?
+            }
+            None => match bot::bearer(&parts.headers) {
+                Some(token) => bots::find_by_token(&state.db, &bot::hash(token)).await?,
+                None => None,
+            },
+        }
+        .ok_or(ApiError::unauthorized())?;
         let user = users::find_by_id(&state.db, user_id)
             .await?
             .ok_or(ApiError::unauthorized())?;

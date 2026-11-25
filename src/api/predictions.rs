@@ -5,6 +5,10 @@
 //! Errors: 404 `not_found` (not a Member, or no such Match in the League's
 //! effective view), 409 `match_locked`, 422 `team_not_in_match`.
 //!
+//! The Prediction is always the caller's own (`CurrentUser`, a session or a
+//! Bot User's Bearer token); nothing in the path or body names a User. A
+//! human is Locked by an early Reveal, a Bot User only by the Hard Lock.
+//!
 //! Lock is re-checked on the server at submission, from the same evaluation
 //! the Matches view uses, so a stale page cannot bypass it.
 
@@ -49,8 +53,42 @@ async fn upsert(
         .ok_or_else(ApiError::not_found)?;
     require_writable(&league)?;
     let now = state.clock.now();
-    let result = predict(&mut tx, &league, user.id, match_id, body.team_id, now).await;
+    let result = if user.is_bot {
+        predict_as_bot(&mut tx, &league, user.id, match_id, body.team_id, now).await
+    } else {
+        predict(&mut tx, &league, user.id, match_id, body.team_id, now).await
+    };
     db::finish(tx, result).await.map(Json)
+}
+
+/// A Bot User's Prediction (ADR-0003's amendment): open until the Match's
+/// Hard Lock, whatever the humans' early Reveal and final edit window say.
+/// It never opens that window, and it changes nothing about when the humans
+/// Reveal.
+async fn predict_as_bot(
+    db: &mut SqliteConnection,
+    league: &League,
+    user: UserId,
+    match_id: MatchId,
+    team: TeamId,
+    now: DateTime<Utc>,
+) -> ApiResult<Prediction> {
+    let matches = league_matches::evaluate_in(db, league, now).await?;
+    let game = matches
+        .view
+        .match_by_id(match_id)
+        .ok_or(ApiError::not_found())?;
+    let outcome = matches.outcome(match_id).ok_or(ApiError::not_found())?;
+    // A Bot User that joined after the Hard Lock is caught by it too.
+    if outcome.is_hard_locked() {
+        return Err(ApiError::conflict("match_locked"));
+    }
+    if !game.data.teams().contains(&Some(team)) {
+        return Err(ApiError::unprocessable("team_not_in_match"));
+    }
+    predictions::upsert_for_bot(&mut *db, league.id, match_id, user, team, now)
+        .await?
+        .ok_or(ApiError::conflict("match_locked"))
 }
 
 async fn predict(
@@ -77,11 +115,13 @@ async fn predict(
     let prediction = predictions::upsert(&mut *db, league.id, match_id, user, team, now)
         .await?
         .ok_or(ApiError::conflict("match_locked"))?;
+    // The last human Eligible Member to predict gets the final edit window.
+    // Bot Users are not waited for (`awaited` holds the humans only).
     if window.is_none()
         && matches.prediction_of(match_id, user).is_none()
-        && outcome.eligible.contains(&user)
+        && outcome.awaited.contains(&user)
         && outcome
-            .eligible
+            .awaited
             .iter()
             .all(|&member| member == user || matches.prediction_of(match_id, member).is_some())
     {

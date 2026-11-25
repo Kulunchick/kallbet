@@ -293,3 +293,65 @@ async fn a_scheduled_start_override_does_not_erase_a_lock_that_already_passed() 
         "the Lock had passed before the Override: {card}"
     );
 }
+
+/// Spec #21, ticket #22: a Bot User's write is held back by the Hard Lock,
+/// with the same guarantee: one stamped between its check and its write wins.
+#[tokio::test]
+async fn a_bot_users_write_after_the_poller_stamped_hard_lock_does_not_land() {
+    let s = setup().await;
+    let oracle = s.app.bot("oracle", "Oracle").await;
+    let res = s.alice.get(&format!("/api/leagues/{}", s.league)).await;
+    let token = res.json()["invite_token"].as_str().unwrap().to_string();
+    oracle.post_empty(&format!("/api/invites/{token}/join")).await;
+    let oracle_id = s.user_id(&oracle).await;
+    s.predict(&oracle, NAVI).await;
+    // The humans Reveal early; the Bot User is still free to change its pick.
+    s.predict(&s.alice, NAVI).await;
+    s.predict(&s.bob, FAZE).await;
+    s.app.clock.advance(Duration::minutes(5));
+    assert!(s.card(&s.bob).await["lock"]["locked"].as_bool().unwrap());
+    let written = predictions::upsert_for_bot(
+        &s.app.state.db,
+        LeagueId(s.league),
+        MatchId(NAVI_FAZE),
+        oracle_id,
+        TeamId(FAZE),
+        s.app.clock.now(),
+    )
+    .await;
+    assert!(written.unwrap().is_some(), "an early Reveal is not a Hard Lock");
+    // A human's write at that moment is refused, as ever.
+    let alice = s.user_id(&s.alice).await;
+    let refused = predictions::upsert(
+        &s.app.state.db,
+        LeagueId(s.league),
+        MatchId(NAVI_FAZE),
+        alice,
+        TeamId(FAZE),
+        s.app.clock.now(),
+    )
+    .await;
+    assert_eq!(refused.unwrap(), None);
+
+    // The Bot User checks 16 minutes before the start (open) ...
+    s.app.clock.set(s.start - Duration::minutes(16));
+    let checked_at = s.app.clock.now();
+    // ... the poller stamps the Hard Lock a minute later ...
+    s.app.clock.advance(Duration::minutes(1));
+    poller::tick(&s.app.state).await;
+    // ... then its write runs.
+    let written = predictions::upsert_for_bot(
+        &s.app.state.db,
+        LeagueId(s.league),
+        MatchId(NAVI_FAZE),
+        oracle_id,
+        TeamId(NAVI),
+        checked_at,
+    )
+    .await;
+    assert_eq!(written.unwrap(), None, "refused: the Match is Hard Locked");
+
+    let card = s.card(&s.bob).await;
+    assert_eq!(Setup::revealed_team(&card, oracle_id), Some(FAZE));
+    assert_eq!(Setup::revealed_team(&card, alice), Some(NAVI));
+}

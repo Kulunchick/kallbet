@@ -23,6 +23,7 @@ The server's env file `kallbet.env` (in the deploy directory, never committed) h
 BOT_TOKEN=...
 BOT_USERNAME=...        # the bot's @username without the @, needed by the Telegram login button
 PANDASCORE_TOKEN=...
+KALLBET_BOT_SECRET=...  # optional: lets an AI sidecar register its Bot Users (long and random; unset = no Bot Users)
 ```
 
 `docker-compose.yml` fixes the rest, so the env file cannot break them: `KALLBET_BIND=0.0.0.0:8095` (inside the container; the host side is loopback only), `DATABASE_URL=sqlite:///data/kallbet.db`, `KALLBET_DEV_LOGIN=false`, `KALLBET_CHROME_URL=http://chrome:9222`, `KALLBET_LOGO_DIR=/data/logos`.

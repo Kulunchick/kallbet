@@ -14,7 +14,7 @@ use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use tower::ServiceExt;
 
-use super::{FakeClock, RecordingNotifier, ScriptedSource};
+use super::{FakeClock, RecordingNotifier, ScriptedSource, TEST_BOT_SECRET};
 use crate::config::Config;
 use crate::ports::{Clock, MatchSource};
 use sqlx::SqlitePool;
@@ -53,7 +53,37 @@ impl TestApp {
         TestClient {
             router: self.router.clone(),
             cookies: Mutex::new(BTreeMap::new()),
+            bearer: None,
         }
+    }
+
+    /// A client that sends `Authorization: Bearer <token>` and holds no
+    /// session: how a Bot User (or the sidecar with the shared bot secret)
+    /// talks to the API.
+    pub fn bearer(&self, token: &str) -> TestClient {
+        TestClient {
+            bearer: Some(token.to_string()),
+            ..self.anonymous()
+        }
+    }
+
+    /// A client authenticated as the Bot User with this bot key, registered
+    /// (or updated) through `POST /api/auth/bot` with [`TEST_BOT_SECRET`].
+    pub async fn bot(&self, bot_key: &str, nickname: &str) -> TestClient {
+        let res = self
+            .bearer(TEST_BOT_SECRET)
+            .post(
+                "/api/auth/bot",
+                &json!({ "bot_key": bot_key, "nickname": nickname }),
+            )
+            .await;
+        assert_eq!(
+            res.status,
+            StatusCode::OK,
+            "bot auth as {bot_key} failed: {}",
+            res.text()
+        );
+        self.bearer(res.json()["token"].as_str().expect("a token"))
     }
 
     /// A client signed in as the User with this Nickname, created on first
@@ -154,6 +184,8 @@ impl TestAppBuilder {
 pub struct TestClient {
     router: Router,
     cookies: Mutex<BTreeMap<String, String>>,
+    /// Sent as `Authorization: Bearer ...` when set.
+    bearer: Option<String>,
 }
 
 impl TestClient {
@@ -212,6 +244,9 @@ impl TestClient {
             .join("; ");
         if !cookie_header.is_empty() {
             request = request.header(header::COOKIE, cookie_header);
+        }
+        if let Some(token) = &self.bearer {
+            request = request.header(header::AUTHORIZATION, format!("Bearer {token}"));
         }
         let request = match body {
             Some(body) => request

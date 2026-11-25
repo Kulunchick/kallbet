@@ -7,8 +7,12 @@ A private prediction game for groups of friends: Members pick the winners of CS2
 ### People and groups
 
 **User**:
-A person signed in to KallBet (via Telegram), identified by a site-wide unique Nickname.
+A person signed in to KallBet (via Telegram), or a Bot User, identified by a site-wide unique Nickname.
 _Avoid_: Account, player (a "player" is a CS2 pro)
+
+**Bot User**:
+An automated User, authenticated by a bot Bearer token rather than Telegram. It does not hold up the humans' early Reveal, may change its Predictions until Hard Lock, and is shown no revealed Prediction before Hard Lock.
+_Avoid_: AI player, robot; "bot" alone where the Telegram bot could be meant
 
 **Nickname**:
 A User's site-wide unique display name, chosen on the site and changeable at any time.
@@ -65,14 +69,18 @@ A Member's choice of the winning team for one Match.
 _Avoid_: Bet, stake, wager
 
 **Lock**:
-The moment after which no Prediction for a Match can be made or changed: Scheduled Start minus 15 minutes, actual start, or Reveal, whichever comes first. A Lock is never undone.
+The moment after which no Prediction for a Match can be made or changed: Scheduled Start minus 15 minutes, actual start, or Reveal, whichever comes first. A Lock is never undone. A Bot User is bound by the Hard Lock only.
 _Avoid_: Deadline, close
 
+**Hard Lock**:
+The Lock that does not come from an early Reveal: Scheduled Start minus 15 minutes, actual Match start, or cancellation, whichever comes first. After it neither human Members nor Bot Users can make or change Predictions.
+_Avoid_: Final lock, bot deadline
+
 **Reveal**:
-The moment Members can see each other's Predictions for a Match: when every Eligible Member has predicted, or at Lock. A Reveal also Locks the Match.
+The moment Members can see each other's Predictions for a Match: when every human Eligible Member has predicted, or at Lock. A Reveal also Locks the Match for the human Members.
 
 **Eligible Member**:
-A Member whose Prediction is awaited for a Match: one who joined the League before that Match's Lock and is still a Member.
+A Member whose Prediction counts for a Match: one who joined the League before that Match's Lock (for a Bot User, its Hard Lock) and is still a Member. An early Reveal waits for the human ones only.
 
 **Pick'em**:
 A separate per-Stage forecast: for a Swiss Stage, two teams to go 3-0, two to go 0-3 and six others to advance; for the Playoffs, the winner of every bracket slot. It Locks when the Stage's first Match starts.

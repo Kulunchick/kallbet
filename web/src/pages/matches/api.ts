@@ -12,6 +12,10 @@ export type RevealedPrediction = {
   nickname: string;
   avatar_url: string | null;
   team_id: number;
+  /** The Prediction of a Bot User. */
+  is_bot: boolean;
+  /** A Bot User's Prediction before Hard Lock: it may still change. */
+  preliminary: boolean;
 };
 
 /** "N of M predicted"; `revealed` stays null until Reveal (`PredictionsView`). */

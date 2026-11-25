@@ -7,6 +7,7 @@
 use chrono::{DateTime, Utc};
 use sqlx::{Executor, FromRow, Sqlite, SqlitePool};
 
+use crate::domain::lock_reveal::MemberSpan;
 use crate::domain::{EventId, LeagueId, Role, UserId};
 
 #[derive(Debug, Clone, FromRow)]
@@ -60,6 +61,8 @@ pub struct MemberProfile {
     pub user_id: UserId,
     pub nickname: String,
     pub avatar_url: Option<String>,
+    /// A Bot User.
+    pub is_bot: bool,
     pub role: Role,
     pub joined_at: DateTime<Utc>,
 }
@@ -69,6 +72,7 @@ struct MemberProfileRow {
     user_id: UserId,
     nickname: String,
     avatar_url: Option<String>,
+    is_bot: bool,
     role: String,
     joined_at: DateTime<Utc>,
 }
@@ -238,13 +242,39 @@ pub async fn all_memberships<'e>(
     Ok(rows.into_iter().map(Membership::from).collect())
 }
 
+/// [`all_memberships`] as the Lock/Reveal policy takes them: every stretch,
+/// each marked with whether its User is a Bot User.
+pub async fn member_spans<'e>(
+    db: impl Executor<'e, Database = Sqlite>,
+    league: LeagueId,
+) -> Result<Vec<MemberSpan>, sqlx::Error> {
+    type Row = (UserId, DateTime<Utc>, Option<DateTime<Utc>>, bool);
+    let rows: Vec<Row> = sqlx::query_as(
+        "SELECT m.user_id, m.joined_at, m.left_at, u.is_bot \
+         FROM memberships m JOIN users u ON u.id = m.user_id \
+         WHERE m.league_id = ? ORDER BY m.joined_at, m.id",
+    )
+    .bind(league)
+    .fetch_all(db)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|(user_id, joined_at, left_at, is_bot)| MemberSpan {
+            user_id,
+            joined_at,
+            left_at,
+            is_bot,
+        })
+        .collect())
+}
+
 /// Current Members, in the order they joined.
 pub async fn members<'e>(
     db: impl Executor<'e, Database = Sqlite>,
     league: LeagueId,
 ) -> Result<Vec<MemberProfile>, sqlx::Error> {
     let rows: Vec<MemberProfileRow> = sqlx::query_as(
-        "SELECT u.id AS user_id, u.nickname, u.avatar_url, m.role, m.joined_at \
+        "SELECT u.id AS user_id, u.nickname, u.avatar_url, u.is_bot, m.role, m.joined_at \
          FROM memberships m JOIN users u ON u.id = m.user_id \
          WHERE m.league_id = ? AND m.left_at IS NULL \
          ORDER BY m.joined_at, m.id",
@@ -258,6 +288,7 @@ pub async fn members<'e>(
             user_id: r.user_id,
             nickname: r.nickname,
             avatar_url: r.avatar_url,
+            is_bot: r.is_bot,
             role: Role::from_code(&r.role).unwrap_or(Role::Member),
             joined_at: r.joined_at,
         })

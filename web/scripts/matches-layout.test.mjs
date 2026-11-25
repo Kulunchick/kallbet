@@ -2,7 +2,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { bracketColumns, cardState, orderMatchGroups } from "../src/pages/matches/layout.ts";
+import {
+  bracketColumns, cardState, hasPreliminaryPick, orderMatchGroups, pickMark,
+} from "../src/pages/matches/layout.ts";
 
 const card = (id, bracket_slot) => ({ id, bracket_slot });
 const ids = (columns) => columns.map((c) => [c.round, c.cells.map((x) => (x ? x.id : null))]);
@@ -13,6 +15,26 @@ test("a Void Match reads as void, never as finished", () => {
   assert.equal(cardState({ status: "finished", winner: 7 }), "finished");
   assert.equal(cardState({ status: "live", winner: null }), "live");
   assert.equal(cardState({ status: "upcoming", winner: null }), "upcoming");
+});
+
+test("a Bot User's revealed pick carries a bot badge, a human's none", () => {
+  assert.equal(pickMark({ is_bot: false, preliminary: false }), "human");
+  assert.equal(pickMark({ is_bot: true, preliminary: false }), "bot");
+  // A server from before Bot Users sends neither field.
+  assert.equal(pickMark({}), "human");
+});
+
+test("a Bot User's pick is preliminary until Hard Lock, a human's never", () => {
+  assert.equal(pickMark({ is_bot: true, preliminary: true }), "bot_preliminary");
+  assert.equal(pickMark({ is_bot: false, preliminary: true }), "human");
+});
+
+test("a card warns about preliminary picks only while a revealed bot pick may change", () => {
+  const human = { is_bot: false, preliminary: false };
+  assert.equal(hasPreliminaryPick(null), false, "nothing revealed yet");
+  assert.equal(hasPreliminaryPick([]), false);
+  assert.equal(hasPreliminaryPick([human, { is_bot: true, preliminary: true }]), true);
+  assert.equal(hasPreliminaryPick([human, { is_bot: true, preliminary: false }]), false, "after Hard Lock");
 });
 
 test("an 8-team bracket has 4, 2 and 1 cells, first round first", () => {
