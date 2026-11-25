@@ -1,4 +1,10 @@
 //! SQLite-backed caching for Liquipedia revisions and CS2 RSS feeds using `raw_feed_snapshots`.
+//!
+//! Raw data follows the audit's rule (`audit::store_raw`): a revision's
+//! MediaWiki response and a feed's XML are kept once per content
+//! (`liquipedia:revision:<page>`, `rss:xml:<url>`); each fetch adds only a
+//! small marker pointing at it by hash (`liquipedia:rev:<page>`, `rss:<url>`),
+//! which is what the cache looks up.
 
 use crate::*;
 use chrono::Duration;
@@ -19,6 +25,23 @@ fn liquipedia_source_key(page_title: &str) -> String {
 
 fn rss_source_key(feed_url: &str) -> String {
     format!("rss:{feed_url}")
+}
+
+fn liquipedia_body_key(page_title: &str) -> String {
+    format!("liquipedia:revision:{page_title}")
+}
+
+fn rss_xml_key(feed_url: &str) -> String {
+    format!("rss:xml:{feed_url}")
+}
+
+/// A fetch of a revision, as kept: the response itself is stored once by hash.
+#[derive(Serialize, Deserialize)]
+struct RevisionFetch {
+    query_cutoff: Instant,
+    fetched_at: Instant,
+    rev_timestamp: Instant,
+    body_hash: String,
 }
 
 /// Looks up a cached Liquipedia MediaWiki revision strictly predating `cutoff`.
@@ -43,10 +66,10 @@ pub async fn get_liquipedia_revision(
     .await?;
 
     let is_live_cutoff = (now - cutoff).abs() <= Duration::seconds(1);
-    let mut best: Option<CachedLiquipediaRevision> = None;
+    let mut best: Option<RevisionFetch> = None;
 
     for blob in rows {
-        let Ok(entry) = serde_json::from_slice::<CachedLiquipediaRevision>(&blob) else {
+        let Ok(entry) = serde_json::from_slice::<RevisionFetch>(&blob) else {
             continue;
         };
         // Never reuse a revision at or after cutoff.
@@ -68,7 +91,11 @@ pub async fn get_liquipedia_revision(
         }
     }
 
-    Ok(best.map(|entry| entry.body))
+    let Some(entry) = best else {
+        return Ok(None);
+    };
+    let body = crate::audit::load_raw(db, &liquipedia_body_key(page_title), &entry.body_hash).await?;
+    Ok(body.and_then(|b| String::from_utf8(b).ok()))
 }
 
 pub async fn put_liquipedia_revision(
@@ -76,8 +103,20 @@ pub async fn put_liquipedia_revision(
     page_title: &str,
     entry: &CachedLiquipediaRevision,
 ) -> Result<()> {
+    let body_hash = crate::audit::store_raw(
+        db,
+        &liquipedia_body_key(page_title),
+        entry.rev_timestamp,
+        entry.body.as_bytes(),
+    )
+    .await?;
     let source = liquipedia_source_key(page_title);
-    let payload = serde_json::to_vec(entry)?;
+    let payload = serde_json::to_vec(&RevisionFetch {
+        query_cutoff: entry.query_cutoff,
+        fetched_at: entry.fetched_at,
+        rev_timestamp: entry.rev_timestamp,
+        body_hash,
+    })?;
     let content_hash = crate::digest(&payload);
     sqlx::query(
         "INSERT INTO raw_feed_snapshots(source, observed_at, content_hash, payload)
@@ -112,10 +151,14 @@ pub async fn get_rss_feed(
         .filter(|(fetched_at, _)| *fetched_at <= now && (now - *fetched_at) < ttl)
         .max_by_key(|(fetched_at, _)| *fetched_at);
 
-    match latest {
-        Some((_, bytes)) => Ok(String::from_utf8(bytes).ok()),
-        None => Ok(None),
-    }
+    let Some((_, marker)) = latest else {
+        return Ok(None);
+    };
+    let Ok(hash) = String::from_utf8(marker) else {
+        return Ok(None);
+    };
+    let xml = crate::audit::load_raw(db, &rss_xml_key(feed_url), &hash).await?;
+    Ok(xml.and_then(|b| String::from_utf8(b).ok()))
 }
 
 pub async fn put_rss_feed(
@@ -124,8 +167,10 @@ pub async fn put_rss_feed(
     fetched_at: Instant,
     xml: &str,
 ) -> Result<()> {
+    let xml_hash =
+        crate::audit::store_raw(db, &rss_xml_key(feed_url), fetched_at, xml.as_bytes()).await?;
     let source = rss_source_key(feed_url);
-    let bytes = xml.as_bytes();
+    let bytes = xml_hash.as_bytes();
     let content_hash = crate::digest(bytes);
     sqlx::query(
         "INSERT INTO raw_feed_snapshots(source, observed_at, content_hash, payload)

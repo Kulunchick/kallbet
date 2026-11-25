@@ -26,12 +26,17 @@ fn live_line(fixture: &Value) -> Option<Line> {
     let (probabilities, observed_at) = [PINNACLE, FREE_PINNACLE]
         .into_iter()
         .find_map(|book| active_prices(&fixture["bookmakerOdds"][book]))?;
-    Some(Line {
-        teams: fixture_teams(fixture)?,
-        start,
-        observed_at: Some(observed_at),
-        probabilities,
-    })
+    Some(
+        Line {
+            teams: fixture_teams(fixture)?,
+            start,
+            observed_at: Some(observed_at),
+            probabilities,
+            raw_hash: None,
+            raw: None,
+        }
+        .from_record(fixture),
+    )
 }
 
 fn fixture_teams(fixture: &Value) -> Option<[String; 2]> {

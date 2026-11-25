@@ -458,3 +458,49 @@ async fn earlier_historical_cutoff_never_reuses_newer_cached_revision() {
 
     server.abort();
 }
+
+#[tokio::test]
+async fn an_unchanged_page_or_feed_fetched_again_is_kept_once() {
+    let state = Arc::new(ServerState::default());
+    *state.wiki_body.lock().unwrap() = SINGAPORE_REV.to_string();
+    state
+        .rss_bodies
+        .lock()
+        .unwrap()
+        .insert("hltv".into(), (StatusCode::OK, HLTV_RSS.to_string()));
+    let (base, server) = start_stub_server(state.clone()).await;
+    let dir = tempfile::tempdir().unwrap();
+    let audit = Audit::open(&dir.path().join("audit.db")).await.unwrap();
+    let now: Instant = "2026-11-25T16:00:00Z".parse().unwrap();
+    let clock = TestClock::new(now);
+    let pause = AdvancingPause::new(clock.clone());
+    let config = ContextConfig {
+        liquipedia_pages: [(99, "PGL/2026/Singapore".to_string())].into(),
+        liquipedia_api_url: format!("{base}/api.php"),
+        rss_feeds: vec![RssFeedConfig::new(format!("{base}/rss/hltv"))],
+        ..ContextConfig::default()
+    };
+    let enricher = CompositeContextEnricher::from_audit(&config, &audit, clock.clone(), pause)
+        .await
+        .unwrap();
+    let game = sample_match(99, 101, "Team Vitality", "MOUZ");
+    for _ in 0..2 {
+        enricher.facts(&game, clock.now()).await.unwrap();
+        // Past both cache TTLs: the next call fetches again.
+        clock.advance(Duration::minutes(20));
+    }
+    assert_eq!(state.wiki_requests.lock().unwrap().len(), 2);
+    assert_eq!(state.rss_hits.lock().unwrap()["hltv"], 2);
+    let revisions = audit
+        .raw_records("liquipedia:revision:PGL/2026/Singapore")
+        .await
+        .unwrap();
+    assert_eq!(revisions.len(), 1);
+    assert_eq!(revisions[0].1, SINGAPORE_REV.as_bytes());
+    let feeds = audit
+        .raw_records(&format!("rss:xml:{base}/rss/hltv"))
+        .await
+        .unwrap();
+    assert_eq!(feeds.len(), 1);
+    server.abort();
+}

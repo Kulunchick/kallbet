@@ -28,6 +28,15 @@ impl Audit {
         .await?;
         rows.iter().map(|s| Ok(serde_json::from_str(s)?)).collect()
     }
+    /// Every raw record kept under `source` (e.g. `odds:oddspapi`), oldest first.
+    pub async fn raw_records(&self, source: &str) -> Result<Vec<(Instant, Vec<u8>)>> {
+        Ok(sqlx::query_as(
+            "SELECT observed_at, payload FROM raw_feed_snapshots WHERE source=? ORDER BY id",
+        )
+        .bind(source)
+        .fetch_all(&self.db)
+        .await?)
+    }
     pub async fn record_vrs(&self, markdown: &str, observed_at: Instant) -> Result<()> {
         sqlx::query("INSERT INTO vrs_snapshots(observed_at,content_hash,markdown) VALUES(?,?,?) ON CONFLICT DO NOTHING").bind(observed_at).bind(crate::digest(markdown.as_bytes())).bind(markdown).execute(&self.db).await?;
         Ok(())
@@ -196,4 +205,43 @@ impl Audit {
         .await?;
         Ok(())
     }
+}
+
+/// Keeps a raw external record once per `source` and content: an unchanged
+/// record seen again is not stored again (`observed_at` is when it was first
+/// seen). Returns its content hash. The rule for every adapter that keeps raw
+/// data in `raw_feed_snapshots`.
+pub(crate) async fn store_raw(
+    db: &sqlx::SqlitePool,
+    source: &str,
+    observed_at: Instant,
+    payload: &[u8],
+) -> Result<String> {
+    let hash = crate::digest(payload);
+    sqlx::query(
+        "INSERT INTO raw_feed_snapshots(source, observed_at, content_hash, payload)
+         SELECT ?1, ?2, ?3, ?4
+         WHERE NOT EXISTS (SELECT 1 FROM raw_feed_snapshots WHERE source = ?1 AND content_hash = ?3)",
+    )
+    .bind(source)
+    .bind(observed_at)
+    .bind(&hash)
+    .bind(payload)
+    .execute(db)
+    .await?;
+    Ok(hash)
+}
+/// A raw record by its content hash.
+pub(crate) async fn load_raw(
+    db: &sqlx::SqlitePool,
+    source: &str,
+    hash: &str,
+) -> Result<Option<Vec<u8>>> {
+    Ok(sqlx::query_scalar(
+        "SELECT payload FROM raw_feed_snapshots WHERE source = ? AND content_hash = ? LIMIT 1",
+    )
+    .bind(source)
+    .bind(hash)
+    .fetch_optional(db)
+    .await?)
 }

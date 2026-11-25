@@ -111,6 +111,9 @@ pub struct FallbackOdds {
     db: SqlitePool,
     transport: Arc<dyn OddsTransport>,
     gates: [Mutex<Breaker>; 3],
+    /// The records of each scope's last fetched batch, by content hash, until
+    /// a quote is derived from one of them (cached batches keep the hash only).
+    records: std::sync::Mutex<BTreeMap<String, BTreeMap<String, Vec<u8>>>>,
 }
 
 impl FallbackOdds {
@@ -120,6 +123,7 @@ impl FallbackOdds {
             transport,
             db: audit.db.clone(),
             gates: Default::default(),
+            records: Default::default(),
         }
     }
 
@@ -143,6 +147,26 @@ impl FallbackOdds {
         .fetch_optional(&self.db)
         .await?;
         Ok(raw.map(|raw| serde_json::from_slice(&raw)).transpose()?)
+    }
+
+    /// Keeps the raw record a quote was derived from (story 36), once per
+    /// content. A batch read from the cache after a restart has the hash but
+    /// not the record; its record was kept when it was first quoted.
+    async fn keep_record(&self, scope: &str, line: &Line, observed_at: Instant) -> Result<()> {
+        let Some(hash) = &line.raw_hash else {
+            return Ok(());
+        };
+        let record = self
+            .records
+            .lock()
+            .unwrap()
+            .get(scope)
+            .and_then(|records| records.get(hash).cloned());
+        if let Some(record) = record {
+            let feed = scope.split(':').next().unwrap_or(scope);
+            crate::audit::store_raw(&self.db, &format!("odds:{feed}"), observed_at, &record).await?;
+        }
+        Ok(())
     }
 
     async fn reserve_oddspapi_request(&self, now: Instant, tier: Tier) -> Result<bool> {
@@ -257,6 +281,13 @@ impl FallbackOdds {
                             continue;
                         }
                     };
+                    self.records.lock().unwrap().insert(
+                        scope.clone(),
+                        lines
+                            .iter()
+                            .filter_map(|l| Some((l.raw_hash.clone()?, l.raw.clone()?)))
+                            .collect(),
+                    );
                     sqlx::query(
                         "INSERT INTO odds_batches(scope, captured_at, lines) VALUES (?, ?, ?)
                          ON CONFLICT DO NOTHING",
@@ -272,7 +303,8 @@ impl FallbackOdds {
             if clock.is_some() && cutoff == hard_lock {
                 return Ok((cutoff, None));
             }
-            if let Some(quote) = lines::quote(&lines, game, None, cutoff)? {
+            if let Some((quote, line)) = lines::quote_line(&lines, game, None, cutoff)? {
+                self.keep_record(&scope, line, quote.observed_at()).await?;
                 return Ok((cutoff, Some(quote)));
             }
         }

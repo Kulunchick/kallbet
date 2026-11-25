@@ -10,6 +10,23 @@ pub(super) struct Line {
     pub observed_at: Option<Instant>,
     #[serde(with = "cached_probabilities")]
     pub probabilities: [f64; 2],
+    /// The content hash of the record the line was read from (the OddsPapi
+    /// fixture, the Polymarket market, the Kalshi event): cached batches keep
+    /// only this, the record itself is kept once in `raw_feed_snapshots`.
+    #[serde(default)]
+    pub raw_hash: Option<String>,
+    /// The record itself, while the fetched batch is in memory.
+    #[serde(skip)]
+    pub raw: Option<Vec<u8>>,
+}
+impl Line {
+    /// The line with the record it was read from.
+    pub fn from_record(mut self, record: &Value) -> Self {
+        let raw = record.to_string().into_bytes();
+        self.raw_hash = Some(crate::digest(&raw));
+        self.raw = Some(raw);
+        self
+    }
 }
 
 mod cached_probabilities {
@@ -107,6 +124,16 @@ pub(super) fn quote(
     captured_at: Option<Instant>,
     cutoff: Instant,
 ) -> Result<Option<AsOf<f64>>> {
+    Ok(quote_line(lines, game, captured_at, cutoff)?.map(|(quote, _)| quote))
+}
+
+/// The quote and the line it came from.
+pub(super) fn quote_line<'a>(
+    lines: &'a [Line],
+    game: &Match,
+    captured_at: Option<Instant>,
+    cutoff: Instant,
+) -> Result<Option<(AsOf<f64>, &'a Line)>> {
     let Some((line, side)) = best(game, lines, |line| (&line.teams, line.start)) else {
         return Ok(None);
     };
@@ -116,5 +143,5 @@ pub(super) fn quote(
         .ok_or("missing quote observation time")?;
     let quote = AsOf::new(line.probabilities[side], observed_at, cutoff)?;
     // The provider's Match may have started earlier than KallBet's Match.
-    Ok((cutoff < line.start).then_some(quote))
+    Ok((cutoff < line.start).then_some((quote, line)))
 }

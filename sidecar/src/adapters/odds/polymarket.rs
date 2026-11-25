@@ -34,10 +34,15 @@ fn moneyline(market: &Value) -> Option<Line> {
     let start = DateTime::parse_from_str(market["gameStartTime"].as_str()?, "%Y-%m-%d %H:%M:%S%#z")
         .ok()?
         .to_utc();
-    Some(Line {
-        teams,
-        start,
-        probabilities,
-        observed_at: Some(timestamp(&market["updatedAt"])?),
-    })
+    Some(
+        Line {
+            teams,
+            start,
+            probabilities,
+            observed_at: Some(timestamp(&market["updatedAt"])?),
+            raw_hash: None,
+            raw: None,
+        }
+        .from_record(market),
+    )
 }

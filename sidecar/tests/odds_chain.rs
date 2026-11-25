@@ -299,3 +299,38 @@ async fn drafts_leave_the_last_fifty_oddspapi_requests_to_the_pre_lock_pass() {
         .unwrap();
     assert_eq!(*feed.oddspapi.lock().unwrap(), 151);
 }
+
+#[tokio::test]
+async fn the_raw_fixture_behind_a_quote_is_kept_once_per_content() {
+    let dir = tempfile::tempdir().unwrap();
+    let audit = Audit::open(&dir.path().join("audit.db")).await.unwrap();
+    let feed = Arc::new(PinnacleFeed::default());
+    let config = OddsConfig {
+        oddspapi_key: Some("test-key".into()),
+        oddspapi_tournaments: [(99, vec![400014])].into(),
+        kalshi_enabled: false,
+        ..OddsConfig::default()
+    };
+    let chain = FallbackOdds::new(&audit, config, feed.clone());
+    let game = game(1, "Heroic", "FaZe");
+    let start = game.scheduled_start.unwrap();
+    // Two fetches of the same batch (the PreLock refresh), three quotes.
+    for minutes_before in [60, 25, 24] {
+        let at = start - Duration::minutes(minutes_before);
+        let (_, quote) = chain
+            .live_quote(&game, at, Tier::PreLock, &FixedClock(at))
+            .await
+            .unwrap();
+        assert!(quote.is_some());
+    }
+    assert_eq!(feed.batches.lock().unwrap().len(), 2);
+    let kept = audit.raw_records("odds:oddspapi").await.unwrap();
+    assert_eq!(kept.len(), 1, "one record, not one per batch or quote");
+    // It is the fixture object of that Match, as OddsPapi sent it, not the batch.
+    let record: serde_json::Value = serde_json::from_slice(&kept[0].1).unwrap();
+    let names = [&record["participant1Name"], &record["participant2Name"]];
+    assert!(names.contains(&&serde_json::json!("Heroic")), "{names:?}");
+    let batch: Vec<serde_json::Value> = serde_json::from_slice(PINNACLE).unwrap();
+    assert!(batch.contains(&record));
+    assert!(kept[0].1.len() < PINNACLE.len() / 4);
+}

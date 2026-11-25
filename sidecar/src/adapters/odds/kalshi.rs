@@ -49,12 +49,17 @@ fn event(event: &Value, captured_at: Instant) -> Option<Line> {
     if start != scheduled_start(&b["rules_primary"])? || captured_at >= start {
         return None;
     }
-    Some(Line {
-        teams: [name(a)?, name(b)?],
-        start,
-        observed_at: Some(captured_at),
-        probabilities: normalize(midpoint(a, captured_at)?, midpoint(b, captured_at)?)?,
-    })
+    Some(
+        Line {
+            teams: [name(a)?, name(b)?],
+            start,
+            observed_at: Some(captured_at),
+            probabilities: normalize(midpoint(a, captured_at)?, midpoint(b, captured_at)?)?,
+            raw_hash: None,
+            raw: None,
+        }
+        .from_record(event),
+    )
 }
 
 fn scheduled_start(rules: &Value) -> Option<Instant> {
