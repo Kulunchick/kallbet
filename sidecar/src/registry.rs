@@ -17,7 +17,7 @@ impl Sidecar {
             clock: Arc::new(SystemClock),
             signal: Arc::new(signal),
             odds: adapters::odds::build(&audit)?,
-            context: adapters::context::build(),
+            context: adapters::context::build(&config.context, &audit, Arc::new(SystemClock)),
             llm: adapters::debate::build(adapters::llm::build()),
             policy: Arc::new(ConfiguredPolicy),
             pickem: adapters::pickem::build(),
