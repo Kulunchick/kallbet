@@ -24,3 +24,9 @@ kallbet.env
 /sidecar.json
 /sidecar.env
 /vrs/
+# the sidecar's heartbeat beside its audit file (sidecar.db -> sidecar.health)
+*.health
+*.health.partial
+
+# Python bytecode of the data scripts
+__pycache__/
