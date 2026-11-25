@@ -23,6 +23,8 @@ pub struct Config {
     pub audit_file: PathBuf,
     pub vrs_files: Vec<PathBuf>,
     pub bots: Vec<BotProfile>,
+    #[serde(default)]
+    pub llm: adapters::llm::LlmConfig,
 }
 impl Config {
     pub fn load(path: impl AsRef<std::path::Path>) -> Result<Self> {
