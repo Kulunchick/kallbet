@@ -33,11 +33,11 @@ fn default_user_agent() -> String {
     liquipedia::USER_AGENT.into()
 }
 
-fn default_liquipedia_cache_ttl_secs() -> i64 {
+fn default_liquipedia_cache_ttl_seconds() -> i64 {
     900
 }
 
-fn default_rss_cache_ttl_secs() -> i64 {
+fn default_rss_cache_ttl_seconds() -> i64 {
     600
 }
 
@@ -72,12 +72,12 @@ pub struct ContextConfig {
     pub liquipedia_api_url: String,
     #[serde(default = "default_user_agent")]
     pub user_agent: String,
-    #[serde(default = "default_liquipedia_cache_ttl_secs")]
-    pub liquipedia_cache_ttl_secs: i64,
+    #[serde(default = "default_liquipedia_cache_ttl_seconds")]
+    pub liquipedia_cache_ttl_seconds: i64,
     #[serde(default)]
     pub rss_feeds: Vec<RssFeedConfig>,
-    #[serde(default = "default_rss_cache_ttl_secs")]
-    pub rss_cache_ttl_secs: i64,
+    #[serde(default = "default_rss_cache_ttl_seconds")]
+    pub rss_cache_ttl_seconds: i64,
     #[serde(default = "default_news_lookback_hours")]
     pub news_lookback_hours: i64,
     #[serde(default = "default_max_news_items")]
@@ -90,9 +90,9 @@ impl Default for ContextConfig {
             liquipedia_pages: BTreeMap::new(),
             liquipedia_api_url: default_liquipedia_api_url(),
             user_agent: default_user_agent(),
-            liquipedia_cache_ttl_secs: default_liquipedia_cache_ttl_secs(),
+            liquipedia_cache_ttl_seconds: default_liquipedia_cache_ttl_seconds(),
             rss_feeds: Vec::new(),
-            rss_cache_ttl_secs: default_rss_cache_ttl_secs(),
+            rss_cache_ttl_seconds: default_rss_cache_ttl_seconds(),
             news_lookback_hours: default_news_lookback_hours(),
             max_news_items: default_max_news_items(),
         }
@@ -200,7 +200,7 @@ impl CompositeContextEnricher {
         cutoff: Instant,
     ) -> Result<Option<AsOf<EventRosters>>> {
         let now = self.clock.now();
-        let ttl = Duration::seconds(self.config.liquipedia_cache_ttl_secs.max(0));
+        let ttl = Duration::seconds(self.config.liquipedia_cache_ttl_seconds.max(0));
         if let Some(cached_body) =
             cache::get_liquipedia_revision(&self.db, page_title, cutoff, now, ttl).await?
         {
@@ -285,7 +285,7 @@ impl CompositeContextEnricher {
 
     async fn fetch_rss_items(&self, feed_url: &str, cutoff: Instant) -> Result<Vec<AsOf<NewsItem>>> {
         let now = self.clock.now();
-        let ttl = Duration::seconds(self.config.rss_cache_ttl_secs.max(0));
+        let ttl = Duration::seconds(self.config.rss_cache_ttl_seconds.max(0));
         if let Some(cached_xml) = cache::get_rss_feed(&self.db, feed_url, now, ttl).await? {
             return rss::parse_rss_items(&cached_xml, feed_url, cutoff);
         }
