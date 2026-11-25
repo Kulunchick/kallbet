@@ -66,10 +66,23 @@ async fn execute(args: Vec<String>, redactor: &Redactor) -> Result<ExitCode> {
             Ok(ExitCode::SUCCESS)
         }
         Command::Health => health(&Settings::from_env()?),
-        // Ticket #31 replaces this arm with the retrospective runner.
-        Command::Backtest(_) => Err("the backtest subcommand is not part of this build".into()),
+        Command::Backtest(args) => backtest(&args, redactor).await,
         Command::Run { once } => run(Settings::from_env()?, once, redactor).await,
     }
+}
+
+/// The retrospective benchmark (ticket #31); logs go to stderr through the redactor.
+async fn backtest(args: &[String], redactor: &Redactor) -> Result<ExitCode> {
+    let filter = std::env::var("SIDECAR_LOG").unwrap_or_else(|_| "info".into());
+    let subscriber = logging::subscriber(
+        redactor.clone(),
+        stderr_sink(),
+        &filter,
+        super::settings::LogFormat::Text,
+    )?;
+    tracing::subscriber::set_global_default(subscriber)?;
+    println!("{}", crate::adapters::backtest::cli::run(args).await?);
+    Ok(ExitCode::SUCCESS)
 }
 
 fn health(settings: &Settings) -> Result<ExitCode> {

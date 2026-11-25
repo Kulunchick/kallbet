@@ -9,7 +9,7 @@ pub mod liquipedia;
 pub mod names;
 pub mod rss;
 pub mod vrs_diff;
-mod wikitext;
+pub mod wikitext;
 
 pub use limiter::{Pause, TokioPause};
 

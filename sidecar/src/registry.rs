@@ -38,7 +38,7 @@ impl Sidecar {
         Ok(sidecar)
     }
 }
-struct ConfiguredPolicy;
+pub(crate) struct ConfiguredPolicy;
 impl DecisionPolicy for ConfiguredPolicy {
     fn wants_adjustment(&self, bot: &BotProfile) -> bool {
         match bot.policy {
