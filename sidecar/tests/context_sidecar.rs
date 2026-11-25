@@ -12,8 +12,8 @@ use kallbet_ai::adapters::context::{
     CompositeContextEnricher, ContextConfig, Pause, RssFeedConfig,
 };
 use kallbet_ai::{
-    BotProfile, Config, ContextFact, Dossier, Instant, LlmError, LlmRuntime, RolePrompt, Sidecar,
-    Tier,
+    BotProfile, Config, ContextFact, DecisionPolicy, Dossier, Instant, LlmAdjustment, LlmError,
+    LlmRuntime, Prediction, RolePrompt, Sidecar, Tier, adapters::baseline::VrsOnly,
 };
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, HashMap};
@@ -46,6 +46,24 @@ impl LlmRuntime for RecordingLlm {
     ) -> Result<Option<Value>, LlmError> {
         self.dossiers.lock().unwrap().push(dossier.clone());
         Ok(None)
+    }
+}
+
+struct ContextTestPolicy;
+
+impl DecisionPolicy for ContextTestPolicy {
+    fn wants_adjustment(&self, _: &BotProfile) -> bool {
+        true
+    }
+
+    fn decide(
+        &self,
+        bot: &BotProfile,
+        dossier: &Dossier,
+        tier: Tier,
+        adjustment: Option<LlmAdjustment>,
+    ) -> kallbet_ai::Result<Option<Prediction>> {
+        VrsOnly.decide(bot, dossier, tier, adjustment)
     }
 }
 
@@ -128,6 +146,7 @@ async fn sidecar_tick_populates_deterministic_pre_match_context_and_prevents_liq
         ..ContextConfig::default()
     };
     let recorder = Arc::new(RecordingLlm::default());
+    sidecar.ports.policy = Arc::new(ContextTestPolicy);
     sidecar.ports.llm = recorder.clone();
     sidecar.ports.context = Arc::new(
         CompositeContextEnricher::from_audit(
@@ -338,6 +357,7 @@ async fn sidecar_from_config_loads_context_settings_and_runs_tick() {
     let mut sidecar = Sidecar::from_config(config, TEST_BOT_SECRET.into())
         .await
         .unwrap();
+    sidecar.ports.odds = h.scripts.clone();
 
     assert_eq!(sidecar.tick().await.unwrap(), 1);
     assert_eq!(*upstream.wiki_hits.lock().unwrap(), 1);
