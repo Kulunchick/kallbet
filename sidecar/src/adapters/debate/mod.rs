@@ -140,7 +140,7 @@ impl TieredDebateLlm {
             .answered(&run.bot.bot_key, run.tier, &run.key, &prompt.role)
             .await
             .unwrap_or_else(|e| {
-                eprintln!("debate: reading the audit failed: {e}");
+                tracing::warn!(error = %e, "debate: reading the audit failed");
                 None
             });
         found.filter(|v| schema::valid(v, &prompt.schema))
@@ -182,7 +182,7 @@ impl TieredDebateLlm {
         };
         if let Err(e) = self.log.record(&turn).await {
             // A turn that cannot be audited is not used.
-            eprintln!("debate: writing the audit failed: {e}");
+            tracing::error!(error = %e, "debate: writing the audit failed");
             return Err(LlmError::Transient);
         }
         Ok(outcome?.map(|answer| answer.value))

@@ -1,0 +1,65 @@
+# syntax=docker/dockerfile:1
+# The optional AI sidecar (kallbet-ai). Two runtime targets from one build:
+#
+#   sidecar      (default) the binary only, about 15 MB. Runs the baseline bots and
+#                every LLM provider of kind `http` (an API key, or an OAuth
+#                subscription proxy container).
+#   sidecar-cli  adds Node.js and the `claude` and `codex` CLIs (about 400 MB more),
+#                so the sidecar can use those subscriptions directly. `agy` has no
+#                package: see docs/sidecar.md.
+#
+# Build:  docker compose --profile sidecar build           (target from
+#         KALLBET_AI_TARGET in the shell or .env, default `sidecar`)
+# State lives on the /data volume: the SQLite file, the Valve snapshots in
+# /data/vrs, and $HOME (/data/home) where the CLIs keep their sign-in.
+
+# --- 1. Build the kallbet-ai binary (musl, so it runs on plain Alpine) -------
+FROM rust:1-alpine AS build
+RUN apk add --no-cache musl-dev
+WORKDIR /src
+ENV CARGO_PROFILE_RELEASE_STRIP=true
+# Compile the dependencies first, against stub sources, so that a change to our
+# own code does not rebuild them. The root package is only a dev-dependency of
+# the sidecar's tests, but cargo still needs its manifest to be loadable, so its
+# stub sources stay.
+COPY Cargo.toml Cargo.lock build.rs ./
+COPY sidecar/Cargo.toml sidecar/Cargo.toml
+RUN mkdir -p src migrations sidecar/src \
+ && echo 'fn main() {}' > src/main.rs && touch src/lib.rs \
+ && echo 'fn main() {}' > sidecar/src/main.rs && touch sidecar/src/lib.rs \
+ && cargo build -p kallbet-ai --release --locked \
+ && rm -rf sidecar/src
+COPY sidecar/build.rs sidecar/build.rs
+COPY sidecar/migrations sidecar/migrations
+COPY sidecar/src sidecar/src
+RUN touch sidecar/src/main.rs sidecar/src/lib.rs \
+ && cargo build -p kallbet-ai --release --locked
+
+# --- 2. Runtime: the binary only ----------------------------------------------
+FROM alpine:3.21 AS sidecar
+RUN apk add --no-cache ca-certificates \
+ && addgroup -S -g 10002 sidecar && adduser -S -u 10002 -G sidecar -h /data/home sidecar \
+ && mkdir -p /data/home /data/vrs && chown -R sidecar:sidecar /data
+COPY --from=build /src/target/release/kallbet-ai /usr/local/bin/kallbet-ai
+ENV HOME=/data/home \
+    SIDECAR_CONFIG=/config/sidecar.json
+USER sidecar
+WORKDIR /data
+VOLUME /data
+# No port: health is a heartbeat file the loop writes (docs/sidecar.md).
+HEALTHCHECK --interval=60s --timeout=10s --start-period=120s --retries=3 \
+  CMD ["kallbet-ai", "health"]
+ENTRYPOINT ["kallbet-ai"]
+CMD ["run"]
+
+# --- 3. Runtime with the claude and codex CLIs ---------------------------------
+FROM sidecar AS sidecar-cli
+ARG CLAUDE_CODE_VERSION=2.1.332
+ARG CODEX_VERSION=0.172.0
+USER root
+# libgcc, libstdc++ and ripgrep are what Claude Code needs on Alpine.
+RUN apk add --no-cache nodejs npm libgcc libstdc++ ripgrep \
+ && npm install -g --no-audit --no-fund \
+      "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" "@openai/codex@${CODEX_VERSION}" \
+ && npm cache clean --force
+USER sidecar

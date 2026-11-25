@@ -121,7 +121,7 @@ pub fn build(
     match CompositeContextEnricher::new(config, audit.db.clone(), clock, Arc::new(TokioPause)) {
         Ok(enricher) => Arc::new(enricher),
         Err(err) => {
-            eprintln!("context enricher init failed (degrading to noop): {err}");
+            tracing::warn!(error = %err, "context enricher init failed (degrading to noop)");
             Arc::new(super::baseline::Noop)
         }
     }
@@ -334,7 +334,7 @@ impl ContextEnricher for CompositeContextEnricher {
                     let vrs_index = match self.load_vrs_index().await {
                         Ok(idx) => Some(idx),
                         Err(err) => {
-                            eprintln!("vrs roster index load failed (degrading gracefully): {err}");
+                            tracing::warn!(error = %err, "vrs roster index load failed (degrading gracefully)");
                             None
                         }
                     };
@@ -359,7 +359,7 @@ impl ContextEnricher for CompositeContextEnricher {
                                     Ok(None) => {}
                                     Err(err) if err.is::<TemporalLeakError>() => return Err(err),
                                     Err(err) => {
-                                        eprintln!("vrs roster diff failed (degrading gracefully): {err}");
+                                        tracing::warn!(error = %err, "vrs roster diff failed (degrading gracefully)");
                                     }
                                 }
                             }
@@ -369,7 +369,7 @@ impl ContextEnricher for CompositeContextEnricher {
                 Ok(None) => {}
                 Err(err) if err.is::<TemporalLeakError>() => return Err(err),
                 Err(err) => {
-                    eprintln!("liquipedia enricher failed (degrading gracefully): {err}");
+                    tracing::warn!(error = %err, "liquipedia enricher failed (degrading gracefully)");
                 }
             }
         }
@@ -382,9 +382,10 @@ impl ContextEnricher for CompositeContextEnricher {
                     Ok(items) => all_items.extend(items),
                     Err(err) if err.is::<TemporalLeakError>() => return Err(err),
                     Err(err) => {
-                        eprintln!(
-                            "rss feed enricher failed for {} (degrading gracefully): {err}",
-                            feed.url
+                        tracing::warn!(
+                            error = %err,
+                            feed = %feed.url,
+                            "rss feed enricher failed (degrading gracefully)"
                         );
                     }
                 }

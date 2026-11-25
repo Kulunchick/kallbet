@@ -18,3 +18,9 @@ kallbet.env
 
 # downloaded team logos (KALLBET_LOGO_DIR)
 /logos/
+
+# AI sidecar: local config, env file and data
+/sidecar.local.json
+/sidecar.json
+/sidecar.env
+/vrs/

@@ -470,7 +470,7 @@ fn solver_rejects_mid_stage_data_and_post_cutoff_ratings_with_temporal_leak_erro
     .unwrap();
     assert!(
         solver
-            .solve(&leaked_playoffs, &[rating.clone()], cut)
+            .solve(&leaked_playoffs, std::slice::from_ref(&rating), cut)
             .unwrap_err()
             .is::<TemporalLeakError>()
     );
@@ -498,7 +498,7 @@ fn solver_rejects_mid_stage_data_and_post_cutoff_ratings_with_temporal_leak_erro
     let leaked_swiss = AsOf::new(swiss_json, obs, cut).unwrap();
     assert!(
         solver
-            .solve(&leaked_swiss, &[rating.clone()], cut)
+            .solve(&leaked_swiss, std::slice::from_ref(&rating), cut)
             .unwrap_err()
             .is::<TemporalLeakError>()
     );

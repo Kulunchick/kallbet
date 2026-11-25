@@ -5,15 +5,23 @@ use serde_json::json;
 
 pub struct HttpPlatform {
     base: String,
-    secret: String,
+    secret: crate::adapters::production::Secret,
     client: Client,
+}
+impl std::fmt::Debug for HttpPlatform {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HttpPlatform")
+            .field("base", &self.base)
+            .field("secret", &self.secret)
+            .finish_non_exhaustive()
+    }
 }
 impl HttpPlatform {
     pub fn new(base: &str, secret: String) -> Result<Self> {
         let _ = rustls::crypto::ring::default_provider().install_default();
         Ok(Self {
             base: base.trim_end_matches('/').into(),
-            secret,
+            secret: crate::adapters::production::Secret::new(secret),
             client: Client::builder()
                 .redirect(reqwest::redirect::Policy::none())
                 .build()?,
@@ -94,7 +102,7 @@ impl LeaguePlatform for HttpPlatform {
         let req = self
             .client
             .post(self.url("auth/bot"))
-            .bearer_auth(&self.secret)
+            .bearer_auth(self.secret.expose())
             .json(&profile);
         Ok(send(req).await?.json::<Auth>().await?.token)
     }
