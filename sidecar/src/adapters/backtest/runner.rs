@@ -200,6 +200,7 @@ impl Backtest {
             clock.clone(),
             self.feeds.signal.clone(),
             self.feeds.odds.clone(),
+            self.feeds.context.clone(),
             solver,
         );
         let lineup = [

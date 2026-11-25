@@ -144,20 +144,25 @@ pub fn new(
     clock: Arc<dyn Clock>,
     signal: Arc<dyn SignalEstimator>,
     odds: Arc<dyn OddsSource>,
+    context: Arc<dyn ContextEnricher>,
 ) -> Arc<dyn PickemStep> {
     with_solver(
         clock,
         signal,
         odds,
+        context,
         Arc::new(MonteCarloPickemSolver::default()),
     )
 }
 
+/// `context` supplies the Stage teams' roster facts, which (with the odds and
+/// ratings) decide whether the pre-Stage refresh is due.
 pub fn with_solver(
     clock: Arc<dyn Clock>,
     signal: Arc<dyn SignalEstimator>,
     odds: Arc<dyn OddsSource>,
+    context: Arc<dyn ContextEnricher>,
     solver: Arc<dyn PickemSolver>,
 ) -> Arc<dyn PickemStep> {
-    Arc::new(step::PickemRunner::new(clock, signal, odds, solver))
+    Arc::new(step::PickemRunner::new(clock, signal, odds, context, solver))
 }

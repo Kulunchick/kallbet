@@ -164,6 +164,7 @@ async fn swiss_stage_submits_refreshes_once_in_prelock_window_stops_after_lock_a
         sidecar.ports.clock.clone(),
         sidecar.ports.signal.clone(),
         sidecar.ports.odds.clone(),
+        sidecar.ports.context.clone(),
         solver,
     );
 
@@ -406,6 +407,7 @@ async fn playoffs_stage_waits_until_ready_submits_refreshes_stops_after_lock_and
         sidecar.ports.clock.clone(),
         sidecar.ports.signal.clone(),
         sidecar.ports.odds.clone(),
+        sidecar.ports.context.clone(),
     );
 
     // 1. While bracket.ready == false, Sidecar::tick waits and submits nothing.
@@ -651,6 +653,7 @@ async fn pickem_tick_rejects_post_cutoff_odds_and_from_config_wires_pickem_step(
         harness_sidecar.ports.clock.clone(),
         harness_sidecar.ports.signal.clone(),
         harness_sidecar.ports.odds.clone(),
+        harness_sidecar.ports.context.clone(),
     );
     *h.scripts.market.lock().unwrap() =
         Some(AsOf::new(0.65, eval_time, eval_time + Duration::minutes(1)).unwrap());

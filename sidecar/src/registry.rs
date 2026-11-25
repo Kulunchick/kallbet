@@ -17,13 +17,19 @@ impl Sidecar {
         }
         let signal = Arc::new(signal);
         let odds = adapters::odds::build(&audit)?;
+        let context = adapters::context::build(&config.context, &audit, clock.clone());
         let ports = Ports {
-            pickem: adapters::pickem::new(clock.clone(), signal.clone(), odds.clone()),
+            pickem: adapters::pickem::new(
+                clock.clone(),
+                signal.clone(),
+                odds.clone(),
+                context.clone(),
+            ),
             platform: Arc::new(HttpPlatform::new(&config.platform_url, secret)?),
             clock: clock.clone(),
             signal,
             odds,
-            context: adapters::context::build(&config.context, &audit, clock.clone()),
+            context,
             llm: adapters::debate::build(
                 &config.debate,
                 adapters::llm::build(&config.llm, clock.clone()),

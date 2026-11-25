@@ -161,10 +161,48 @@ fn compute_input_hash(
     Ok(crate::digest(&bytes))
 }
 
+/// What decides whether a submitted Pick'em is refreshed: the hash of the
+/// Stage and its ratings (odds or VRS), and the hash of its teams' roster facts
+/// (`None` when the Context Enricher failed). Stored as `ratings/rosters` (`-`
+/// for none) in `submitted_pickems.input_hash`.
+#[derive(Clone, Debug, PartialEq)]
+struct Inputs {
+    ratings: String,
+    rosters: Option<String>,
+}
+impl Inputs {
+    fn encode(&self) -> String {
+        format!("{}/{}", self.ratings, self.rosters.as_deref().unwrap_or("-"))
+    }
+    fn decode(stored: &str) -> Self {
+        match stored.split_once('/') {
+            Some((ratings, "-")) => Self {
+                ratings: ratings.into(),
+                rosters: None,
+            },
+            Some((ratings, rosters)) => Self {
+                ratings: ratings.into(),
+                rosters: Some(rosters.into()),
+            },
+            None => Self {
+                ratings: stored.into(),
+                rosters: None,
+            },
+        }
+    }
+    /// Whether anything known on both sides changed: a roster hash missing on
+    /// either side (the enricher failed) compares on the odds alone.
+    fn changed_since(&self, before: &Self) -> bool {
+        self.ratings != before.ratings
+            || matches!((&self.rosters, &before.rosters), (Some(now), Some(then)) if now != then)
+    }
+}
+
 pub struct PickemRunner {
     clock: Arc<dyn Clock>,
     signal: Arc<dyn SignalEstimator>,
     odds: Arc<dyn OddsSource>,
+    context: Arc<dyn ContextEnricher>,
     solver: Arc<dyn PickemSolver>,
 }
 
@@ -173,14 +211,60 @@ impl PickemRunner {
         clock: Arc<dyn Clock>,
         signal: Arc<dyn SignalEstimator>,
         odds: Arc<dyn OddsSource>,
+        context: Arc<dyn ContextEnricher>,
         solver: Arc<dyn PickemSolver>,
     ) -> Self {
         Self {
             clock,
             signal,
             odds,
+            context,
             solver,
         }
+    }
+
+    /// The hash of the roster facts (Liquipedia rosters and VRS roster diffs)
+    /// of every team of the Stage, asked of the Context Enricher in pairs of
+    /// teams. `None` when the enricher fails: the refresh then goes by the odds
+    /// alone. A leak still ends the step.
+    async fn roster_hash(&self, sp: &StagePickem, now: Instant) -> Result<Option<String>> {
+        let mut teams = sp.teams.clone();
+        teams.sort_by_key(|t| t.id);
+        let mut facts = Vec::new();
+        for pair in teams.chunks(2) {
+            let game = Match {
+                event_id: sp.event_id,
+                id: 0,
+                team_a: pair[0].clone(),
+                team_b: pair.last().unwrap_or(&pair[0]).clone(),
+                format: Format::Bo1,
+                scheduled_start: sp.locks_at,
+            };
+            let found = match self.context.facts(&game, now).await {
+                Ok(found) => found,
+                Err(e) if e.is::<TemporalLeakError>() => return Err(e),
+                Err(e) => {
+                    tracing::warn!(error = %e, stage = sp.ordinal, "Pick'em: roster facts unavailable; deciding the refresh on the odds alone");
+                    return Ok(None);
+                }
+            };
+            for fact in found {
+                let mut fact = fact.at(now)?.clone();
+                if matches!(
+                    fact["kind"].as_str(),
+                    Some("liquipedia_roster" | "vrs_roster_diff")
+                ) {
+                    // Which side of the made-up pair a team was on is no input.
+                    if let Some(f) = fact.as_object_mut() {
+                        f.remove("match_side");
+                    }
+                    facts.push(fact.to_string());
+                }
+            }
+        }
+        facts.sort();
+        facts.dedup();
+        Ok(Some(crate::digest(facts.join("\n").as_bytes())))
     }
 
     async fn gather_ratings(
@@ -310,7 +394,7 @@ impl PickemRunner {
             if hashes.len() == 2 || (hashes.is_empty() && last_write >= refresh_open) {
                 return Ok(());
             }
-            hashes.into_iter().next()
+                hashes.into_iter().next().map(|h| Inputs::decode(&h))
         } else {
             None
         };
@@ -320,10 +404,14 @@ impl PickemRunner {
             .unwrap_or_else(|| now + Duration::nanoseconds(1));
         let ratings = self.gather_ratings(&sp, now, stage_cutoff).await?;
 
-        let input_hash = compute_input_hash(&sp.stage, &ratings, stage_cutoff)?;
-        if previous.as_deref() == Some(input_hash.as_str()) {
+            let inputs = Inputs {
+            ratings: compute_input_hash(&sp.stage, &ratings, stage_cutoff)?,
+            rosters: self.roster_hash(&sp, now).await?,
+        };
+        if previous.is_some_and(|before| !inputs.changed_since(&before)) {
             return Ok(());
         }
+        let input_hash = inputs.encode();
 
         let stage_as_of = AsOf::new(sp.stage, now, stage_cutoff)?;
         let Some(payload) = self.solver.solve(&stage_as_of, &ratings, stage_cutoff)? else {
