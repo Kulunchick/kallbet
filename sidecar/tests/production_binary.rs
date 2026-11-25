@@ -88,6 +88,11 @@ async fn a_dead_invite_link_is_skipped_without_the_invite_code_or_the_secret() {
     );
     assert!(out.status.success(), "{all}");
     assert!(all.contains("single tick ok"), "{all}");
+    assert_eq!(
+        all.matches("Invite Link no longer works").count(),
+        1,
+        "{all}"
+    );
     for secret in [TEST_BOT_SECRET, INVITE_CODE] {
         assert!(!all.contains(secret), "{secret} leaked: {all}");
     }

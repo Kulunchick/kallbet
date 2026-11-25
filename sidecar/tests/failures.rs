@@ -157,8 +157,8 @@ impl LeaguePlatform for Flaky {
     async fn login(&self, bot: &BotProfile) -> Result<String> {
         Ok(bot.bot_key.clone())
     }
-    async fn join(&self, _: &str, _: &str) -> Result<()> {
-        Ok(())
+    async fn join(&self, _: &str, _: &str) -> Result<Join> {
+        Ok(Join::Member)
     }
     async fn leagues(&self, _: &str) -> Result<Vec<i64>> {
         Ok(vec![1, 2])
@@ -208,4 +208,43 @@ async fn a_failure_in_one_league_or_match_does_not_stop_the_others() {
 
     // The decided Prediction of Match 7 is sent again on the next tick.
     assert_eq!(h.tick(&mut sidecar, now + Duration::minutes(1)).await.unwrap(), 0);
+}
+
+#[tokio::test]
+async fn a_reissued_invite_link_is_skipped_and_the_bots_other_league_goes_on() {
+    let h = Harness::new().await;
+    let now: Instant = "2026-11-24T00:00:00Z".parse().unwrap();
+    let (_, valid) = league(&h, now, now + Duration::hours(4)).await;
+    // A second League of the same Event whose admin reissues its link after
+    // giving it to the sidecar.
+    let human = h.app.user("Bob").await;
+    let other = human
+        .post("/api/leagues", &json!({"name":"Others","event_id":99}))
+        .await
+        .json();
+    let id = other["id"].as_i64().unwrap();
+    let dead = format!(
+        "{}/join/{}",
+        h.base,
+        other["invite_token"].as_str().unwrap()
+    );
+    let reissued = human
+        .post_empty(&format!("/api/leagues/{id}/invite/reissue"))
+        .await;
+    assert!(reissued.status.is_success());
+
+    let mut sidecar = h.sidecar(&dead).await;
+    sidecar.bots[0].invite_links.push(valid);
+    assert_eq!(h.tick(&mut sidecar, now).await.unwrap(), 1, "the valid League is predicted");
+    assert_eq!(
+        h.tick(&mut sidecar, now + Duration::minutes(1)).await.unwrap(),
+        0
+    );
+    let failures = sidecar.audit.failures().await.unwrap();
+    assert_eq!(failures.len(), 1, "logged once per run: {failures:?}");
+    assert_eq!(failures[0].step, "join");
+    assert_eq!(failures[0].error, "Invite Link 1: invite_invalid");
+    let bot = h.app.bot("vrs", "Baseline").await;
+    let leagues: Value = bot.get("/api/leagues").await.json();
+    assert_eq!(leagues.as_array().unwrap().len(), 1);
 }

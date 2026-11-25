@@ -106,17 +106,17 @@ impl LeaguePlatform for HttpPlatform {
             .json(&profile);
         Ok(send(req).await?.json::<Auth>().await?.token)
     }
-    async fn join(&self, token: &str, invite: &str) -> Result<()> {
-        let url = reqwest::Url::parse(invite).map_err(|_| "invalid Invite Link")?;
-        let code = url
-            .path()
-            .strip_prefix("/join/")
-            .filter(|s| {
+    async fn join(&self, token: &str, invite: &str) -> Result<Join> {
+        let url = reqwest::Url::parse(invite).ok();
+        let Some(code) = url.as_ref().and_then(|url| {
+            url.path().strip_prefix("/join/").filter(|s| {
                 !s.is_empty()
                     && s.bytes()
                         .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
             })
-            .ok_or("invalid Invite Link path")?;
+        }) else {
+            return Ok(Join::InviteInvalid);
+        };
         let res = self
             .client
             .post(self.url(&format!("invites/{code}/join")))
@@ -124,19 +124,24 @@ impl LeaguePlatform for HttpPlatform {
             .send()
             .await
             .map_err(reqwest::Error::without_url)?;
-        if res.status() == reqwest::StatusCode::CONFLICT {
+        let status = res.status();
+        if matches!(
+            status,
+            reqwest::StatusCode::CONFLICT | reqwest::StatusCode::NOT_FOUND
+        ) {
             let body = res
                 .json::<serde_json::Value>()
                 .await
                 .map_err(reqwest::Error::without_url)?;
-            if body["error"]["code"] == "league_archived" {
-                return Ok(());
-            }
-            return Err("invite conflict".into());
+            return match body["error"]["code"].as_str() {
+                Some("league_archived") => Ok(Join::LeagueArchived),
+                Some("invite_invalid") => Ok(Join::InviteInvalid),
+                _ => Err(format!("joining through an Invite Link answered {status}").into()),
+            };
         }
         res.error_for_status()
             .map_err(reqwest::Error::without_url)?;
-        Ok(())
+        Ok(Join::Member)
     }
     async fn leagues(&self, token: &str) -> Result<Vec<i64>> {
         let leagues = send(self.client.get(self.url("leagues")).bearer_auth(token))

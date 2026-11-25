@@ -14,10 +14,22 @@ pub struct StagePickem {
     pub stage: serde_json::Value,
 }
 
+/// What joining through an Invite Link came to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Join {
+    /// The bot is a Member (it was already, or it just joined).
+    Member,
+    /// 404 `invite_invalid`: the link is unknown or was reissued (or it is not
+    /// an Invite Link at all). It will not work again.
+    InviteInvalid,
+    /// 409 `league_archived`: the League is over.
+    LeagueArchived,
+}
+
 #[async_trait::async_trait]
 pub trait LeaguePlatform: Send + Sync {
     async fn login(&self, bot: &BotProfile) -> Result<String>;
-    async fn join(&self, token: &str, invite: &str) -> Result<()>;
+    async fn join(&self, token: &str, invite: &str) -> Result<Join>;
     async fn leagues(&self, token: &str) -> Result<Vec<i64>>;
     async fn matches(&self, token: &str, league: i64) -> Result<Vec<(Match, bool)>>;
     async fn submit(&self, token: &str, league: i64, game: i64, pick: &Prediction) -> Result<()>;

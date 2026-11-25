@@ -215,12 +215,8 @@ impl Backtest {
         ];
         let mut sidecars: Vec<Sidecar> = lineup
             .into_iter()
-            .map(|(profile, uses_llm, solves_pickem)| Sidecar {
-                bots: vec![profile],
-                audit: Audit {
-                    db: audit.db.clone(),
-                },
-                ports: Ports {
+            .map(|(profile, uses_llm, solves_pickem)| {
+                let ports = Ports {
                     platform: platform.clone(),
                     clock: clock.clone(),
                     signal: self.feeds.signal.clone(),
@@ -237,10 +233,13 @@ impl Backtest {
                     } else {
                         Arc::new(Noop)
                     },
-                },
+                };
+                let audit = Audit {
+                    db: audit.db.clone(),
+                };
                 // The replay reads every failure from the tick: an LLM profile
                 // without an answer must not submit the anchor's pick.
-                on_failure: OnFailure::Abort,
+                Sidecar::new(vec![profile], audit, ports).on_failure(OnFailure::Abort)
             })
             .collect();
 

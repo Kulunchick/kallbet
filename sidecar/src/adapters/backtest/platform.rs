@@ -90,8 +90,8 @@ impl LeaguePlatform for ReplayPlatform {
     async fn login(&self, bot: &BotProfile) -> Result<String> {
         Ok(bot.bot_key.clone())
     }
-    async fn join(&self, _: &str, _: &str) -> Result<()> {
-        Ok(())
+    async fn join(&self, _: &str, _: &str) -> Result<Join> {
+        Ok(Join::Member)
     }
     async fn leagues(&self, _: &str) -> Result<Vec<i64>> {
         Ok(vec![LEAGUE])

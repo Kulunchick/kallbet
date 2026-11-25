@@ -35,6 +35,9 @@ pub struct Sidecar {
     pub audit: Audit,
     pub ports: Ports,
     pub on_failure: OnFailure,
+    /// Invite Links (bot key, link) that answered `invite_invalid` or
+    /// `league_archived` in this run: logged once, then skipped.
+    dead_invites: std::sync::Mutex<std::collections::HashSet<(String, String)>>,
 }
 /// Where in a tick a failure happened.
 #[derive(Clone, Copy, Default)]
@@ -44,6 +47,20 @@ struct At {
     stage: Option<u8>,
 }
 impl Sidecar {
+    /// A live sidecar (`OnFailure::Isolate`).
+    pub fn new(bots: Vec<BotProfile>, audit: Audit, ports: Ports) -> Self {
+        Self {
+            bots,
+            audit,
+            ports,
+            on_failure: OnFailure::Isolate,
+            dead_invites: Default::default(),
+        }
+    }
+    pub fn on_failure(mut self, on_failure: OnFailure) -> Self {
+        self.on_failure = on_failure;
+        self
+    }
     pub async fn tick(&mut self) -> Result<usize> {
         let now = self.ports.clock.now();
         let mut submitted = 0;
@@ -93,9 +110,38 @@ impl Sidecar {
     async fn tick_bot(&self, bot: &BotProfile, now: Instant) -> Result<usize> {
         let platform = self.ports.platform.as_ref();
         let token = platform.login(bot).await?;
-        for invite in &bot.invite_links {
-            if let Err(e) = platform.join(&token, invite).await {
-                self.failed(bot, now, "join", At::default(), e).await?;
+        for (n, invite) in bot.invite_links.iter().enumerate() {
+            let key = (bot.bot_key.clone(), invite.clone());
+            if self.dead_invites.lock().unwrap().contains(&key) {
+                continue;
+            }
+            let why = match platform.join(&token, invite).await {
+                Ok(Join::Member) => continue,
+                Ok(Join::InviteInvalid) => "invite_invalid",
+                Ok(Join::LeagueArchived) => "league_archived",
+                Err(e) => {
+                    self.failed(bot, now, "join", At::default(), e).await?;
+                    continue;
+                }
+            };
+            // A League Admin reissued the link (or the League is over): this
+            // link will not work again, and the bot's other Leagues go on.
+            // Logged once per run; the link itself is a credential, so only
+            // its place in the bot's list is named.
+            self.dead_invites.lock().unwrap().insert(key);
+            let link = n + 1;
+            tracing::warn!(bot = %bot.bot_key, link, why, "Invite Link no longer works; skipped until restart");
+            let failure = Failure {
+                at: now,
+                bot: bot.bot_key.clone(),
+                step: "join".into(),
+                league: None,
+                match_id: None,
+                stage: None,
+                error: format!("Invite Link {link}: {why}"),
+            };
+            if let Err(e) = self.audit.record_failure(&failure).await {
+                tracing::error!(error = %e, "could not record a failed step in the audit");
             }
         }
         let mut submitted = 0;

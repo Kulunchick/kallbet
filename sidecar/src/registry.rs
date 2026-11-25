@@ -29,14 +29,7 @@ impl Sidecar {
             )?,
             policy: Arc::new(ConfiguredPolicy),
         };
-        let sidecar = Sidecar {
-            bots: config.bots,
-            audit,
-            ports,
-            on_failure: OnFailure::Isolate,
-        };
-
-        Ok(sidecar)
+        Ok(Sidecar::new(config.bots, audit, ports))
     }
 }
 pub(crate) struct ConfiguredPolicy;

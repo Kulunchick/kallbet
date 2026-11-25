@@ -14,9 +14,9 @@ impl LeaguePlatform for PlatformScript {
     async fn login(&self, bot: &BotProfile) -> Result<String> {
         Ok(bot.bot_key.clone())
     }
-    async fn join(&self, _: &str, invite: &str) -> Result<()> {
+    async fn join(&self, _: &str, invite: &str) -> Result<Join> {
         self.joins.lock().unwrap().push(invite.to_string());
-        Ok(())
+        Ok(Join::Member)
     }
     async fn leagues(&self, _: &str) -> Result<Vec<i64>> {
         Ok(self.leagues.keys().copied().collect())

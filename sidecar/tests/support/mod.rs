@@ -143,14 +143,13 @@ impl Harness {
             llm: self.scripts.clone(),
             pickem: self.scripts.clone(),
         };
-        Sidecar {
-            bots: vec![bot],
-            audit: Audit::open(&self.dir.path().join("audit.db"))
+        Sidecar::new(
+            vec![bot],
+            Audit::open(&self.dir.path().join("audit.db"))
                 .await
                 .unwrap(),
             ports,
-            on_failure: OnFailure::Isolate,
-        }
+        )
     }
     pub async fn tick(&self, sidecar: &mut Sidecar, now: Instant) -> Result<usize> {
         self.app.clock.set(now);
