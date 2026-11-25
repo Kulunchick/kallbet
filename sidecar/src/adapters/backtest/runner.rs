@@ -332,6 +332,14 @@ impl Backtest {
         for t in turns.iter().skip(imported) {
             *track.calls.entry(t.bot.clone()).or_default() += 1;
         }
+        for t in turns.iter().filter(|t| t.status == "ok") {
+            *track
+                .answered_by
+                .entry(t.bot.clone())
+                .or_default()
+                .entry(format!("{} by {}", t.role, t.provider))
+                .or_default() += 1;
+        }
         for b in LLM_BOTS {
             let answered = predictions.iter().filter(|p| p.bot == b).count();
             track.answered.insert(b.into(), answered);
@@ -395,7 +403,7 @@ impl Backtest {
         let mut tables = vec![
             report::table(
                 "Non-LLM track: every completed Match",
-                "Each profile on every Match it predicted. VrsOnly needs both teams in a Valve snapshot before the cutoff, MarketOnly a pre-match OddsPapi line (it falls back to VRS without one, so its rows include those Matches), the anchor either.",
+                "Each profile on every Match it predicted. VrsOnly needs both teams in a Valve snapshot before the cutoff, MarketOnly a pre-match market line (OddsPapi, else Polymarket, else Kalshi; without one it falls back to VRS, so its rows include those Matches), the anchor either.",
                 stages,
                 &all,
                 predictions,
@@ -519,13 +527,65 @@ impl Backtest {
             });
         }
 
+        let anchors: BTreeMap<i64, &Submitted> = predictions
+            .iter()
+            .filter(|p| p.bot == ANCHOR)
+            .map(|p| (p.match_id, p))
+            .collect();
+        let mut llm_moves = Vec::new();
+        for p in predictions
+            .iter()
+            .filter(|p| LLM_BOTS.contains(&p.bot.as_str()))
+        {
+            let (Some(anchor), Some(m)) = (
+                anchors.get(&p.match_id),
+                stages
+                    .iter()
+                    .flat_map(|s| &s.matches)
+                    .find(|m| m.game.id == p.match_id),
+            ) else {
+                continue;
+            };
+            let p_a = |s: &Submitted| {
+                let w = s.prediction.rationale["p_win"].as_f64().unwrap_or(0.5);
+                if s.prediction.team_id == m.game.team_a.id {
+                    w
+                } else {
+                    1.0 - w
+                }
+            };
+            if (p_a(anchor) - p_a(p)).abs() > 1e-9 {
+                let name = |id: i64| {
+                    if id == m.game.team_a.id {
+                        m.game.team_a.name.clone()
+                    } else {
+                        m.game.team_b.name.clone()
+                    }
+                };
+                let format = serde_json::to_value(m.game.format)?;
+                llm_moves.push(report::LlmMove {
+                    profile: p.bot.clone(),
+                    game: format!(
+                        "{} vs {} ({})",
+                        m.game.team_a.name,
+                        m.game.team_b.name,
+                        format.as_str().unwrap_or("")
+                    ),
+                    anchor_team_a: p_a(anchor),
+                    llm_team_a: p_a(p),
+                    pick: name(p.prediction.team_id),
+                    winner: name(m.winner),
+                    factors: p.prediction.rationale["factors"].clone(),
+                });
+            }
+        }
         let mut notes = vec![
             format!(
                 "Each Match is evaluated {} s before its cutoff min(Scheduled Start − 15 min, actual start); every odds line, VRS snapshot and Liquipedia revision in its dossier was observed strictly before that instant. Each Stage's Pick'em is made 1 s before its first Match starts, from the Liquipedia Stage revision saved from before that instant (teams, Round 1 pairings, seeds).",
                 evaluation_lead().num_seconds()
             ),
             "Scheduled Start and actual start come from PandaScore's final records (`scheduled_at`, `begin_at`).".into(),
-            "Market lines: OddsPapi historical Pinnacle series-winner prices, which exist for settled fixtures since January 2026 only (IEM Cologne Major 2026 and PGL Major Singapore 2026). Polymarket and Kalshi do not answer from the machine this ran on.".into(),
+            "Market lines: OddsPapi historical Pinnacle series-winner prices, which exist for settled fixtures since January 2026 only (IEM Cologne Major 2026 and PGL Major Singapore 2026), then Polymarket and Kalshi price histories, saved for PGL Major Singapore 2026 Stage 1 only.".into(),
             "Valve's global standings start in August 2024, so PGL Major Copenhagen 2024 has no rating: its Matches are not predicted and its Pick'em is drawn from even odds.".into(),
             "Rosters: Liquipedia Event page revisions saved for some Matches only (see the Rosters column). No dated news archive exists, so no dossier holds news.".into(),
         ];
@@ -543,6 +603,7 @@ impl Backtest {
                 .collect(),
             stages: stage_rows,
             tables,
+            llm_moves,
             pickem,
             llm,
             notes,

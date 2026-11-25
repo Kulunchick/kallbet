@@ -244,12 +244,27 @@ pub struct LlmTrack {
     pub providers: Vec<String>,
     pub planned: BTreeMap<String, usize>,
     pub answered: BTreeMap<String, usize>,
+    /// Provider calls made by this run (not counting recorded answers).
     pub calls: BTreeMap<String, usize>,
+    /// Every answer the profile used, recorded or new: "role by provider" -> count.
+    pub answered_by: BTreeMap<String, BTreeMap<String, usize>>,
     /// Matches without an LLM answer, by profile and error kind.
     pub failures: BTreeMap<String, usize>,
     pub stopped: Option<String>,
     /// Providers whose breaker opened, and when (they are not asked again).
     pub exhausted: BTreeMap<String, String>,
+}
+
+/// A Match where an LLM profile's probability differs from the anchor's.
+#[derive(Clone, Debug, Serialize)]
+pub struct LlmMove {
+    pub profile: String,
+    pub game: String,
+    pub anchor_team_a: f64,
+    pub llm_team_a: f64,
+    pub pick: String,
+    pub winner: String,
+    pub factors: Value,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -259,6 +274,7 @@ pub struct Report {
     pub profiles: Vec<(String, String)>,
     pub stages: Vec<StageRow>,
     pub tables: Vec<Table>,
+    pub llm_moves: Vec<LlmMove>,
     pub pickem: Vec<PickemRow>,
     pub llm: LlmTrack,
     pub notes: Vec<String>,
@@ -341,6 +357,46 @@ impl Report {
             }
         }
         line(String::new());
+        line("## Where an LLM moved the anchor".into());
+        line(String::new());
+        if self.llm_moves.is_empty() {
+            line("Nowhere: every LLM answer left the anchored probability as it was.".into());
+        } else {
+            line("Probabilities are for the first-named team. Factors are the ones the policy accepted; none means the tie-break of at most 2 points near 50/50.".into());
+            line(String::new());
+            line("| Profile | Match | Anchor | With the LLM | Pick | Winner | Factors |".into());
+            line("|---|---|--:|--:|---|---|---|".into());
+            for m in &self.llm_moves {
+                let factors: Vec<String> = m
+                    .factors
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|f| {
+                        format!(
+                            "{} ({})",
+                            f["kind"].as_str().unwrap_or(""),
+                            f["evidence_url"].as_str().unwrap_or("")
+                        )
+                    })
+                    .collect();
+                line(format!(
+                    "| {} | {} | {:.1}% | {:.1}% | {} | {} | {} |",
+                    m.profile,
+                    m.game,
+                    m.anchor_team_a * 100.0,
+                    m.llm_team_a * 100.0,
+                    m.pick,
+                    m.winner,
+                    if factors.is_empty() {
+                        "none".into()
+                    } else {
+                        factors.join(", ")
+                    }
+                ));
+            }
+        }
+        line(String::new());
         line("## Pick'em Points (PickemSolver)".into());
         line(String::new());
         line("Every profile submits the same Pick'em: the sidecar's Pick'em step is the Monte-Carlo solver over pre-Stage market and VRS ratings, with no LLM and no decision policy (ticket #28). Swiss: 10 picks, Playoffs: 7 slots.".into());
@@ -363,7 +419,7 @@ impl Report {
         line("## LLM track".into());
         line(String::new());
         line(format!(
-            "Providers configured: {}.",
+            "Providers configured in this run: {}.",
             if self.llm.providers.is_empty() {
                 "none".into()
             } else {
@@ -371,8 +427,19 @@ impl Report {
             }
         ));
         for (bot, planned) in &self.llm.planned {
+            let seats = self
+                .llm
+                .answered_by
+                .get(bot)
+                .map(|m| {
+                    m.iter()
+                        .map(|(seat, n)| format!("{seat} x{n}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .unwrap_or_else(|| "none".into());
             line(format!(
-                "- `{bot}`: {} of {planned} planned Matches answered; provider calls by seat: {}.",
+                "- `{bot}`: {} of {planned} planned Matches answered; answers used: {seats}; provider calls in this run: {}.",
                 self.llm.answered.get(bot).copied().unwrap_or(0),
                 self.llm.calls.get(bot).copied().unwrap_or(0)
             ));
@@ -381,7 +448,9 @@ impl Report {
             line(format!("- Stopped: {stop}"));
         }
         for (provider, when) in &self.llm.exhausted {
-            line(format!("- `{provider}`: {when} (its seats fell back to the rest of their chain)."));
+            line(format!(
+                "- `{provider}`: {when} (its seats fell back to the rest of their chain)."
+            ));
         }
         for (f, n) in &self.llm.failures {
             line(format!("- {f}: {n} Matches without an answer"));
