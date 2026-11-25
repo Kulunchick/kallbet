@@ -26,6 +26,8 @@ pub struct Config {
     pub bots: Vec<BotProfile>,
     #[serde(default)]
     pub context: adapters::context::ContextConfig,
+    #[serde(default)]
+    pub llm: adapters::llm::LlmConfig,
 }
 impl Config {
     pub fn load(path: impl AsRef<std::path::Path>) -> Result<Self> {
