@@ -104,3 +104,28 @@ fn historical_pinnacle_ignores_ticks_at_or_after_the_cutoff() {
     assert!(earlier.observed_at() < tick);
     assert!(oddspapi::parse_history(body, "different-fixture", cutoff).is_err());
 }
+
+#[test]
+fn replay_links_settled_fixtures_with_aliases_and_preserves_canonical_team_order() {
+    let fixtures = include_bytes!("fixtures/odds/oddspapi-fixtures-pgl-singapore-settled.json");
+    let raw_odds =
+        include_bytes!("fixtures/odds/oddspapi-historical-odds-od174000143389068-pinnacle.json");
+    let mut game = game("M80", "NIP", "2026-11-24T05:00:00Z");
+    let fixture = oddspapi::match_settled_fixture(fixtures, &game)
+        .unwrap()
+        .unwrap();
+    assert_eq!(fixture.id(), "od174000143389068");
+    let late = "2026-11-24T08:00:00Z".parse().unwrap();
+    let quote = fixture.quote(raw_odds, late).unwrap().unwrap();
+    assert!((quote.at(late).unwrap() - 0.439036885).abs() < 1e-9);
+    assert_eq!(
+        quote.observed_at(),
+        "2026-11-24T04:05:36.202Z".parse::<Instant>().unwrap()
+    );
+    game.scheduled_start = Some("2026-11-23T12:00:00Z".parse().unwrap());
+    assert!(
+        oddspapi::match_settled_fixture(fixtures, &game)
+            .unwrap()
+            .is_none()
+    );
+}

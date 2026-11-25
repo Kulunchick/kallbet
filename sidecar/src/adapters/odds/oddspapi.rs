@@ -1,5 +1,6 @@
 use super::lines::{self, Line, normalize, timestamp};
 use crate::{AsOf, Instant, Match, Result};
+use chrono::Duration;
 use serde_json::Value;
 
 pub(super) const FREE_PINNACLE: &str = "pinnacle+30";
@@ -61,6 +62,60 @@ fn active_prices(book: &Value) -> Option<([f64; 2], Instant)> {
 
 fn fair_decimal(a: &Value, b: &Value) -> Option<[f64; 2]> {
     normalize(a["price"].as_f64()?.recip(), b["price"].as_f64()?.recip())
+}
+
+pub struct SettledFixture {
+    id: String,
+    side: usize,
+    hard_lock: Instant,
+}
+
+impl SettledFixture {
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    /// Match the history response to this fixture. Return team A's closing
+    /// probability as of the requested cutoff, capped at Hard Lock.
+    pub fn quote(&self, body: &[u8], cutoff: Instant) -> Result<Option<AsOf<f64>>> {
+        let cutoff = cutoff.min(self.hard_lock);
+        let Some(quote) = parse_history(body, &self.id, cutoff)? else {
+            return Ok(None);
+        };
+        let first = *quote.at(cutoff)?;
+        let team_a = if self.side == 0 { first } else { 1.0 - first };
+        Ok(Some(AsOf::new(team_a, quote.observed_at(), cutoff)?))
+    }
+}
+
+/// Link a canonical Match to an OddsPapi fixture from the Event's settled
+/// `/v4/fixtures` response. Replay can then load that fixture's saved history.
+pub fn match_settled_fixture(body: &[u8], game: &Match) -> Result<Option<SettledFixture>> {
+    let Some(scheduled) = game.scheduled_start else {
+        return Ok(None);
+    };
+    let fixtures: Vec<Value> = serde_json::from_slice(body)?;
+    let candidates: Vec<_> = fixtures
+        .iter()
+        .filter(|fixture| fixture["statusId"] == 2)
+        .filter_map(|fixture| {
+            Some((
+                fixture["fixtureId"].as_str()?,
+                fixture_teams(fixture)?,
+                timestamp(&fixture["startTime"])?,
+                timestamp(&fixture["trueStartTime"])?,
+            ))
+        })
+        .collect();
+    Ok(
+        lines::best(game, &candidates, |item| (&item.1, item.2)).map(|(item, side)| {
+            SettledFixture {
+                id: item.0.into(),
+                side,
+                hard_lock: (scheduled - Duration::minutes(15)).min(item.3),
+            }
+        }),
+    )
 }
 
 /// Return the last active pre-cutoff series quote, in OddsPapi participant

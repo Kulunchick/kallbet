@@ -110,6 +110,22 @@ impl FallbackOdds {
         Ok(raw.map(|raw| serde_json::from_slice(&raw)).transpose()?)
     }
 
+    async fn reserve_oddspapi_request(&self, now: Instant) -> Result<bool> {
+        const MONTHLY_BUDGET: i32 = 200;
+        // Reserve before sending. Even an upstream 429 can count against
+        // the free plan, and an interrupted tick must keep the reservation.
+        let update = sqlx::query(
+            "INSERT INTO oddspapi_months(month, attempts) VALUES (?1, 1)
+             ON CONFLICT(month) DO UPDATE SET attempts = attempts + 1
+             WHERE attempts < ?2",
+        )
+        .bind(now.format("%Y-%m").to_string())
+        .bind(MONTHLY_BUDGET)
+        .execute(&self.db)
+        .await?;
+        Ok(update.rows_affected() != 0)
+    }
+
     async fn lookup(
         &self,
         game: &Match,
@@ -177,6 +193,9 @@ impl FallbackOdds {
                         continue;
                     }
                     if matches!(feed, Feed::OddsPapi { .. }) {
+                        if !self.reserve_oddspapi_request(cutoff).await? {
+                            continue;
+                        }
                         // OddsPapi rejects concurrent Event batches even when
                         // they use different tournament IDs.
                         breaker.next_request = Some(cutoff + Duration::seconds(1));

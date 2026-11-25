@@ -149,3 +149,47 @@ async fn three_failures_open_the_breaker_then_a_successful_probe_restores_pinnac
     assert!((quote.unwrap().at(retry).unwrap() - 0.537051381).abs() < 1e-9);
     assert_eq!(*feed.attempts.lock().unwrap(), 4);
 }
+
+#[tokio::test]
+async fn oddspapi_keeps_headroom_in_the_monthly_budget_across_events_and_restarts() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("audit.db");
+    let audit = Audit::open(&path).await.unwrap();
+    let feed = Arc::new(PinnacleFeed::default());
+    let config = OddsConfig {
+        oddspapi_key: Some("test-key".into()),
+        oddspapi_tournaments: (1..=201).map(|id| (id, vec![400014])).collect(),
+        kalshi_enabled: false,
+        ..OddsConfig::default()
+    };
+    let chain = FallbackOdds::new(&audit, config.clone(), feed.clone());
+    let now: Instant = "2026-11-25T17:20:00Z".parse().unwrap();
+    let mut game = game(1, "Heroic", "FaZe");
+    for id in 1..=200 {
+        game.event_id = id;
+        let at = now + Duration::seconds(id);
+        let (_, quote) = chain.live_quote(&game, at, &FixedClock(at)).await.unwrap();
+        assert!(quote.is_some());
+    }
+    drop(chain);
+    drop(audit);
+
+    let audit = Audit::open(&path).await.unwrap();
+    let chain = FallbackOdds::new(&audit, config, feed.clone());
+    game.event_id = 201;
+    let at = now + Duration::seconds(201);
+    let (_, quote) = chain.live_quote(&game, at, &FixedClock(at)).await.unwrap();
+    assert!(quote.is_none());
+    assert_eq!(feed.batches.lock().unwrap().len(), 200);
+    let next_month = "2026-12-01T00:00:00Z".parse().unwrap();
+    game.scheduled_start = Some("2026-12-01T06:00:00Z".parse().unwrap());
+    let (_, quote) = chain
+        .live_quote(&game, next_month, &FixedClock(next_month))
+        .await
+        .unwrap();
+    assert!(
+        quote.is_none(),
+        "the saved November line is outside the Match window"
+    );
+    assert_eq!(feed.batches.lock().unwrap().len(), 201);
+}

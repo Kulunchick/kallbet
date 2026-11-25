@@ -4,3 +4,8 @@ CREATE TABLE odds_batches (
     lines BLOB NOT NULL,
     PRIMARY KEY (scope, captured_at)
 );
+
+CREATE TABLE oddspapi_months (
+    month TEXT PRIMARY KEY NOT NULL,
+    attempts INTEGER NOT NULL CHECK (attempts > 0)
+);
