@@ -228,6 +228,12 @@ impl Providers {
             mode,
             web_search_bots: config.web_search_bots.clone(),
         };
+        let web: BTreeSet<String> = config
+            .providers
+            .iter()
+            .filter(|(_, p)| !matches!(p, ProviderConfig::Http(_)))
+            .map(|(name, _)| name.clone())
+            .collect();
         let runtimes = config.providers.iter().map(|(name, provider)| {
             let cli = |cli, config: &CliConfig| -> Arc<dyn LlmRuntime> {
                 Arc::new(CliRuntime {
@@ -251,6 +257,13 @@ impl Providers {
             clock,
         );
         providers.tools = policy;
+        for (name, provider) in &mut providers.providers {
+            if web.contains(name) {
+                Arc::get_mut(provider)
+                    .expect("providers are not shared yet")
+                    .web = true;
+            }
+        }
         providers
     }
     /// Providers from ready runtimes (fakes in tests, or adapters built elsewhere).
@@ -269,6 +282,7 @@ impl Providers {
                         name,
                         runtime,
                         breaker,
+                        web: false,
                     }),
                 )
             })
@@ -289,6 +303,15 @@ impl Providers {
     pub fn access(&self, bot: &BotProfile, tier: Tier) -> ToolAccess {
         self.tools.access(bot, tier)
     }
+    /// What the run of `bot` at `tier` that `provider` answered could reach:
+    /// web access needs both the policy and a provider that has tools (not the
+    /// HTTP adapter, which sends none). An unknown provider had none.
+    pub fn access_of(&self, provider: &str, bot: &BotProfile, tier: Tier) -> ToolAccess {
+        match self.providers.get(provider) {
+            Some(p) if p.web => self.tools.access(bot, tier),
+            _ => ToolAccess::None,
+        }
+    }
     /// The chain over `names`; a name with no provider fails as `NotConfigured`.
     pub fn chain(&self, names: &[String]) -> FallbackLlm {
         FallbackLlm::new(
@@ -300,6 +323,7 @@ impl Providers {
                             name: name.clone(),
                             runtime: Arc::new(Unconfigured),
                             breaker: Breaker::new(self.cooldown, self.clock.clone()),
+                            web: false,
                         })
                     })
                 })

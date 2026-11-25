@@ -96,6 +96,10 @@ pub struct Provider {
     pub name: String,
     pub runtime: Arc<dyn LlmRuntime>,
     pub breaker: Breaker,
+    /// Whether this provider can read the web when the tool policy grants it:
+    /// the CLIs can; the HTTP adapter sends no tools, so it never reads anything
+    /// but the prompt.
+    pub web: bool,
 }
 
 /// The answer of a chain and who gave it (for the debate audit of #29).

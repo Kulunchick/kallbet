@@ -85,16 +85,17 @@ pub(super) struct TurnLog {
     pub db: SqlitePool,
 }
 impl TurnLog {
-    /// The latest answer a seat gave under this reuse key, if it gave one.
+    /// The latest answer a seat gave under this reuse key, if it gave one,
+    /// and the provider that gave it.
     pub async fn answered(
         &self,
         bot: &str,
         tier: Tier,
         key: &str,
         role: &str,
-    ) -> Result<Option<Value>> {
-        let brief: Option<String> = sqlx::query_scalar(
-            "SELECT brief FROM debate_turns
+    ) -> Result<Option<(String, Value)>> {
+        let row: Option<(String, Option<String>)> = sqlx::query_as(
+            "SELECT provider, brief FROM debate_turns
              WHERE bot=? AND tier=? AND reuse_key=? AND role=? AND status='ok'
              ORDER BY id DESC LIMIT 1",
         )
@@ -103,9 +104,11 @@ impl TurnLog {
         .bind(key)
         .bind(role)
         .fetch_optional(&self.db)
-        .await?
-        .flatten();
-        Ok(brief.as_deref().map(serde_json::from_str).transpose()?)
+        .await?;
+        let Some((provider, Some(brief))) = row else {
+            return Ok(None);
+        };
+        Ok(Some((provider, serde_json::from_str(&brief)?)))
     }
     pub async fn record(&self, turn: &DebateTurn) -> Result<()> {
         sqlx::query(

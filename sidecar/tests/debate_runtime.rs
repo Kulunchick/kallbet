@@ -821,3 +821,79 @@ async fn a_whitelisted_page_is_evidence_only_for_a_run_that_could_read_the_web()
         assert_eq!(cited(ask(named("oracle"), Tier::PreLock).await), json!([]));
     }
 }
+
+/// An Anthropic-compatible endpoint (an OAuth proxy) that always gives `answer`.
+async fn proxy(answer: Value) -> String {
+    let body = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/llm/anthropic-message.json"
+    ))
+    .unwrap()
+    .replace(
+        "\"Hi! My name is Claude.\"",
+        &serde_json::to_string(&answer.to_string()).unwrap(),
+    );
+    let app = axum::Router::new().route(
+        "/v1/messages",
+        axum::routing::post(move || {
+            let body = body.clone();
+            async move { ([("content-type", "application/json")], body) }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+    let url = format!("http://{}/v1", listener.local_addr().unwrap());
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    url
+}
+
+#[tokio::test]
+async fn a_whitelisted_page_is_no_evidence_when_the_provider_that_answered_had_no_tools() {
+    let on_hltv = "https://www.hltv.org/news/99999/vitality-field-a-stand-in";
+    let answer = json!({
+        "delta": -6,
+        "factors": [{"kind": "stand_in", "evidence_url": on_hltv}],
+        "summary": {"en": "Read on HLTV.", "ru": "Прочитано на HLTV.", "uk": "Прочитано на HLTV."}
+    });
+    // `scout` may read the web, but its chain is the HTTP adapter, which sends
+    // the model no tools: the page cannot have been read.
+    let config: LlmConfig = serde_json::from_value(json!({
+        "providers": {"proxy": {"kind": "http", "api": "anthropic",
+                                "base_url": proxy(answer).await, "model": "m"}},
+        "web_search_bots": ["scout"]
+    }))
+    .unwrap();
+    let scout = BotProfile {
+        bot_key: "scout".into(),
+        provider_chain: vec!["proxy".into()],
+        ..bot()
+    };
+    let providers = Arc::new(Providers::new(
+        &config,
+        Mode::Live,
+        Arc::new(Fixed),
+        Arc::new(Claude { answer: json!({}) }),
+    ));
+    assert_eq!(providers.access(&scout, Tier::PreLock), kallbet_ai::adapters::llm::ToolAccess::WhitelistedWeb);
+    assert_eq!(
+        providers.access_of("proxy", &scout, Tier::PreLock),
+        kallbet_ai::adapters::llm::ToolAccess::None
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let audit = Audit::open(&dir.path().join("audit.db")).await.unwrap();
+    let llm = debate::build(&DebateConfig::default(), providers, &audit).unwrap();
+    let d = dossier(0.52, Format::Bo3, vec![]);
+    for _ in ["asked", "reused from the audit"] {
+        let got = llm
+            .evaluate(&scout, &d, Tier::PreLock, &RolePrompt::adjustment())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(got["factors"], json!([]));
+    }
+    // A competitive Match in the window debates; the Arbiter (the proxy) gave
+    // the answer, and the audit keeps it as given.
+    let turns = audit.debate_turns().await.unwrap();
+    let arbiter = turns.iter().find(|t| t.role == "arbiter").unwrap();
+    assert_eq!((arbiter.provider.as_str(), arbiter.status.as_str()), ("proxy", "ok"));
+    assert_eq!(arbiter.brief.as_ref().unwrap()["factors"][0]["evidence_url"], on_hltv);
+}

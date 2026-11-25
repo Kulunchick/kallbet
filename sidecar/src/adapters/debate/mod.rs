@@ -133,8 +133,9 @@ pub struct TieredDebateLlm {
     log: TurnLog,
 }
 impl TieredDebateLlm {
-    /// The answer this seat already gave under this run's reuse key, if any.
-    async fn answered(&self, run: &Run<'_>, prompt: &RolePrompt) -> Option<Value> {
+    /// The answer this seat already gave under this run's reuse key, if any,
+    /// with the provider that gave it.
+    async fn answered(&self, run: &Run<'_>, prompt: &RolePrompt) -> Option<(String, Value)> {
         let found = self
             .log
             .answered(&run.bot.bot_key, run.tier, &run.key, &prompt.role)
@@ -143,15 +144,16 @@ impl TieredDebateLlm {
                 tracing::warn!(error = %e, "debate: reading the audit failed");
                 None
             });
-        found.filter(|v| schema::valid(v, &prompt.schema))
+        found.filter(|(_, v)| schema::valid(v, &prompt.schema))
     }
-    /// Asks the seat's chain and records the turn. `Ok(None)`: the chain is empty.
+    /// Asks the seat's chain and records the turn. `Ok(None)`: the chain is
+    /// empty. The answer comes with the provider that gave it.
     async fn ask(
         &self,
         run: &Run<'_>,
         chain: &[String],
         prompt: &RolePrompt,
-    ) -> Result<Option<Value>, LlmError> {
+    ) -> Result<Option<(String, Value)>, LlmError> {
         let started = std::time::Instant::now();
         let outcome = self
             .providers
@@ -185,19 +187,27 @@ impl TieredDebateLlm {
             tracing::error!(error = %e, "debate: writing the audit failed");
             return Err(LlmError::Transient);
         }
-        Ok(outcome?.map(|answer| answer.value))
+        Ok(outcome?.map(|answer| (answer.provider, answer.value)))
     }
     async fn seat(
         &self,
         run: &Run<'_>,
         chain: &[String],
         prompt: &RolePrompt,
-        answered: Option<Value>,
+        answered: Option<(String, Value)>,
     ) -> Result<Option<Value>, LlmError> {
         match answered {
-            Some(brief) => Ok(Some(brief)),
-            None => self.ask(run, chain, prompt).await,
+            Some((_, brief)) => Ok(Some(brief)),
+            None => Ok(self.ask(run, chain, prompt).await?.map(|(_, brief)| brief)),
         }
+    }
+    /// `answer` with only the factors this run could have read: the dossier's
+    /// URLs, and the whitelisted sites only when the provider that gave the
+    /// answer ran with web access (the HTTP adapter never does).
+    fn traceable(&self, run: &Run<'_>, (provider, answer): (String, Value)) -> Value {
+        let web =
+            self.providers.access_of(&provider, run.bot, run.tier) == ToolAccess::WhitelistedWeb;
+        Evidence::of(run.dossier, web).filter(answer)
     }
 }
 
@@ -224,10 +234,6 @@ impl LlmRuntime for TieredDebateLlm {
             key: reuse_key(dossier, settings.market_step_pp)
                 .map_err(|_| LlmError::InvalidOutput)?,
         };
-        // What a factor of the answer may cite: this dossier is what the model is
-        // sent, and the providers know whether this run may read the web.
-        let web = self.providers.access(bot, tier) == ToolAccess::WhitelistedWeb;
-        let evidence = Evidence::of(dossier, web);
         let baseline = (
             "Baseline".to_string(),
             json!({
@@ -266,7 +272,7 @@ impl LlmRuntime for TieredDebateLlm {
         };
         for asked_before in finals {
             if let Some(answer) = self.answered(&run, asked_before).await {
-                return Ok(Some(evidence.filter(answer)));
+                return Ok(Some(self.traceable(&run, answer)));
             }
         }
         let answer = match pass {
@@ -294,7 +300,7 @@ impl LlmRuntime for TieredDebateLlm {
         };
         // The audit keeps the model's answer as given; the policy gets only the
         // factors whose evidence this run could have read.
-        Ok(answer.map(|answer| evidence.filter(answer)))
+        Ok(answer.map(|answer| self.traceable(&run, answer)))
     }
 }
 
