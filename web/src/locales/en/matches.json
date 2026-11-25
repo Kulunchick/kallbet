@@ -46,7 +46,8 @@
   "errors": {
     "match_locked": "This Match is Locked: Predictions can no longer be made or changed.",
     "team_not_in_match": "That team does not play in this Match.",
-    "not_found": "This League or Match was not found."
+    "not_found": "This League or Match was not found.",
+    "rationale_invalid": "The reasoning attached to this Prediction is not valid."
   },
   "editWindow": "You can change your prediction for {{time}}",
   "bot": {
@@ -54,5 +55,32 @@
     "pick": "{{nickname}} (bot)",
     "preliminaryPick": "{{nickname}} (bot): preliminary pick, it may still change",
     "preliminaryHint": "Bot picks are preliminary: a bot may change its Prediction until 15 minutes before the start."
+  },
+  "rationale": {
+    "toggleBot": "AI reasoning · {{nickname}}",
+    "toggle": "Reasoning · {{nickname}}",
+    "winChance": "{{team}} to win: {{percent}}%",
+    "againstMarket": "Against the market",
+    "againstMarketHint": "This pick goes against the betting market's favourite.",
+    "preliminary": "may still change",
+    "draft": "Early draft: the bot means to refine this analysis before the Match.",
+    "noSummary": "No summary given.",
+    "fallback": "Summary language: {{language}}",
+    "language": {
+      "en": "English",
+      "ru": "Russian",
+      "uk": "Ukrainian"
+    },
+    "factors": "Factors",
+    "newTab": "opens the source in a new tab",
+    "factor": {
+      "stand_in": "Stand-in",
+      "roster_change_30d": "Roster change (30 days)",
+      "igl_or_coach_change": "IGL or coach change",
+      "visa_or_travel": "Visa or travel trouble",
+      "illness_or_emergency": "Illness or emergency",
+      "technical_or_dq": "Technical issue or disqualification",
+      "other": "Other factor"
+    }
   }
 }

@@ -23,6 +23,7 @@ use serde::Serialize;
 use crate::api::leagues::require_member;
 use crate::auth::session::CurrentUser;
 use crate::domain::lock_reveal::Outcome;
+use crate::domain::rationale::Rationale;
 use crate::domain::scoring::{self, Verdict};
 use crate::domain::{
     DataSourceKind, Event, LeagueId, MatchFormat, MatchId, MatchPlacement, MatchScore, MatchStatus,
@@ -176,6 +177,9 @@ pub struct RevealedPrediction {
     pub is_bot: bool,
     /// A Bot User's Prediction before Hard Lock: it may still change.
     pub preliminary: bool,
+    /// #23: the Prediction's Rationale, if it has one. Shown only here, with
+    /// the revealed Prediction, so it is hidden exactly as the pick is.
+    pub rationale: Option<Rationale>,
 }
 
 /// What `viewer` may see of the Predictions of a Match. A Bot User is shown
@@ -203,6 +207,7 @@ fn predictions_view(
                     team_id: p.team_id,
                     is_bot: member.is_bot,
                     preliminary: member.is_bot && !outcome.is_hard_locked(),
+                    rationale: p.rationale.clone(),
                 })
             })
             .collect()

@@ -4,6 +4,7 @@ import { Avatar } from "../../components/Avatar";
 import { TeamLogo } from "../../components/TeamLogo";
 import type { MatchCard as Card, RevealedPrediction, TeamRef } from "./api";
 import { cardState, hasPreliminaryPick, pickMark } from "./layout";
+import { RationaleList } from "./RationalePanel";
 import { formatAgo, formatSpan, formatStart } from "./time";
 
 type Props = {
@@ -63,6 +64,8 @@ export function MatchCard({ card, now, saving, onPredict }: Props) {
         )}
         {side(card.team_b, "end")}
       </div>
+
+      <RationaleList card={card} />
 
       <footer className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-line pt-2.5 text-xs">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">

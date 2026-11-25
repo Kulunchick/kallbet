@@ -137,6 +137,7 @@ async fn a_prediction_write_after_another_members_reveal_does_not_land() {
         MatchId(NAVI_FAZE),
         alice,
         TeamId(FAZE),
+        None,
         checked_at,
     )
     .await;
@@ -163,6 +164,7 @@ async fn a_prediction_write_after_the_poller_stamped_lock_does_not_land() {
         MatchId(NAVI_FAZE),
         alice,
         TeamId(NAVI),
+        None,
         checked_at,
     )
     .await;
@@ -316,6 +318,7 @@ async fn a_bot_users_write_after_the_poller_stamped_hard_lock_does_not_land() {
         MatchId(NAVI_FAZE),
         oracle_id,
         TeamId(FAZE),
+        None,
         s.app.clock.now(),
     )
     .await;
@@ -328,6 +331,7 @@ async fn a_bot_users_write_after_the_poller_stamped_hard_lock_does_not_land() {
         MatchId(NAVI_FAZE),
         alice,
         TeamId(FAZE),
+        None,
         s.app.clock.now(),
     )
     .await;
@@ -346,6 +350,7 @@ async fn a_bot_users_write_after_the_poller_stamped_hard_lock_does_not_land() {
         MatchId(NAVI_FAZE),
         oracle_id,
         TeamId(NAVI),
+        None,
         checked_at,
     )
     .await;
