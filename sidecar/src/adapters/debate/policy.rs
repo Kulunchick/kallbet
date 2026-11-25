@@ -162,6 +162,83 @@ fn anchored_summary(has_market: bool, rejected: bool) -> Value {
     )
 }
 
+/// The evidence a run could really have read: the URLs in the dossier that was
+/// sent to the model and, when the run had live web access, any page on the
+/// whitelisted sites. A factor citing anything else is a factor without
+/// evidence, however well-formed its URL is.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Evidence {
+    urls: std::collections::BTreeSet<String>,
+    web: bool,
+}
+impl Evidence {
+    /// `sent` is the dossier as the model was given it (under an anonymizer, the
+    /// anonymized one: its URLs may be placeholders and are compared as they
+    /// are). `web`: the run could read `adapters::llm::WEB_DOMAINS`.
+    pub fn of(sent: &Dossier, web: bool) -> Self {
+        fn collect(value: &Value, urls: &mut std::collections::BTreeSet<String>) {
+            match value {
+                Value::Array(items) => items.iter().for_each(|v| collect(v, urls)),
+                Value::Object(fields) => {
+                    for (key, value) in fields {
+                        // Where a fact says its source is: `url`, `source_url`, ...
+                        // Not the licence of the source or the feed an item came in.
+                        let names_source = (key == "url" || key.ends_with("_url"))
+                            && key != "license_url"
+                            && key != "feed_url";
+                        match value.as_str() {
+                            Some(url) if names_source && !url.trim().is_empty() => {
+                                urls.insert(url.to_owned());
+                            }
+                            _ => collect(value, urls),
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        let mut urls = std::collections::BTreeSet::new();
+        for fact in &sent.context {
+            collect(fact, &mut urls);
+        }
+        Self { urls, web }
+    }
+    /// Whether `url` is one this run could have read.
+    pub fn supports(&self, url: &str) -> bool {
+        self.urls.contains(url) || (self.web && on_web_whitelist(url))
+    }
+    /// `answer` (an `LlmAdjustment` as JSON) without the factors whose
+    /// `evidence_url` this run could not have read. With none left, the policy
+    /// treats the shift as unsubstantiated.
+    pub fn filter(&self, mut answer: Value) -> Value {
+        if let Some(factors) = answer.get_mut("factors").and_then(Value::as_array_mut) {
+            factors.retain(|f| f["evidence_url"].as_str().is_some_and(|u| self.supports(u)));
+        }
+        answer
+    }
+}
+
+/// An http(s) URL whose host is one of the whitelisted sites or a subdomain of one.
+fn on_web_whitelist(url: &str) -> bool {
+    if !is_evidence_url(url) {
+        return false;
+    }
+    let rest = url.split_once("://").map_or("", |(_, rest)| rest);
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+    // `https://hltv.org@elsewhere.example/` names another host.
+    if authority.contains('@') {
+        return false;
+    }
+    let host = authority
+        .split(':')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    crate::adapters::llm::WEB_DOMAINS
+        .iter()
+        .any(|site| host == *site || host.ends_with(&format!(".{site}")))
+}
+
 pub struct HybridAnchored;
 impl DecisionPolicy for HybridAnchored {
     fn wants_adjustment(&self, _: &BotProfile) -> bool {
@@ -473,5 +550,137 @@ mod tests {
             .unwrap();
         assert_eq!(draft.rationale["preliminary"], true);
         assert_eq!(decide(&d, None).3["preliminary"], false);
+    }
+
+    /// A dossier with the context facts ticket #26 emits (shapes as in its tests).
+    fn sent() -> Dossier {
+        let mut d = dossier(Some(0.60), Some(0.60));
+        d.context = vec![
+            json!({
+                "kind": "liquipedia_roster", "team": "Team Vitality", "has_stand_in": true,
+                "source_url": URL,
+                "attribution": {"source": "Liquipedia", "license": "CC-BY-SA 3.0",
+                    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/"},
+                "notes": [{"text": "renamed", "source_url": "https://www.hltv.org/news/1/renamed"}]
+            }),
+            json!({
+                "kind": "news_item", "title": "TYLOO bench Moseyuh",
+                "url": "https://www.hltv.org/news/46047/tyloo-bench-moseyuh",
+                "feed_url": "https://www.hltv.org/rss/news"
+            }),
+        ];
+        d
+    }
+
+    #[test]
+    fn evidence_is_a_url_the_dossier_carries() {
+        let evidence = Evidence::of(&sent(), false);
+        assert!(evidence.supports(URL), "a roster fact's source");
+        assert!(evidence.supports("https://www.hltv.org/news/46047/tyloo-bench-moseyuh"));
+        assert!(
+            evidence.supports("https://www.hltv.org/news/1/renamed"),
+            "a note's source"
+        );
+        // Invented, however plausible, and on a whitelisted site: not without web access.
+        assert!(!evidence.supports("https://www.hltv.org/news/99999/vitality-field-stand-in"));
+        assert!(!evidence.supports("https://liquipedia.net/counterstrike/Team_Vitality"));
+        assert!(
+            !evidence.supports(&format!("{URL}0")),
+            "a near miss is a miss"
+        );
+        assert!(!evidence.supports(""));
+        // The licence and the feed are in the dossier but are no evidence of anything.
+        assert!(!evidence.supports("https://creativecommons.org/licenses/by-sa/3.0/"));
+        assert!(!evidence.supports("https://www.hltv.org/rss/news"));
+    }
+
+    #[test]
+    fn with_live_web_access_a_page_on_a_whitelisted_site_is_evidence_too() {
+        let evidence = Evidence::of(&sent(), true);
+        for url in [
+            "https://www.hltv.org/news/99999/vitality-field-stand-in",
+            "https://hltv.org/matches/1",
+            "http://liquipedia.net/counterstrike/Team_Vitality",
+            "https://LIQUIPEDIA.net:443/counterstrike/Team_Vitality?action=history",
+            URL,
+        ] {
+            assert!(evidence.supports(url), "{url}");
+        }
+        for url in [
+            "https://x.com/TeamVitality/status/1",
+            "https://nothltv.org/news/1",
+            "https://hltv.org.example.com/news/1",
+            "https://hltv.org@example.com/news/1",
+            "https://example.com/?next=https://hltv.org/",
+            "hltv.org/news/1",
+            "ftp://hltv.org/news/1",
+        ] {
+            assert!(!evidence.supports(url), "{url}");
+        }
+    }
+
+    #[test]
+    fn placeholder_urls_of_an_anonymized_dossier_are_compared_as_sent() {
+        let mut d = sent();
+        d.context = vec![json!({"kind": "liquipedia_roster", "source_url": "SOURCE_01"})];
+        let evidence = Evidence::of(&d, false);
+        assert!(evidence.supports("SOURCE_01"));
+        assert!(
+            !evidence.supports(URL),
+            "the real URL was never shown to the model"
+        );
+    }
+
+    #[test]
+    fn a_factor_with_untraceable_evidence_is_a_factor_without_evidence() {
+        let d = sent();
+        let invented = "https://www.hltv.org/news/99999/vitality-field-stand-in";
+        let answer = json!({
+            "delta": -8,
+            "factors": [
+                {"kind": "stand_in", "evidence_url": invented},
+                {"kind": "visa_or_travel", "evidence_url": "https://x.com/rumour"}
+            ],
+            "summary": {"en": "Model view.", "ru": "Мнение модели.", "uk": "Думка моделі."}
+        });
+        // No web access: neither URL can be traced, so nothing moves and nothing is shown.
+        let kept = Evidence::of(&d, false).filter(answer.clone());
+        assert_eq!(kept["factors"], json!([]));
+        let (team, p, _, r) = decide(&d, Some(serde_json::from_value(kept).unwrap()));
+        assert_eq!(team, 1);
+        assert!(close(p, 0.60), "zeroed exactly as for a missing URL: {p}");
+        assert_eq!(r["factors"], json!([]));
+        assert!(r["summary"]["en"].as_str().unwrap().contains("discarded"));
+        // The same answer from a run that could read hltv.org keeps that one factor.
+        let kept = Evidence::of(&d, true).filter(answer.clone());
+        assert_eq!(
+            kept["factors"],
+            json!([{"kind": "stand_in", "evidence_url": invented}])
+        );
+        let (_, p, _, r) = decide(&d, Some(serde_json::from_value(kept).unwrap()));
+        assert!(close(p, 0.52), "{p}");
+        assert_eq!(
+            r["factors"],
+            json!([{"kind": "stand_in", "evidence_url": invented}])
+        );
+        // Evidence from the dossier needs no web access.
+        let mut cited = answer;
+        cited["factors"] = json!([{"kind": "stand_in", "evidence_url": URL}]);
+        let kept = Evidence::of(&d, false).filter(cited.clone());
+        assert_eq!(kept, cited);
+        // In a toss-up the two-point tie-break is all that is left, as without a URL.
+        let mut even = sent();
+        even.market = Some(0.51);
+        even.signal = Some(Signal {
+            map: 0.51,
+            series: 0.51,
+        });
+        let kept = Evidence::of(&even, false).filter(json!({
+            "delta": -8, "factors": [{"kind": "stand_in", "evidence_url": invented}],
+            "summary": {"en": "Model view."}
+        }));
+        let (team, p, _, _) = decide(&even, Some(serde_json::from_value(kept).unwrap()));
+        assert_eq!(team, 2);
+        assert!(close(p, 0.51), "{p}");
     }
 }

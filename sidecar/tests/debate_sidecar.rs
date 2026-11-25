@@ -14,7 +14,11 @@ use kallbet::{
     testing::{EventSnapshotBuilder, TEST_BOT_SECRET},
 };
 use kallbet_ai::{
-    adapters::llm::{BreakerState, Finished, Invocation, ProcessRunner, RunError},
+    adapters::{
+        context::rss,
+        debate,
+        llm::{BreakerState, Finished, Invocation, ProcessRunner, Providers, RunError},
+    },
     *,
 };
 use serde_json::{Value, json};
@@ -121,7 +125,8 @@ async fn an_early_draft_then_the_debate_before_hard_lock_overturns_a_close_favou
         pick["preliminary"], true,
         "not yet Hard Locked for the server"
     );
-    // The Arbiter's -1.5 points, backed by the roster revision, on 50.6%.
+    // The Arbiter's -1.5 points on 50.6%, backed by the roster revision: the URL
+    // it cites is the `source_url` of the roster facts in the dossier it was sent.
     let p = rationale["p_win"].as_f64().unwrap();
     assert!((p - 0.509).abs() < 5e-4, "{p}");
     assert_eq!(
@@ -205,6 +210,9 @@ impl ProcessRunner for NoCli {
     }
 }
 
+const ROSTER_REVISION: &str =
+    "https://liquipedia.net/counterstrike/index.php?title=PGL/2026/Singapore&oldid=3473596";
+
 #[tokio::test]
 async fn a_shift_the_model_cannot_substantiate_never_reaches_the_match_card() {
     let mut l = Lifecycle::new(Arc::new(NoCli), json!({})).await;
@@ -217,38 +225,52 @@ async fn a_shift_the_model_cannot_substantiate_never_reaches_the_match_card() {
         series: 0.70,
     };
     *l.h.scripts.signal.lock().unwrap() = Some(AsOf::new(rating, seen, cutoff).unwrap());
-    l.sidecar.ports.llm = l.h.scripts.clone();
+    // The bot's one subscription answers whatever the test scripts, behind the
+    // real debate runtime (one agent per run here).
+    let scripted: Arc<dyn LlmRuntime> = l.h.scripts.clone();
+    let providers = Providers::from_runtimes(
+        [("claude".to_string(), scripted)],
+        Duration::minutes(30),
+        l.sidecar.ports.clock.clone(),
+    );
+    let one_agent = serde_json::from_value(json!({"bots": {"oracle": {"mode": "never"}}})).unwrap();
+    l.sidecar.ports.llm = debate::build(&one_agent, Arc::new(providers), &l.sidecar.audit).unwrap();
     let summary =
         json!({"en": "MOUZ will win this.", "ru": "MOUZ победят.", "uk": "MOUZ переможуть."});
-    *l.h.scripts.adjustment.lock().unwrap() = Some(json!({
-        "delta": -45,
-        "factors": [{"kind": "stand_in", "evidence_url": ""}],
-        "summary": summary
-    }));
+    let demand = |evidence_url: &str| {
+        Some(json!({
+            "delta": -45,
+            "factors": [{"kind": "stand_in", "evidence_url": evidence_url}],
+            "summary": summary
+        }))
+    };
     let card = l.card().await;
     let vitality = card["team_a"]["id"].clone();
 
+    // The Draft's dossier has no context at all, so the URL the model cites was
+    // not in it: well-formed, on HLTV, and invented.
+    *l.h.scripts.adjustment.lock().unwrap() =
+        demand("https://www.hltv.org/news/99999/vitality-field-a-stand-in");
     assert_eq!(l.tick_at(240).await.unwrap(), 1);
     l.human_reveals().await;
     let pick = l.bot_pick().await;
-    assert_eq!(pick["team_id"], vitality, "no evidence, no shift: {pick}");
+    assert_eq!(
+        pick["team_id"], vitality,
+        "no traceable evidence, no shift: {pick}"
+    );
     let rationale = &pick["rationale"];
     assert!((rationale["p_win"].as_f64().unwrap() - 0.70).abs() < 1e-9);
     assert_eq!(rationale["override_market"], false);
-    assert_eq!(rationale["factors"], json!([]));
+    assert_eq!(rationale["factors"], json!([]), "the factor is not shown");
     assert_ne!(
         rationale["summary"]["en"], "MOUZ will win this.",
         "the text arguing for the discarded shift is not published"
     );
 
-    // With evidence the same demand is cut to eight points: 70% becomes 62%.
+    // Before Hard Lock the roster page is in the dossier. Citing it, the same
+    // demand is cut to eight points: 70% becomes 62%.
     l.wiki.publish();
-    let url = "https://www.hltv.org/news/46047/tyloo-bench-moseyuh";
-    *l.h.scripts.adjustment.lock().unwrap() = Some(json!({
-        "delta": -45,
-        "factors": [{"kind": "stand_in", "evidence_url": url}],
-        "summary": summary
-    }));
+    *l.h.scripts.adjustment.lock().unwrap() = demand(ROSTER_REVISION);
     assert_eq!(l.tick_at(22).await.unwrap(), 1);
     let pick = l.bot_pick().await;
     assert_eq!(pick["team_id"], vitality, "{pick}");
@@ -256,7 +278,7 @@ async fn a_shift_the_model_cannot_substantiate_never_reaches_the_match_card() {
     assert!((rationale["p_win"].as_f64().unwrap() - 0.62).abs() < 1e-9);
     assert_eq!(
         rationale["factors"],
-        json!([{"kind": "stand_in", "evidence_url": url}])
+        json!([{"kind": "stand_in", "evidence_url": ROSTER_REVISION}])
     );
     assert_eq!(rationale["summary"]["en"], "MOUZ will win this.");
     let asked: Vec<_> =
@@ -268,6 +290,115 @@ async fn a_shift_the_model_cannot_substantiate_never_reaches_the_match_card() {
             .map(|t| t.name())
             .collect();
     assert_eq!(asked, ["Draft", "PreLock"]);
+}
+
+/// The lifecycle's Liquipedia context plus whatever the test scripts on top.
+struct WithScripted {
+    wiki: Arc<dyn ContextEnricher>,
+    scripted: Arc<support::Scripts>,
+}
+#[async_trait]
+impl ContextEnricher for WithScripted {
+    async fn facts(&self, game: &Match, cutoff: Instant) -> Result<Vec<AsOf<Value>>> {
+        let mut facts = self.wiki.facts(game, cutoff).await?;
+        facts.extend(self.scripted.facts(game, cutoff).await?);
+        Ok(facts)
+    }
+}
+
+#[tokio::test]
+async fn a_line_moving_inside_its_step_costs_no_call_and_the_pick_follows_it() {
+    let replay = Arc::new(Replay::default());
+    let mut l = Lifecycle::new(replay.clone(), json!({})).await;
+    l.sidecar.ports.context = Arc::new(WithScripted {
+        wiki: l.sidecar.ports.context.clone(),
+        scripted: l.h.scripts.clone(),
+    });
+    let (scripts, seen) = (l.h.scripts.clone(), l.start - Duration::hours(5));
+    let market = move |p: f64| {
+        *scripts.market.lock().unwrap() =
+            Some(AsOf::new(p, seen, seen + Duration::hours(1)).unwrap());
+    };
+    assert_eq!(l.tick_at(240).await.unwrap(), 1);
+    l.human_reveals().await;
+    l.wiki.publish();
+
+    // (debates so far, what the bot shows on the Match card).
+    async fn state(l: &Lifecycle) -> (usize, f64, Value) {
+        let turns = l.sidecar.audit.debate_turns().await.unwrap();
+        let debated = turns.iter().filter(|t| t.tier == "PreLock").count();
+        assert_eq!(debated % 3, 0, "a debate is three turns");
+        let pick = l.bot_pick().await;
+        let p_win = pick["rationale"]["p_win"].as_f64().unwrap();
+        (debated / 3, p_win, pick["team_id"].clone())
+    }
+    let near = |p: f64, expected: f64| assert!((p - expected).abs() < 5e-5, "{p} vs {expected}");
+    let mouz = l.card().await["team_b"]["id"].clone();
+
+    // T-24m, the line at 52%: the debate. The anchor is 50.597% for Vitality and
+    // the Arbiter's -1.5 points make it 50.903% for MOUZ.
+    assert_eq!(l.tick_at(24).await.unwrap(), 1);
+    let (debates, p_win, team) = state(&l).await;
+    assert_eq!((debates, &team), (1, &mouz));
+    near(p_win, 0.50903);
+    let calls = replay.started().len();
+
+    // T-23m and T-22m: the line moves to 52.3% and 51.6%, inside the one-point
+    // step. Nobody is asked, and the pick is recomputed from the fresh line with
+    // the stored adjustment: anchors 50.838% and 50.277%.
+    market(0.523);
+    assert_eq!(l.tick_at(23).await.unwrap(), 1, "the pick is updated");
+    let (debates, p_win, _) = state(&l).await;
+    assert_eq!(debates, 1);
+    near(p_win, 0.50662);
+    market(0.516);
+    assert_eq!(l.tick_at(22).await.unwrap(), 1);
+    let (debates, p_win, team) = state(&l).await;
+    assert_eq!((debates, &team), (1, &mouz));
+    near(p_win, 0.51223);
+    assert_eq!(replay.started().len(), calls, "no LLM call inside the step");
+
+    // T-21m: 52.7% is the next step. One more debate (Antigravity is still
+    // cooling down, so three runs); the anchor is 51.159%.
+    market(0.527);
+    assert_eq!(l.tick_at(21).await.unwrap(), 1);
+    let (debates, p_win, _) = state(&l).await;
+    assert_eq!(debates, 2);
+    near(p_win, 0.50341);
+    assert_eq!(replay.started().len(), calls + 3);
+
+    // T-20m: the line stands still, but the news feed has a new item. One more.
+    let cutoff = l.start - Duration::minutes(20);
+    let feed = include_str!("fixtures/context/rss/dust2us-news.xml");
+    let items = rss::parse_rss_items(feed, "https://www.dust2.us/rss", cutoff).unwrap();
+    let news = rss::filter_match_news(
+        &items,
+        "Without a Roof",
+        &[],
+        "MOUZ",
+        &[],
+        cutoff,
+        Duration::days(14),
+        1,
+    )
+    .unwrap();
+    let item = news[0].at(cutoff).unwrap();
+    assert_eq!(item.title, "Official: oSee replaces CeRq on Without a Roof");
+    let fact = ContextFact::NewsItem(item.clone()).to_value().unwrap();
+    *l.h.scripts.facts.lock().unwrap() =
+        vec![AsOf::new(fact, news[0].observed_at(), cutoff).unwrap()];
+    assert_eq!(l.tick_at(20).await.unwrap(), 1);
+    let (debates, p_win, _) = state(&l).await;
+    assert_eq!(debates, 3);
+    near(p_win, 0.50341);
+    assert_eq!(replay.started().len(), calls + 6);
+
+    // Nothing changes any more: no call and no write until Hard Lock.
+    for minutes in [19, 18, 17, 16, 15] {
+        assert_eq!(l.tick_at(minutes).await.unwrap(), 0, "T-{minutes}m");
+    }
+    assert_eq!(replay.started().len(), calls + 6);
+    assert_eq!(state(&l).await.0, 3);
 }
 
 #[tokio::test]

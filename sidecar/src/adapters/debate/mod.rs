@@ -18,7 +18,7 @@ pub use tier::*;
 pub use turns::DebateTurn;
 
 use crate::{
-    adapters::llm::{Providers, schema},
+    adapters::llm::{Providers, ToolAccess, schema},
     *,
 };
 use async_trait::async_trait;
@@ -44,6 +44,11 @@ pub struct BotDebate {
     /// `p_base` at or beyond which (on either side) a Match is a mismatch.
     /// Default 0.80; above 0.5, at most 1.
     pub lopsided: Option<f64>,
+    /// The step, in percentage points, to which the market probability is
+    /// rounded in the key LLM answers are reused under. Default 1; above 0.
+    /// A market move that stays in its step (and on the same favourite) costs no
+    /// call: the stored adjustment is applied to the fresh anchor.
+    pub market_step_pp: Option<f64>,
     /// The single fast agent's chain. Default: the bot's `provider_chain`.
     pub fast: Option<Vec<String>>,
     /// The seats' chains. Default: the bot's `provider_chain`, turned by one
@@ -56,10 +61,12 @@ pub struct BotDebate {
 }
 
 pub const DEFAULT_LOPSIDED: f64 = 0.80;
+pub const DEFAULT_MARKET_STEP_PP: f64 = 1.0;
 
 struct Settings {
     mode: DebateMode,
     lopsided: f64,
+    market_step_pp: f64,
     fast: Vec<String>,
     advocate: Vec<String>,
     devil: Vec<String>,
@@ -78,6 +85,7 @@ impl DebateConfig {
         Settings {
             mode: own.mode,
             lopsided: own.lopsided.unwrap_or(DEFAULT_LOPSIDED),
+            market_step_pp: own.market_step_pp.unwrap_or(DEFAULT_MARKET_STEP_PP),
             fast: own.fast.unwrap_or_else(|| turned(0)),
             advocate: own.advocate.unwrap_or_else(|| turned(0)),
             devil: own.devil.unwrap_or_else(|| turned(1)),
@@ -86,12 +94,37 @@ impl DebateConfig {
     }
 }
 
-/// One run: who asks, about what, and the key its turns are kept under.
+/// The key an LLM answer is reused under. It covers what the dossier hash covers
+/// (the Match with its format, the rating estimate, every context fact), but of
+/// the market only the step it falls in and which team it favours: the precise
+/// line moves every few minutes, and the model's adjustment does not depend on
+/// a fraction of a point. The policy still anchors on the precise line.
+fn reuse_key(dossier: &Dossier, step_pp: f64) -> Result<String> {
+    let market = dossier.market.map(|p| {
+        json!({
+            "step_pp": step_pp,
+            "bucket": (p * 100.0 / step_pp).round() as i64,
+            "favourite": if p >= 0.5 { "team_a" } else { "team_b" },
+        })
+    });
+    let inputs = json!({
+        "game": dossier.game,
+        "signal": dossier.signal,
+        "market": market,
+        "context": dossier.context,
+    });
+    Ok(crate::digest(&serde_json::to_vec(&inputs)?))
+}
+
+/// One run: who asks, about what, and the keys its turns are kept under.
 struct Run<'a> {
     bot: &'a BotProfile,
     dossier: &'a Dossier,
     tier: Tier,
+    /// The dossier hash, for the audit.
     hash: String,
+    /// `reuse_key`, by which answers are found again.
+    key: String,
 }
 
 pub struct TieredDebateLlm {
@@ -100,11 +133,11 @@ pub struct TieredDebateLlm {
     log: TurnLog,
 }
 impl TieredDebateLlm {
-    /// The answer this seat already gave for this run, if any.
+    /// The answer this seat already gave under this run's reuse key, if any.
     async fn answered(&self, run: &Run<'_>, prompt: &RolePrompt) -> Option<Value> {
         let found = self
             .log
-            .answered(&run.bot.bot_key, run.tier, &run.hash, &prompt.role)
+            .answered(&run.bot.bot_key, run.tier, &run.key, &prompt.role)
             .await
             .unwrap_or_else(|e| {
                 eprintln!("debate: reading the audit failed: {e}");
@@ -140,6 +173,7 @@ impl TieredDebateLlm {
             match_id: run.dossier.game.id,
             tier: run.tier.name().into(),
             input_hash: run.hash.clone(),
+            reuse_key: run.key.clone(),
             role: prompt.role.clone(),
             provider,
             latency_ms: latency.as_millis() as i64,
@@ -187,7 +221,13 @@ impl LlmRuntime for TieredDebateLlm {
             dossier,
             tier,
             hash: Audit::input_hash(dossier).map_err(|_| LlmError::InvalidOutput)?,
+            key: reuse_key(dossier, settings.market_step_pp)
+                .map_err(|_| LlmError::InvalidOutput)?,
         };
+        // What a factor of the answer may cite: this dossier is what the model is
+        // sent, and the providers know whether this run may read the web.
+        let web = self.providers.access(bot, tier) == ToolAccess::WhitelistedWeb;
+        let evidence = Evidence::of(dossier, web);
         let baseline = (
             "Baseline".to_string(),
             json!({
@@ -199,46 +239,62 @@ impl LlmRuntime for TieredDebateLlm {
             prompt.attachments.push(baseline.clone());
             prompt
         };
+        let predict = with_baseline(RolePrompt {
+            role: roles::PREDICT.into(),
+            ..prompt.clone()
+        });
+        let asked = with_baseline(prompt.clone());
+        // The arbiter answers the caller's schema, whatever the briefs are.
+        let verdict = roles::arbiter(&asked, Value::Null, Value::Null);
         let format = dossier.game.format;
-        if plan(
+        let pass = plan(
             settings.mode,
             tier,
             p_base,
             format,
             &flags,
             settings.lopsided,
-        ) == Pass::Fast
-        {
-            let prompt = with_baseline(RolePrompt {
-                role: roles::PREDICT.into(),
-                ..prompt.clone()
-            });
-            let answered = self.answered(&run, &prompt).await;
-            return self.seat(&run, &settings.fast, &prompt, answered).await;
-        }
-        if settings.arbiter.is_empty() {
-            return Ok(None);
-        }
-        let asked = with_baseline(prompt.clone());
-        // The arbiter's schema is the caller's, so look for its answer first.
-        let verdict = roles::arbiter(&asked, Value::Null, Value::Null);
-        if let Some(answer) = self.answered(&run, &verdict).await {
-            return Ok(Some(answer));
-        }
-        let advocate = with_baseline(roles::advocate());
-        let devil = with_baseline(roles::devil());
-        let advocate_answered = self.answered(&run, &advocate).await;
-        let devil_answered = self.answered(&run, &devil).await;
-        let (advocate_brief, devil_brief) = tokio::join!(
-            biased;
-            self.seat(&run, &settings.advocate, &advocate, advocate_answered),
-            self.seat(&run, &settings.devil, &devil, devil_answered),
         );
-        // A seat whose whole chain failed leaves no brief; the arbiter still decides.
-        let brief =
-            |seat: Result<Option<Value>, LlmError>| seat.ok().flatten().unwrap_or(Value::Null);
-        let verdict = roles::arbiter(&asked, brief(advocate_brief), brief(devil_brief));
-        self.ask(&run, &settings.arbiter, &verdict).await
+        // A run that was answered is not asked again. In `tiered` mode that holds
+        // whichever pass answered: a line moving inside its step can carry `p_base`
+        // across the mismatch threshold, and that is no reason for a new call.
+        let finals: &[&RolePrompt] = match (settings.mode, pass) {
+            (DebateMode::Always, _) => &[&verdict],
+            (DebateMode::Never, _) => &[&predict],
+            (DebateMode::Tiered, Pass::Fast) => &[&predict, &verdict],
+            (DebateMode::Tiered, Pass::Debate) => &[&verdict, &predict],
+        };
+        for asked_before in finals {
+            if let Some(answer) = self.answered(&run, asked_before).await {
+                return Ok(Some(evidence.filter(answer)));
+            }
+        }
+        let answer = match pass {
+            Pass::Fast => self.ask(&run, &settings.fast, &predict).await?,
+            Pass::Debate => {
+                if settings.arbiter.is_empty() {
+                    return Ok(None);
+                }
+                let advocate = with_baseline(roles::advocate());
+                let devil = with_baseline(roles::devil());
+                let advocate_answered = self.answered(&run, &advocate).await;
+                let devil_answered = self.answered(&run, &devil).await;
+                let (advocate_brief, devil_brief) = tokio::join!(
+                    biased;
+                    self.seat(&run, &settings.advocate, &advocate, advocate_answered),
+                    self.seat(&run, &settings.devil, &devil, devil_answered),
+                );
+                // A seat whose whole chain failed leaves no brief; the arbiter still decides.
+                let brief = |seat: Result<Option<Value>, LlmError>| {
+                    seat.ok().flatten().unwrap_or(Value::Null)
+                };
+                let verdict = roles::arbiter(&asked, brief(advocate_brief), brief(devil_brief));
+                self.ask(&run, &settings.arbiter, &verdict).await?
+            }
+        };
+        // The audit keeps the model's answer as given; the policy gets only the
+        // factors whose evidence this run could have read.
+        Ok(answer.map(|answer| evidence.filter(answer)))
     }
 }
 
@@ -252,6 +308,14 @@ pub fn build(
         if settings.lopsided.is_some_and(|p| !(p > 0.5 && p <= 1.0)) {
             return Err(
                 format!("debate.bots.{bot}.lopsided must be above 0.5 and at most 1").into(),
+            );
+        }
+        if settings
+            .market_step_pp
+            .is_some_and(|step| !(step > 0.0 && step <= 50.0))
+        {
+            return Err(
+                format!("debate.bots.{bot}.market_step_pp must be above 0 and at most 50").into(),
             );
         }
     }

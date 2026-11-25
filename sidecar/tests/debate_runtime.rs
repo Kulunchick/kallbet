@@ -7,7 +7,9 @@ use kallbet_ai::{
     adapters::{
         context::{liquipedia, rss},
         debate::{self, DebateConfig, DebateTurn, RiskFlag, risk_flags},
-        llm::{BreakerState, Providers},
+        llm::{
+            BreakerState, Finished, Invocation, LlmConfig, Mode, ProcessRunner, Providers, RunError,
+        },
     },
     *,
 };
@@ -38,6 +40,8 @@ struct World {
     events: Mutex<Vec<String>>,
     prompts: Mutex<Vec<(String, RolePrompt)>>,
     failures: Mutex<HashMap<&'static str, VecDeque<LlmError>>>,
+    /// The factors the predict and arbiter seats answer with (none by default).
+    factors: Mutex<Vec<Value>>,
 }
 impl World {
     fn fail(&self, provider: &'static str, errors: &[LlmError]) {
@@ -114,7 +118,7 @@ impl LlmRuntime for Scripted {
             }),
             _ => json!({
                 "delta": -4,
-                "factors": [],
+                "factors": *self.world.factors.lock().unwrap(),
                 "summary": {"en": format!("{role} by {name}"), "ru": "ру", "uk": "ук"}
             }),
         }))
@@ -223,11 +227,23 @@ async fn run(rig: &Rig, bot: &BotProfile, dossier: &Dossier, tier: Tier) -> Opti
         .await
         .unwrap()
 }
+/// (seat, provider, status) of the recorded turns, the two advocates first: they
+/// run side by side, so which of them is written first is not fixed.
 fn seats(turns: &[DebateTurn]) -> Vec<(&str, &str, &str)> {
-    turns
+    let mut seats: Vec<_> = turns
         .iter()
         .map(|t| (t.role.as_str(), t.provider.as_str(), t.status.as_str()))
-        .collect()
+        .collect();
+    let rank = |role: &str| {
+        ["advocate", "devil", "arbiter", "predict"]
+            .iter()
+            .position(|r| *r == role)
+    };
+    seats.sort_by_key(|(role, _, _)| rank(role));
+    seats
+}
+fn turn<'a>(turns: &'a [DebateTurn], role: &str) -> &'a DebateTurn {
+    turns.iter().find(|t| t.role == role).unwrap()
 }
 
 #[tokio::test]
@@ -336,6 +352,14 @@ async fn the_mode_and_the_threshold_are_set_per_bot() {
         serde_json::from_value::<DebateConfig>(json!({"bots": {"x": {"mode": "sometimes"}}}))
             .is_err()
     );
+    for bad in [
+        json!({"market_step_pp": 0}),
+        json!({"market_step_pp": -1}),
+        json!({"market_step_pp": 60}),
+    ] {
+        let config: DebateConfig = serde_json::from_value(json!({"bots": {"x": bad}})).unwrap();
+        assert!(debate::build(&config, rig.providers.clone(), &rig.audit).is_err());
+    }
     let half: DebateConfig =
         serde_json::from_value(json!({"bots": {"x": {"lopsided": 0.5}}})).unwrap();
     assert!(debate::build(&half, rig.providers.clone(), &rig.audit).is_err());
@@ -399,9 +423,9 @@ async fn the_two_advocates_run_side_by_side_and_the_arbiter_weighs_both_briefs()
             ("arbiter", "antigravity", "ok"),
         ]
     );
-    assert_eq!(turns[2].brief.as_ref(), Some(&answer));
+    assert_eq!(turn(&turns, "arbiter").brief.as_ref(), Some(&answer));
     assert_eq!(
-        turns[1].brief.as_ref().unwrap()["position"],
+        turn(&turns, "devil").brief.as_ref().unwrap()["position"],
         "devil brief by codex"
     );
     assert!(
@@ -595,4 +619,205 @@ async fn a_bot_without_providers_or_without_an_anchor_asks_nobody() {
     assert_eq!(run(&rig, &bot(), &blank, Tier::PreLock).await, None);
     assert!(rig.world.calls().is_empty());
     assert!(rig.audit.debate_turns().await.unwrap().is_empty());
+}
+
+/// The same Match and rating with the market line at `market`.
+fn line(market: f64) -> Dossier {
+    let mut d = dossier(0.52, Format::Bo3, vec![]);
+    d.market = Some(market);
+    d
+}
+
+#[tokio::test]
+async fn a_line_moving_inside_its_step_is_answered_from_the_audit() {
+    let rig = rig(json!({"bots": {"wide": {"market_step_pp": 5}}})).await;
+    let first = run(&rig, &bot(), &line(0.52), Tier::PreLock).await;
+    // 52.3%, 51.6% and 52.49% all round to 52: the three answers are reused.
+    for market in [0.523, 0.516, 0.5249] {
+        let again = run(&rig, &bot(), &line(market), Tier::PreLock).await;
+        assert_eq!(again, first, "{market}");
+    }
+    assert_eq!(rig.world.calls().len(), 3, "one debate for the whole step");
+    let turns = rig.audit.debate_turns().await.unwrap();
+    assert_eq!(turns.len(), 3);
+    assert!(
+        turns
+            .iter()
+            .all(|t| !t.reuse_key.is_empty() && t.reuse_key == turns[0].reuse_key)
+    );
+
+    // 52.7% rounds to 53: a new evaluation.
+    run(&rig, &bot(), &line(0.527), Tier::PreLock)
+        .await
+        .unwrap();
+    assert_eq!(rig.world.calls().len(), 6);
+    // 50.4% and 49.6% both round to 50, but the favourite is another team.
+    run(&rig, &bot(), &line(0.504), Tier::PreLock)
+        .await
+        .unwrap();
+    assert_eq!(rig.world.calls().len(), 9);
+    run(&rig, &bot(), &line(0.496), Tier::PreLock)
+        .await
+        .unwrap();
+    assert_eq!(
+        rig.world.calls().len(),
+        12,
+        "a favourite flip is a new evaluation"
+    );
+    // Any other input is compared exactly: a new fact, another rating, the tier.
+    let mut flagged = line(0.52);
+    flagged.context = vec![roster_fact("Team Vitality")];
+    run(&rig, &bot(), &flagged, Tier::PreLock).await.unwrap();
+    assert_eq!(rig.world.calls().len(), 15);
+    let mut rerated = line(0.52);
+    rerated.signal = Some(Signal {
+        map: 0.52,
+        series: 0.521,
+    });
+    run(&rig, &bot(), &rerated, Tier::PreLock).await.unwrap();
+    assert_eq!(rig.world.calls().len(), 18);
+
+    // The Draft's one answer is reused the same way.
+    let draft = run(&rig, &bot(), &line(0.52), Tier::Draft).await;
+    assert_eq!(run(&rig, &bot(), &line(0.523), Tier::Draft).await, draft);
+    assert_eq!(rig.world.calls().len(), 19);
+
+    // The step is the bot's own: at 5 points 51% and 52% are one step, at 1 they are two.
+    let wide = BotProfile {
+        bot_key: "wide".into(),
+        ..bot()
+    };
+    run(&rig, &wide, &line(0.51), Tier::PreLock).await.unwrap();
+    run(&rig, &wide, &line(0.52), Tier::PreLock).await.unwrap();
+    assert_eq!(rig.world.calls().len(), 22);
+    run(&rig, &bot(), &line(0.51), Tier::PreLock).await.unwrap();
+    assert_eq!(rig.world.calls().len(), 25);
+}
+
+#[tokio::test]
+async fn a_move_across_the_mismatch_threshold_inside_one_step_asks_nobody() {
+    let rig = rig(json!({})).await;
+    let at = |market: f64| {
+        let mut d = dossier(0.80, Format::Bo3, vec![]);
+        d.market = Some(market);
+        d
+    };
+    // 79.6% with an 80% rating anchors just under 0.80: competitive, a debate.
+    let debated = run(&rig, &bot(), &at(0.796), Tier::PreLock).await;
+    assert_eq!(rig.world.calls().len(), 3);
+    // 80.4% anchors just over it: a mismatch now, but the same step and favourite.
+    assert_eq!(run(&rig, &bot(), &at(0.804), Tier::PreLock).await, debated);
+    assert_eq!(rig.world.calls().len(), 3);
+}
+
+#[tokio::test]
+async fn only_factors_citing_the_dossier_reach_the_policy() {
+    let rig = rig(json!({})).await;
+    let fact = roster_fact("Team Vitality");
+    let source = fact["source_url"].as_str().unwrap().to_owned();
+    assert!(source.starts_with("https://liquipedia.net/"));
+    let invented = "https://www.hltv.org/news/99999/vitality-field-a-stand-in";
+    *rig.world.factors.lock().unwrap() = vec![
+        json!({"kind": "stand_in", "evidence_url": source}),
+        json!({"kind": "visa_or_travel", "evidence_url": invented}),
+        json!({"kind": "illness_or_emergency", "evidence_url": ""}),
+    ];
+    let d = dossier(0.52, Format::Bo3, vec![fact]);
+    let answer = run(&rig, &bot(), &d, Tier::PreLock).await.unwrap();
+    assert_eq!(
+        answer["factors"],
+        json!([{"kind": "stand_in", "evidence_url": source}]),
+        "the invented URL is on a whitelisted site, but this run had no web access"
+    );
+    assert_eq!(answer["delta"], -4, "the rest of the answer is untouched");
+    // The audit keeps what the model said.
+    let turns = rig.audit.debate_turns().await.unwrap();
+    let said = turn(&turns, "arbiter").brief.as_ref().unwrap();
+    assert_eq!(said["factors"].as_array().unwrap().len(), 3);
+    // An answer read back from the audit goes through the same check.
+    assert_eq!(run(&rig, &bot(), &d, Tier::PreLock).await.unwrap(), answer);
+    assert_eq!(rig.world.calls().len(), 3);
+
+    // The same answer for a dossier without that roster fact: nothing is traceable.
+    let bare = dossier(0.55, Format::Bo3, vec![]);
+    let answer = run(&rig, &bot(), &bare, Tier::PreLock).await.unwrap();
+    assert_eq!(answer["factors"], json!([]));
+}
+
+/// `claude` answering every run with `answer`: the saved envelope of a real run
+/// (`fixtures/debate/predict-claude.json`) with its structured output replaced.
+struct Claude {
+    answer: Value,
+}
+#[async_trait]
+impl ProcessRunner for Claude {
+    async fn run(&self, _: &Invocation) -> Result<Finished, RunError> {
+        let mut envelope: Value =
+            serde_json::from_str(include_str!("fixtures/debate/predict-claude.json")).unwrap();
+        envelope["structured_output"] = self.answer.clone();
+        Ok(Finished {
+            code: Some(0),
+            stdout: envelope.to_string(),
+            stderr: String::new(),
+        })
+    }
+}
+
+#[tokio::test]
+async fn a_whitelisted_page_is_evidence_only_for_a_run_that_could_read_the_web() {
+    let on_hltv = "https://www.hltv.org/news/99999/vitality-field-a-stand-in";
+    let answer = json!({
+        "delta": -6,
+        "factors": [
+            {"kind": "stand_in", "evidence_url": on_hltv},
+            {"kind": "visa_or_travel", "evidence_url": "https://x.com/rumour/status/1"}
+        ],
+        "summary": {"en": "Read on HLTV.", "ru": "Прочитано на HLTV.", "uk": "Прочитано на HLTV."}
+    });
+    // The `llm` section as an operator writes it: `scout` may search the web.
+    let config: LlmConfig = serde_json::from_value(json!({
+        "providers": {"claude": {"kind": "claude"}},
+        "web_search_bots": ["scout"]
+    }))
+    .unwrap();
+    let named = |key: &str| BotProfile {
+        bot_key: key.into(),
+        provider_chain: vec!["claude".into()],
+        ..bot()
+    };
+    let d = dossier(0.52, Format::Bo3, vec![]);
+    let cited = |answer: Option<Value>| answer.unwrap()["factors"].clone();
+    for (mode, expected) in [
+        (
+            Mode::Live,
+            json!([{"kind": "stand_in", "evidence_url": on_hltv}]),
+        ),
+        // A backtest never reads the web, whatever the config says.
+        (Mode::Backtest, json!([])),
+    ] {
+        let runner = Arc::new(Claude {
+            answer: answer.clone(),
+        });
+        let providers = Arc::new(Providers::new(&config, mode, Arc::new(Fixed), runner));
+        let dir = tempfile::tempdir().unwrap();
+        let audit = Audit::open(&dir.path().join("audit.db")).await.unwrap();
+        let llm = debate::build(&DebateConfig::default(), providers, &audit).unwrap();
+        let ask = |bot: BotProfile, tier: Tier| {
+            let llm = llm.clone();
+            let d = d.clone();
+            async move {
+                llm.evaluate(&bot, &d, tier, &RolePrompt::adjustment())
+                    .await
+                    .unwrap()
+            }
+        };
+        // Web search is for the run before Hard Lock, and for the opted-in bot only.
+        assert_eq!(
+            cited(ask(named("scout"), Tier::PreLock).await),
+            expected,
+            "{mode:?}"
+        );
+        assert_eq!(cited(ask(named("scout"), Tier::Draft).await), json!([]));
+        assert_eq!(cited(ask(named("oracle"), Tier::PreLock).await), json!([]));
+    }
 }

@@ -215,6 +215,7 @@ pub struct Providers {
     providers: BTreeMap<String, Arc<Provider>>,
     cooldown: chrono::Duration,
     clock: Arc<dyn Clock>,
+    tools: ToolPolicy,
 }
 impl Providers {
     pub fn new(
@@ -244,11 +245,13 @@ impl Providers {
             };
             (name.clone(), runtime)
         });
-        Self::from_runtimes(
+        let mut providers = Self::from_runtimes(
             runtimes,
             chrono::Duration::minutes(config.cooldown_minutes),
             clock,
-        )
+        );
+        providers.tools = policy;
+        providers
     }
     /// Providers from ready runtimes (fakes in tests, or adapters built elsewhere).
     pub fn from_runtimes(
@@ -274,7 +277,17 @@ impl Providers {
             providers,
             cooldown,
             clock,
+            // Ready-made runtimes decide their own tools; none is assumed here.
+            tools: ToolPolicy {
+                mode: Mode::Backtest,
+                web_search_bots: BTreeSet::new(),
+            },
         }
+    }
+    /// What a run of `bot` at `tier` may reach besides the dossier, by the policy
+    /// these providers were built with (ticket #29 checks evidence URLs by it).
+    pub fn access(&self, bot: &BotProfile, tier: Tier) -> ToolAccess {
+        self.tools.access(bot, tier)
     }
     /// The chain over `names`; a name with no provider fails as `NotConfigured`.
     pub fn chain(&self, names: &[String]) -> FallbackLlm {
