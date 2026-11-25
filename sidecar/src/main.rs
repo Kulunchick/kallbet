@@ -1,6 +1,9 @@
 use kallbet_ai::*;
 #[tokio::main]
 async fn main() -> Result<()> {
+    if std::env::args().nth(1).as_deref() == Some("backtest") {
+        return adapters::backtest::cli().await;
+    }
     let config = Config::load(std::env::var("SIDECAR_CONFIG")?)?;
     let mut sidecar = Sidecar::from_config(config, std::env::var("KALLBET_BOT_SECRET")?).await?;
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
