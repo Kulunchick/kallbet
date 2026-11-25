@@ -18,14 +18,15 @@ ENV CARGO_PROFILE_RELEASE_STRIP=true
 # Compile the dependencies first, against stub sources, so that a change to
 # our own code does not rebuild them.
 COPY Cargo.toml Cargo.lock build.rs ./
-RUN mkdir src migrations \
+COPY sidecar/Cargo.toml sidecar/Cargo.toml
+RUN mkdir -p src migrations sidecar/src && touch sidecar/src/lib.rs \
  && echo 'fn main() {}' > src/main.rs \
  && touch src/lib.rs \
- && cargo build --release --locked \
+ && cargo build -p kallbet --release --locked \
  && rm -rf src
 COPY migrations migrations
 COPY src src
-RUN touch src/main.rs src/lib.rs && cargo build --release --locked
+RUN touch src/main.rs src/lib.rs && cargo build -p kallbet --release --locked
 
 # --- 3. Runtime ----------------------------------------------------------------
 FROM alpine:3.21

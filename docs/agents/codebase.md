@@ -391,6 +391,51 @@ A Prediction may carry a **Rationale** (`GLOSSARY.md`). It rides on the Predicti
 - **SPA**: `pages/matches/RationalePanel.tsx` renders, under the teams of a revealed card, one collapsed `<details>` per pick with a Rationale (Bot Users first): win percentage of the picked team, an "against the market" badge for `override_market`, "may still change" while preliminary, then the summary in the interface language, factor pills linking out (`target="_blank" rel="noopener noreferrer"`, http(s) only) and the draft note. Pure logic in `pages/matches/rationale.ts` (`summaryFor`: the viewer's language, else English, Russian, Ukrainian, flagged as a fallback; `winPercent`; `externalLink`; `factorLabelKey`; `rationalePicks`), tested by `web/scripts/rationale.test.mjs`. Strings: `matches:rationale.*`, `matches:errors.rationale_invalid`.
 - **Tests**: `tests/api_rationale.rs` (hidden before Reveal, shown after, blind Bot Users until Hard Lock, update at T-22 and refusal at T-15, a write without one clears it, bounds, every malformed case, teams Override, League deletion, re-key of a local Match), unit tests in `domain/rationale.rs`.
 
+## AI Sidecar (ticket #24, spec #21)
+
+The Cargo workspace runs both packages with `cargo test`. The server stays at the root. The standalone binary and library in `sidecar/` are named `kallbet-ai`. Only its integration tests depend on the server crate. The server image builds `-p kallbet` and embeds the root migrations. The sidecar embeds `sidecar/migrations/` and opens the SQLite file specified by `audit_file`.
+
+Run `cargo run -p kallbet-ai` with `SIDECAR_CONFIG` pointing to a JSON file and `KALLBET_BOT_SECRET` set to the server's shared secret. File paths are relative to the process working directory. The parent of the audit file must exist. Keep the config private because Invite Links grant League membership.
+
+```json
+{
+  "platform_url": "http://localhost:8095",
+  "audit_file": "sidecar.db",
+  "vrs_files": ["sidecar/tests/fixtures/vrs/standings_global_2026_11_02.md"],
+  "bots": [{
+    "bot_key": "vrs",
+    "nickname": "VRS Baseline",
+    "invite_links": ["http://localhost:8095/join/REPLACE_WITH_INVITE"],
+    "policy": "VrsOnly",
+    "provider_chain": []
+  }]
+}
+```
+
+`config.rs` accepts multiple profiles with distinct keys, optional avatar URL and language. `registry.rs` composes the ports. The binary calls `Sidecar::tick()` every minute. Each tick reads the injected clock once, authenticates each bot, joins its Invite Links, polls its active Leagues, runs the Pick'em step, then evaluates writable Matches with two known teams. A missing pick triggers Draft. In [T−25m, T−15m) the bot uses PreLock, including when it first sees a Match in that window. KallBet enforces early starts, cancellations, membership and Hard Lock on the write.
+
+`AsOf::new` checks observation time and `AsOf::at` rechecks when cached data enters a dossier for an earlier cutoff. `vrs.rs` reads Valve's global Markdown standings and selects the latest snapshot strictly before the live cutoff. It dates publications at the last nanosecond of the stated UTC day. Team lookup ignores case. Valve's fixed-RD (75) Glicko expectation supplies the map probability, followed by the Bo1, Bo3 or Bo5 conversion. Missing ratings yield no VrsOnly prediction.
+
+`audit.rs` inserts the SHA-256 dossier hash scoped by bot, League, Match and tier before evaluation. Decisions (including abstentions) and successful submissions are separate append-only records. A failed PUT can reuse the saved decision. The audit file also holds original VRS snapshots and tables for the feed, debate, Pick'em and backtest adapters. Run one live scheduler per audit file and bot identity.
+
+### Extending the sidecar
+
+Paths below are relative to `sidecar/`. Each adapter family owns its factory and submodules. A new policy adds a variant in `src/config.rs` and an arm in `ConfiguredPolicy` in `src/registry.rs`. Keep feed parsing, retries and provider selection inside the adapters.
+
+| Ticket | Owned production files | Integration tests and saved real fixtures |
+| --- | --- | --- |
+| #25 | `src/adapters/odds/`, `src/ports/odds_source.rs`, MarketOnly policy registration | `tests/odds*.rs`, `tests/fixtures/odds/` |
+| #26 | `src/adapters/context/`, `src/ports/context_enricher.rs` | `tests/context*.rs`, `tests/fixtures/context/` |
+| #27 | `src/adapters/llm/`, `src/ports/llm_runtime.rs` (provider runtime, schema, errors and fallback) | `tests/llm*.rs`, `tests/fixtures/llm/` |
+| #28 | `src/adapters/pickem/`, `src/ports/pickem_solver.rs`, Stage endpoints on `LeaguePlatform` and its HTTP adapter | `tests/pickem*.rs`, `tests/fixtures/pickem/` |
+| #29 | `src/adapters/debate/`, `src/ports/decision_policy.rs`, HybridAnchored policy registration. The debate factory receives the #27 runtime. | `tests/debate*.rs`, `tests/fixtures/debate/` |
+| #30 | `src/adapters/production/`, binary startup, Compose, sample configurations and runbook | `tests/production*.rs`, deployment examples |
+| #31 | `src/adapters/backtest/`, replay platform, retrospective CLI and report | `tests/backtest*.rs`, `tests/fixtures/backtest/` |
+
+**Seam 1.** Add `mod support;` to a sidecar integration test. `Harness::new().await` starts the KallBet TestApp on an ephemeral loopback socket. Seed `h.app.source`, create the League through a human test client and call the server poller. Construct the bot with `h.sidecar(&invite_url).await`. `h.tick(&mut sidecar, instant).await` sets the shared FakeClock and steps once. A second call to `h.sidecar` opens the same audit file. Use `h.scripts` for dated odds, context and LLM responses/errors. Replace any member of `sidecar.ports` for a custom scenario. The default signal and policy run the real VRS estimator and VrsOnly policy. The HTTP client uses the real server routes. Check the resulting Match card as a human and use the public audit reader for submissions. See `tests/walking.rs`, `tests/skips.rs` and `tests/profiles.rs`.
+
+**Seam 2.** `tests/vrs.rs` covers two real dated snapshots and all three series formats. Store each feed's provenance beside its fixtures. `tests/temporal.rs` exercises the boundary and reuse at an earlier cutoff.
+
 ## Known limitations
 
 - **A local duplicate next to a stored HLTV Match is not merged.** Adoption (`mapping::adoptions`) only re-keys a local Match to an HLTV id that is not stored yet (`rekey_match` refuses an existing target). Since B1, a local Match whose two teams HLTV shows in the same Swiss or Playoffs Stage is adopted whatever the time; but in a Groups Stage (where a pair can meet twice) a local Match HLTV first publishes outside the matching window stays a separate local Match, with its Predictions, next to HLTV's. A League Admin can hide one with an Override. Merging two stored Matches (Predictions, Lock/Reveal stamps, Overrides, notification keys) is not implemented.
