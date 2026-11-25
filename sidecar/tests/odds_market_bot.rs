@@ -1,9 +1,11 @@
 mod support;
 
 use async_trait::async_trait;
+use chrono::Duration;
 use kallbet::{domain::StageKind, poller, ports::Clock as _, testing::EventSnapshotBuilder};
 use kallbet_ai::{
-    AsOf, Clock, Instant, Policy, Sidecar, TemporalLeakError,
+    AsOf, BotProfile, Clock, DecisionPolicy, Dossier, Instant, LlmAdjustment, Policy, Prediction,
+    Result, Sidecar, TemporalLeakError, Tier,
     adapters::odds::{FallbackOdds, FetchError, MarketOnly, OddsConfig, OddsTransport},
 };
 use reqwest::Url;
@@ -199,6 +201,63 @@ async fn market_bot_preserves_a_favourite_that_is_very_close_to_even() {
         view["stages"][0]["groups"][0]["matches"][0]["my_prediction"],
         2
     );
+}
+
+struct MarketPolicyWithLlm;
+
+impl DecisionPolicy for MarketPolicyWithLlm {
+    fn wants_adjustment(&self, _: &BotProfile) -> bool {
+        true
+    }
+
+    fn decide(
+        &self,
+        bot: &BotProfile,
+        dossier: &Dossier,
+        tier: Tier,
+        adjustment: Option<LlmAdjustment>,
+    ) -> Result<Option<Prediction>> {
+        MarketOnly.decide(bot, dossier, tier, adjustment)
+    }
+}
+
+#[tokio::test]
+async fn market_moves_only_reopen_the_dossier_when_the_rounded_probability_changes() {
+    let h = Harness::new().await;
+    let start: Instant = "2026-11-26T06:00:00Z".parse().unwrap();
+    let now = start - Duration::minutes(24);
+    let (mut sidecar, _) = market_bot(
+        &h,
+        now,
+        ("FaZe", "Heroic"),
+        OddsConfig::default(),
+        Arc::new(Feeds::default()),
+    )
+    .await;
+    sidecar.ports.odds = h.scripts.clone();
+    sidecar.ports.policy = Arc::new(MarketPolicyWithLlm);
+
+    for (offset, probability, expected_submission, expected_runs) in
+        [(0, 0.60001, 1, 1), (1, 0.60004, 0, 1), (2, 0.60016, 1, 2)]
+    {
+        let tick = now + Duration::minutes(offset);
+        *h.scripts.market.lock().unwrap() =
+            Some(AsOf::new(probability, tick - Duration::seconds(1), tick).unwrap());
+        assert_eq!(
+            h.tick(&mut sidecar, tick).await.unwrap(),
+            expected_submission
+        );
+        assert_eq!(h.scripts.llm_calls.lock().unwrap().len(), expected_runs);
+        assert_eq!(
+            sidecar.audit.submissions().await.unwrap().len(),
+            expected_runs
+        );
+    }
+
+    let predictions = sidecar.audit.submissions().await.unwrap();
+    for (prediction, expected) in predictions.iter().zip([0.60001, 0.60016]) {
+        assert!((prediction.rationale["p_win"].as_f64().unwrap() - expected).abs() < 1e-12);
+    }
 }
 
 // Model elapsed time during live ingestion while keeping platform time fixed
