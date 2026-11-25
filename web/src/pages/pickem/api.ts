@@ -25,6 +25,10 @@ export type MemberPickem = Pickem & {
   user_id: number;
   nickname: string;
   avatar_url: string | null;
+  /** A Bot User's Pick'em. */
+  is_bot: boolean;
+  /** A Bot User's Pick'em that it may still replace (until the Stage starts). */
+  preliminary: boolean;
   points: number;
 };
 

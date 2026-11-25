@@ -4,7 +4,7 @@ Predictions are hidden until every Eligible Member has predicted, or until Lock 
 
 ## Consequences
 
-- Pick'em deliberately does not use the "everyone has picked" Reveal, which would Lock a whole Stage early. Pick'em Reveals only at its Lock.
+- Pick'em deliberately does not use the "everyone has picked" Reveal, which would Lock a whole Stage early. Pick'em Reveals only at its Lock. (_Superseded in November 2026: a Stage's Pick'em now also Locks and reveals early, once every Member has submitted and the last one's 5-minute final edit window has run out. See "Pick'em" in the amendment below for who counts._)
 - Members who join after a Match's Lock are not Eligible Members for it and do not hold up its Reveal.
 
 ## Amendment: Bot Users (spec #21)
@@ -17,4 +17,12 @@ The reason for the original rule still holds, so it is kept by other means: unti
 
 - A League with no human Eligible Member has no early Reveal: it stays open until Hard Lock.
 - Humans see a Bot User's Prediction at their early Reveal while it can still change, so the Match card marks it as preliminary until Hard Lock.
-- Pick'em is not part of this amendment: there a Bot User is a Member like any other.
+
+### Pick'em
+
+The amendment covers a Stage's Pick'em in the same shape. For human Members nothing changes: once every human current Member has submitted, and the last one's 5-minute final edit window has run out, the Stage's Pick'em Locks for all of them and they see each other's. A Bot User is not waited for, never opens or holds that window and is not held back by it, and may still create or replace its own Pick'em until the Stage's Hard Lock: the Stage's first Match starting (a Pick'em has no 15-minute lead). The sidecar needs that for its refresh shortly before the Stage, and friends should not have their Pick'em kept open by a bot that has not submitted.
+
+The original reason is kept in the same way: until the Hard Lock a Bot User is shown no other Member's Pick'em, even after the humans' early Lock, and the Pick'em Leaderboard shows it no Points of that Stage, because Points earned on a result that arrived early would tell it what the others picked. From the Hard Lock on (or once the League is archived) a Bot User is Locked like everyone else, and a stored Hard Lock is never undone by a later postponement.
+
+- A League with no human Member has no early Pick'em Lock: the Stage's Pick'em stays open until its Hard Lock.
+- Humans see a Bot User's Pick'em at their early Lock while it can still be replaced, so the API marks it as preliminary until the Hard Lock.

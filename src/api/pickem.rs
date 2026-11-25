@@ -14,6 +14,12 @@
 //! Playoffs GET also carries `bracket {ready, slots}`; PUT on a bracket whose
 //! first-round teams are not all known answers 422 `pickem_bracket_not_ready`.
 //!
+//! Bot Users (ADR-0003's amendment). A human is Locked by the humans' early
+//! Lock and by another Member's final edit window; a Bot User only by the
+//! Stage's Hard Lock (its first Match starting). Until then a Bot User is
+//! shown nobody else's Pick'em and no Pick'em Points of the Stage, even
+//! after the humans' early Lock: see `blind`.
+//!
 //! The Pick'em Leaderboard (`GET /api/leagues/{id}/pickem-leaderboard`) is
 //! served from here too, so that this ticket needs no edit in
 //! `api/leaderboard.rs` (the Match Leaderboard's file).
@@ -33,12 +39,12 @@ use crate::domain::effective_match::EventView;
 use std::collections::HashMap;
 
 use crate::domain::pickem::{self, Bracket, BracketPickem, Pick, SwissPickem};
-use crate::domain::{LeagueId, Stage, StageKind, StageOrdinal, TeamId, UserId};
+use crate::domain::{LeagueId, Stage, StageKind, StageOrdinal, TeamId, User, UserId};
 use crate::error::{ApiError, ApiResult};
 use crate::league_matches;
 use crate::state::AppState;
-use crate::store::leagues::{self, League};
-use crate::store::pickems;
+use crate::store::leagues::{self, League, MemberProfile};
+use crate::store::pickems::{self, StageState};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -60,12 +66,30 @@ struct Leaderboard {
     entries: Vec<LeaderboardEntry>,
 }
 
+/// Whether `viewer` must not be shown anything that depends on other
+/// Members' Pick'ems of the Stage (ADR-0003's amendment): a Bot User that can
+/// still write, that is until the Stage's Hard Lock or the League's archive.
+/// The humans' early Lock reveals to humans only.
+fn blind(viewer: &User, league: &League, stage: &StageState) -> bool {
+    viewer.is_bot && !stage.is_hard_locked() && league.archived_at.is_none()
+}
+
+/// Whether a current Member's Pick'em of the Stage counts: they joined by
+/// the Lock that binds them (the Hard Lock for a Bot User), or it has not
+/// come yet.
+fn counts(member: &MemberProfile, stage: &StageState) -> bool {
+    stage
+        .lock_of(member.is_bot)
+        .is_none_or(|at| member.joined_at <= at)
+}
+
 /// The Pick'em Leaderboard: every current Member ranked by Pick'em Points
 /// (all Stages together), equal Points sharing a place. Separate from the
 /// Match Leaderboard: no Match Prediction counts here. It holds only Points,
 /// so it reveals nothing about unrevealed Picks: a Stage scores only once its
 /// Pick'em has Locked (a result can arrive before that, e.g. a forfeit
-/// reported before the planned start).
+/// reported before the planned start), and for a Bot User viewer only once
+/// it has Hard Locked.
 async fn leaderboard(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -86,15 +110,17 @@ async fn leaderboard(
     {
         let stage_state =
             pickems::evaluate_lock(&mut conn, league.id, &view, stage.ordinal, now).await?;
-        let Some(locked_at) = stage_state.locked_at else {
+        // A Bot User that can still change its Pick'em is shown no Points of
+        // the Stage: they would tell it what the humans picked.
+        if stage_state.locked_at.is_none() || blind(&user, &league, &stage_state) {
             continue;
-        };
+        }
         let outcomes = pickem::swiss_outcomes(&view, stage.ordinal);
         let bracket = Bracket::of(&view, stage.ordinal);
         for stored in pickems::for_stage(&mut conn, league.id, stage.ordinal).await? {
             if members
                 .iter()
-                .any(|m| m.user_id == stored.user_id && m.joined_at <= locked_at)
+                .any(|m| m.user_id == stored.user_id && counts(m, &stage_state))
             {
                 *points.entry(stored.user_id).or_default() +=
                     stored_points(stage.kind, &bracket, &outcomes, &stored.picks);
@@ -188,6 +214,7 @@ struct StageInfo {
     name: String,
 }
 
+/// The Stage Pick'em's Lock as the viewer lives it.
 #[derive(Serialize)]
 struct LockJson {
     /// Earliest expected close from the Stage deadline and final edit window.
@@ -198,12 +225,43 @@ struct LockJson {
     edit_window: bool,
 }
 
-/// Another Member's Pick'em. Only ever sent after Lock.
+impl LockJson {
+    /// A human Member's Lock: the humans' early Lock or the Hard Lock, and
+    /// during the final edit window only its owner can edit.
+    fn of_human(stage: &StageState, viewer: UserId, writable: bool) -> Self {
+        LockJson {
+            locks_at: stage.locks_at,
+            locked_at: stage.locked_at,
+            locked: stage.locked_at.is_some(),
+            can_edit: stage.can_edit(viewer) && writable,
+            edit_window: stage.edit_window.is_some() && stage.locked_at.is_none(),
+        }
+    }
+
+    /// A Bot User's Lock: the Hard Lock, and nothing else.
+    fn of_bot(stage: &StageState, writable: bool) -> Self {
+        LockJson {
+            locks_at: stage.hard_locks_at,
+            locked_at: stage.hard_locked_at,
+            locked: stage.is_hard_locked(),
+            can_edit: !stage.is_hard_locked() && writable,
+            edit_window: false,
+        }
+    }
+}
+
+/// Another Member's Pick'em. Only ever sent after Lock, and to a Bot User
+/// only from the Hard Lock on.
 #[derive(Serialize)]
 struct MemberPickem {
     user_id: UserId,
     nickname: String,
     avatar_url: Option<String>,
+    /// A Bot User's Pick'em.
+    is_bot: bool,
+    /// A Bot User's Pick'em that it may still replace: the humans Locked
+    /// early and the Stage has not Hard Locked.
+    preliminary: bool,
     #[serde(flatten)]
     pickem: PickemJson,
     points: u32,
@@ -334,12 +392,14 @@ async fn show(
         .iter()
         .find(|p| p.user_id == user.id)
         .map(|p| stored_json(stage.kind, &bracket, &p.picks, p.updated_at));
-    // Other Members' Pick'ems exist in the response only after Lock.
     let eligible: Vec<_> = members
         .iter()
-        .filter(|m| stage_state.locked_at.is_none_or(|at| m.joined_at <= at))
+        .filter(|m| counts(m, &stage_state))
         .collect();
-    let others = if stage_state.locked_at.is_some() {
+    let writable = league.archived_at.is_none();
+    // Other Members' Pick'ems exist in the response only after Lock, and for
+    // a Bot User only once it can no longer change its own.
+    let others = if stage_state.locked_at.is_some() && !blind(&user, &league, &stage_state) {
         Some(
             eligible
                 .iter()
@@ -349,6 +409,8 @@ async fn show(
                         user_id: m.user_id,
                         nickname: m.nickname.clone(),
                         avatar_url: m.avatar_url.clone(),
+                        is_bot: m.is_bot,
+                        preliminary: m.is_bot && !stage_state.is_hard_locked() && writable,
                         pickem: stored_json(stage.kind, &bracket, &p.picks, p.updated_at),
                         points: stored_points(stage.kind, &bracket, &outcomes, &p.picks),
                     })
@@ -392,12 +454,10 @@ async fn show(
             name: stage.name.clone(),
         },
         teams,
-        lock: LockJson {
-            locks_at: stage_state.locks_at,
-            locked_at: stage_state.locked_at,
-            locked: stage_state.locked_at.is_some(),
-            can_edit: stage_state.can_edit(user.id) && league.archived_at.is_none(),
-            edit_window: stage_state.edit_window.is_some() && stage_state.locked_at.is_none(),
+        lock: if user.is_bot {
+            LockJson::of_bot(&stage_state, writable)
+        } else {
+            LockJson::of_human(&stage_state, user.id, writable)
         },
         my_pickem: mine,
         submitted: eligible
@@ -424,14 +484,14 @@ async fn save(
         .ok_or_else(ApiError::not_found)?;
     require_writable(&league)?;
     let now = state.clock.now();
-    let result = save_in(&mut tx, &league, user.id, ordinal, body, now).await;
+    let result = save_in(&mut tx, &league, &user, ordinal, body, now).await;
     db::finish(tx, result).await.map(Json)
 }
 
 async fn save_in(
     db: &mut SqliteConnection,
     league: &League,
-    user: UserId,
+    user: &User,
     ordinal: StageOrdinal,
     body: serde_json::Value,
     now: DateTime<Utc>,
@@ -439,9 +499,17 @@ async fn save_in(
     let (view, _) = league_matches::effective_view_and_overrides(db, league).await?;
     let view = &view;
     let stage = pickem_stage(view, ordinal)?;
-    // Lock is re-checked on the server, so a stale page cannot bypass it.
+    // Lock is re-checked on the server, so a stale page cannot bypass it. A
+    // human is Locked by the humans' early Lock and by another Member's final
+    // edit window; a Bot User (ADR-0003's amendment) only by the Hard Lock,
+    // which also catches one that joined after it.
     let stage_state = pickems::evaluate_lock(db, league.id, view, ordinal, now).await?;
-    if !stage_state.can_edit(user) {
+    let open = if user.is_bot {
+        !stage_state.is_hard_locked()
+    } else {
+        stage_state.can_edit(user.id)
+    };
+    if !open {
         return Err(ApiError::conflict("pickem_locked"));
     }
     // A body of the wrong shape for the Stage is a wrong count of picks.
@@ -467,11 +535,18 @@ async fn save_in(
             (picks.to_picks(), swiss_json(picks, now))
         }
     };
-    if !pickems::save(db, league.id, ordinal, user, &picks, now).await? {
+    let written = if user.is_bot {
+        pickems::save_for_bot(db, league.id, ordinal, user.id, &picks, now).await?
+    } else {
+        pickems::save(db, league.id, ordinal, user.id, &picks, now).await?
+    };
+    if !written {
         return Err(ApiError::conflict("pickem_locked"));
     }
-    if stage_state.is_final_submission(user) {
-        pickems::open_edit_window(db, league.id, ordinal, user, now).await?;
+    // The last human to submit gets the final edit window. Bot Users are not
+    // waited for, so one never opens it.
+    if stage_state.is_final_submission(user.id) {
+        pickems::open_edit_window(db, league.id, ordinal, user.id, now).await?;
     }
     Ok(saved)
 }
