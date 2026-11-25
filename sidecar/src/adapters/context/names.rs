@@ -14,27 +14,9 @@ fn words(name: &str) -> Vec<String> {
         .collect()
 }
 
-/// Canonical comparison key for a team name across data sources.
-pub fn team_key(name: &str) -> String {
-    let all = words(name);
-    let kept: Vec<&String> = all
-        .iter()
-        .filter(|w| !TEAM_NOISE.contains(&w.as_str()))
-        .collect();
-    let key = if kept.is_empty() {
-        all.concat()
-    } else {
-        kept.into_iter().map(String::as_str).collect()
-    };
-    match key.as_str() {
-        "pvision" => "parivision".into(),
-        "dendelecs" => "dendele".into(),
-        "nip" => "ninjasinpyjamas".into(),
-        "navi" => "natusvincere".into(),
-        "bb" => "betboom".into(),
-        _ => key,
-    }
-}
+/// Canonical comparison key for a team name across data sources (the one
+/// shared key, `crate::team_names::team_key`).
+pub use crate::team_names::team_key;
 
 /// Checks whether two team names (or any alias of either) represent the same team.
 pub fn teams_match(a: &str, b: &str, aliases: &[String]) -> bool {

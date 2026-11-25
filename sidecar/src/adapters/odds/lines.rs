@@ -59,26 +59,7 @@ pub(super) fn normalize(a: f64, b: f64) -> Option<[f64; 2]> {
     Some([p, 1.0 - p])
 }
 
-pub(super) fn team_key(name: &str) -> String {
-    let lower = name.to_lowercase();
-    let words: Vec<_> = lower.split(|c: char| !c.is_alphanumeric()).collect();
-    let key: String = words
-        .iter()
-        .filter(|word| {
-            !["team", "esports", "esport", "gaming", "clan", "club", "gg"].contains(word)
-        })
-        .copied()
-        .collect();
-    let key = if key.is_empty() { words.concat() } else { key };
-    match key.as_str() {
-        "nip" => "ninjasinpyjamas".into(),
-        "natusvincere" => "navi".into(),
-        "pvision" => "parivision".into(),
-        "gosh" => "bcgame".into(),
-        "dendelecs" => "dendele".into(),
-        _ => key,
-    }
-}
+pub(super) use crate::team_names::team_key;
 
 pub(super) fn best<'a, T>(
     game: &Match,

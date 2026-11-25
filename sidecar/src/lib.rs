@@ -41,6 +41,7 @@ pub mod model;
 pub use model::*;
 pub mod config;
 pub mod vrs;
+pub mod team_names;
 pub use config::*;
 pub mod ports;
 pub use ports::*;

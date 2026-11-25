@@ -436,57 +436,9 @@ fn stage_from_pandascore(
     Ok(stage)
 }
 
-/// Comparison key for a team across PandaScore names and acronyms, Liquipedia
-/// template keys and Valve's standings. The aliases are the Liquipedia keys and
-/// renames met in the saved Majors.
-pub fn team_key(name: &str) -> String {
-    const ALIASES: [(&str, &str); 24] = [
-        ("nip", "ninjasinpyjamas"),
-        ("tl", "liquid"),
-        ("fq", "flyquest"),
-        ("vit", "vitality"),
-        ("imp", "imperial"),
-        ("gl", "gamerlegion"),
-        ("lvg", "lynnvision"),
-        ("mongolz", "themongolz"),
-        ("col", "complexity"),
-        ("c9", "cloud9"),
-        ("navi", "natusvincere"),
-        ("vp", "virtuspro"),
-        ("pvision", "parivision"),
-        ("pv", "parivision"),
-        ("dendelecs", "dendele"),
-        ("chinggis", "chinggiswarriors"),
-        ("cw", "chinggiswarriors"),
-        ("ef", "eternalfire"),
-        ("100t", "100thieves"),
-        ("fnc", "fnatic"),
-        ("gaimin", "gaimingladiators"),
-        ("gosh", "bcgame"),
-        ("wc", "wildcard"),
-        ("fly", "flyquest"),
-    ];
-    let lower = name.to_lowercase();
-    let words: Vec<&str> = lower
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|w| !w.is_empty())
-        .collect();
-    let kept: String = words
-        .iter()
-        .filter(|w| !["team", "esports", "gaming", "clan"].contains(w))
-        .copied()
-        .collect();
-    let key = if kept.is_empty() {
-        words.concat()
-    } else {
-        kept
-    };
-    ALIASES
-        .iter()
-        .find(|(k, _)| *k == key)
-        .map(|(_, v)| (*v).to_owned())
-        .unwrap_or(key)
-}
+/// The shared team key (`crate::team_names::team_key`): PandaScore names and
+/// acronyms, Liquipedia template keys and Valve's names meet on it.
+pub use crate::team_names::team_key;
 
 /// The Liquipedia team template key (`{{TeamOpponent|key}}`, `|team3=key`).
 fn opponent_key(value: &str) -> Option<String> {
