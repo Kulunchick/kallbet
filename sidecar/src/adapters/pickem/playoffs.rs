@@ -45,9 +45,10 @@ pub(crate) fn solve_playoffs(
                 && let Some(matches) = g["matches"].as_array()
             {
                 for m in matches {
-                    if let (Some(s), Some(fmt)) =
-                        (m["bracket_slot"].as_u64(), parse_format(m["format"].as_str()))
-                    {
+                    if let (Some(s), Some(fmt)) = (
+                        m["bracket_slot"].as_u64(),
+                        parse_format(m["format"].as_str()),
+                    ) {
                         group_formats.insert((r as u8, s as u8), fmt);
                     }
                 }

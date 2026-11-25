@@ -137,7 +137,11 @@ fn canonical_stage_fingerprint(stage_val: &Value) -> Value {
     })
 }
 
-fn compute_input_hash(stage_val: &Value, ratings: &[AsOf<PairwiseProbability>], cutoff: Instant) -> Result<String> {
+fn compute_input_hash(
+    stage_val: &Value,
+    ratings: &[AsOf<PairwiseProbability>],
+    cutoff: Instant,
+) -> Result<String> {
     let mut quantised: Vec<(i64, i64, i64)> = Vec::with_capacity(ratings.len());
     for rating in ratings {
         let r = rating.at(cutoff)?;
@@ -205,29 +209,6 @@ impl PickemRunner {
                 let tb = &teams[j];
                 let key = (ta.id, tb.id);
 
-                if let Some(opening) = opening_by_pair.get(&key)
-                    && let (as_of, Some(q)) = self.odds.live_quote(opening, now, self.clock.as_ref()).await?
-                {
-                    let obs = q.observed_at();
-                    let p_series_a = *q.at(as_of)?;
-                    let p_map_a = invert_series_prob(opening.format, p_series_a);
-                    let map = if opening.team_a.id == ta.id {
-                        p_map_a
-                    } else {
-                        1.0 - p_map_a
-                    };
-                    ratings.push(AsOf::new(
-                        PairwiseProbability {
-                            first: ta.id,
-                            second: tb.id,
-                            map,
-                        },
-                        obs,
-                        stage_cutoff,
-                    )?);
-                    continue;
-                }
-
                 let synth = Match {
                     event_id: sp.event_id,
                     id: 0,
@@ -237,19 +218,45 @@ impl PickemRunner {
                     scheduled_start: sp.locks_at,
                 };
 
-                if let Some(sig) = self.signal.signal(&synth, now).await? {
-                    let obs = sig.observed_at();
-                    let map = sig.at(now)?.map.clamp(0.0, 1.0);
-                    ratings.push(AsOf::new(
-                        PairwiseProbability {
-                            first: ta.id,
-                            second: tb.id,
-                            map,
+                let opening = opening_by_pair.get(&key).copied();
+                let game = opening.unwrap_or(&synth);
+                let market = if opening.is_none() {
+                    None
+                } else if game
+                    .scheduled_start
+                    .is_some_and(|start| now >= start - Duration::minutes(15))
+                {
+                    // Match odds collection ends at Match Hard Lock. Other Event
+                    // batches can still supply a dated line before Stage Hard Lock.
+                    self.odds.quote(game, now).await?.map(|q| (now, q))
+                } else {
+                    let (as_of, quote) =
+                        self.odds.live_quote(game, now, self.clock.as_ref()).await?;
+                    quote.map(|q| (as_of, q))
+                };
+                let (map, observed_at) = if let Some((as_of, q)) = market {
+                    (
+                        invert_series_prob(game.format, *q.at(as_of)?),
+                        q.observed_at(),
+                    )
+                } else if let Some(sig) = self.signal.signal(game, now).await? {
+                    (sig.at(now)?.map, sig.observed_at())
+                } else {
+                    continue;
+                };
+                ratings.push(AsOf::new(
+                    PairwiseProbability {
+                        first: ta.id,
+                        second: tb.id,
+                        map: if game.team_a.id == ta.id {
+                            map
+                        } else {
+                            1.0 - map
                         },
-                        obs,
-                        stage_cutoff,
-                    )?);
-                }
+                    },
+                    observed_at,
+                    stage_cutoff,
+                )?);
             }
         }
 
@@ -309,9 +316,6 @@ impl PickemStep for PickemRunner {
                 .locks_at
                 .unwrap_or_else(|| now + Duration::nanoseconds(1));
             let ratings = self.gather_ratings(&sp, now, stage_cutoff).await?;
-            if ratings.is_empty() {
-                continue;
-            }
 
             let input_hash = compute_input_hash(&sp.stage, &ratings, stage_cutoff)?;
             if previous.as_deref() == Some(input_hash.as_str()) {

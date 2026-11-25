@@ -12,19 +12,18 @@ impl Sidecar {
             let observed_at = signal.add(&markdown)?;
             audit.record_vrs(&markdown, observed_at).await?;
         }
+        let signal = Arc::new(signal);
+        let odds = adapters::odds::build(&audit)?;
+        let clock = Arc::new(SystemClock);
         let ports = Ports {
+            pickem: adapters::pickem::new(clock.clone(), signal.clone(), odds.clone()),
             platform: Arc::new(HttpPlatform::new(&config.platform_url, secret)?),
-            clock: Arc::new(SystemClock),
-            signal: Arc::new(signal),
-            odds: adapters::odds::build(&audit)?,
+            clock,
+            signal,
+            odds,
             context: adapters::context::build(&config.context, &audit, Arc::new(SystemClock)),
             llm: adapters::debate::build(adapters::llm::build(&config.llm, Arc::new(SystemClock))),
             policy: Arc::new(ConfiguredPolicy),
-            pickem: Arc::new(Noop),
-        };
-        let ports = Ports {
-            pickem: adapters::pickem::new(ports.clock.clone(), ports.signal.clone(), ports.odds.clone()),
-            ..ports
         };
         let sidecar = Sidecar {
             bots: config.bots,

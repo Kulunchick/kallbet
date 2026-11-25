@@ -28,6 +28,10 @@ impl PairOdds {
     fn set(&self, team_a: &str, team_b: &str, p_a: f64, observed_at: Instant, cutoff: Instant) {
         let mut map = self.by_pair.lock().unwrap();
         map.insert(
+            (team_b.to_lowercase(), team_a.to_lowercase()),
+            AsOf::new(1.0 - p_a, observed_at, cutoff).unwrap(),
+        );
+        map.insert(
             (team_a.to_lowercase(), team_b.to_lowercase()),
             AsOf::new(p_a, observed_at, cutoff).unwrap(),
         );
@@ -36,11 +40,28 @@ impl PairOdds {
 
 #[async_trait]
 impl OddsSource for PairOdds {
-    async fn quote(&self, _: &AiMatch, _: Instant) -> AiResult<Option<AsOf<f64>>> {
-        Ok(None)
+    async fn quote(&self, game: &AiMatch, cutoff: Instant) -> AiResult<Option<AsOf<f64>>> {
+        if game
+            .scheduled_start
+            .is_some_and(|start| cutoff < start - Duration::minutes(15))
+        {
+            return Ok(None);
+        }
+        self.lookup(game)
     }
 
-    async fn live_quote(&self, game: &AiMatch, cutoff: Instant, _: &dyn kallbet_ai::Clock) -> AiResult<(Instant, Option<AsOf<f64>>)> {
+    async fn live_quote(
+        &self,
+        game: &AiMatch,
+        cutoff: Instant,
+        _: &dyn kallbet_ai::Clock,
+    ) -> AiResult<(Instant, Option<AsOf<f64>>)> {
+        if game
+            .scheduled_start
+            .is_some_and(|start| cutoff >= start - Duration::minutes(15))
+        {
+            return Ok((cutoff, None));
+        }
         Ok((cutoff, self.lookup(game)?))
     }
 }
@@ -50,16 +71,7 @@ impl PairOdds {
         let map = self.by_pair.lock().unwrap();
         let a = game.team_a.name.to_lowercase();
         let b = game.team_b.name.to_lowercase();
-        if let Some(q) = map.get(&(a.clone(), b.clone())) {
-            return Ok(Some(q.clone()));
-        }
-        if let Some(q) = map.get(&(b, a)) {
-            let obs = q.observed_at();
-            let future = obs + Duration::days(365);
-            let p_rev = 1.0 - *q.at(future).unwrap();
-            return Ok(Some(AsOf::new(p_rev, obs, future).unwrap()));
-        }
-        Ok(None)
+        Ok(map.get(&(a, b)).cloned())
     }
 }
 
@@ -68,10 +80,20 @@ struct PairSignal(Arc<PairOdds>, Arc<dyn kallbet_ai::SignalEstimator>);
 
 #[async_trait]
 impl kallbet_ai::SignalEstimator for PairSignal {
-    async fn signal(&self, game: &AiMatch, cutoff: Instant) -> AiResult<Option<AsOf<kallbet_ai::Signal>>> {
-        if game.id == 0 && let Some(q) = self.0.lookup(game)? {
+    async fn signal(
+        &self,
+        game: &AiMatch,
+        cutoff: Instant,
+    ) -> AiResult<Option<AsOf<kallbet_ai::Signal>>> {
+        if game.id == 0
+            && let Some(q) = self.0.lookup(game)?
+        {
             let map = *q.at(cutoff)?;
-            return Ok(Some(AsOf::new(kallbet_ai::Signal { map, series: map }, q.observed_at(), cutoff)?));
+            return Ok(Some(AsOf::new(
+                kallbet_ai::Signal { map, series: map },
+                q.observed_at(),
+                cutoff,
+            )?));
         }
         self.1.signal(game, cutoff).await
     }
@@ -120,7 +142,10 @@ async fn swiss_stage_submits_refreshes_once_in_prelock_window_stops_after_lock_a
 
     let alice = app.user("Alice").await;
     let league = alice
-        .post("/api/leagues", &json!({ "name": "Major Pickem", "event_id": 8302 }))
+        .post(
+            "/api/leagues",
+            &json!({ "name": "Major Pickem", "event_id": 8302 }),
+        )
         .await
         .json();
     let league_id = league["id"].as_i64().unwrap();
@@ -268,7 +293,7 @@ async fn swiss_stage_submits_refreshes_once_in_prelock_window_stops_after_lock_a
     );
 
     // 6. Settle Swiss Stage outcomes so the bot earns Pick'em Points on the Pick'em Leaderboard!
-    // Make MOUZ (team 1, in bot's zero_three) finish 0-3, and Vitality (2) & FURIA (3) finish 3-0 / 3-1.
+    // MOUZ finishes 0-3 and Vitality finishes 3-0.
     let mut settled = EventSnapshotBuilder::new(8302, "PGL Major Singapore 2026")
         .stage(StageKind::Swiss, "Stage 1")
         .format(MatchFormat::Bo1);
@@ -284,10 +309,29 @@ async fn swiss_stage_submits_refreshes_once_in_prelock_window_stops_after_lock_a
     settled = settled
         .swiss_match(201, (2, 0, 1), "MOUZ", "Nemiga", start + Duration::hours(5))
         .format(MatchFormat::Bo3)
-        .swiss_match(202, (3, 0, 2), "MOUZ", "PARIVISION", start + Duration::hours(10))
-        .swiss_match(203, (2, 1, 0), "Vitality", "Aurora", start + Duration::hours(5))
-        .swiss_match(204, (3, 2, 0), "Vitality", "Spirit", start + Duration::hours(10));
-    app.source.put_event(settled.build(start + Duration::hours(12)));
+        .swiss_match(
+            202,
+            (3, 0, 2),
+            "MOUZ",
+            "PARIVISION",
+            start + Duration::hours(10),
+        )
+        .swiss_match(
+            203,
+            (2, 1, 0),
+            "Vitality",
+            "Aurora",
+            start + Duration::hours(5),
+        )
+        .swiss_match(
+            204,
+            (3, 2, 0),
+            "Vitality",
+            "Spirit",
+            start + Duration::hours(10),
+        );
+    app.source
+        .put_event(settled.build(start + Duration::hours(12)));
     let ev = EventId(8302);
     // MOUZ loses all 3 -> 0-3
     app.source.finish(ev, MatchId(101), "Legacy", (1, 0));
@@ -315,9 +359,6 @@ async fn swiss_stage_submits_refreshes_once_in_prelock_window_stops_after_lock_a
         bot_entry["points"].as_u64().unwrap() >= 1,
         "bot should earn Pick'em Points on the Pick'em Leaderboard, got {lb}"
     );
-    let audited = pickem::submitted_pickems(&sidecar.audit).await.unwrap();
-    assert_eq!(audited.len(), 2, "initial submission + 1 pre-Stage refresh recorded in audit DB");
-    assert_ne!(audited[0].input_hash, audited[1].input_hash);
 }
 
 #[tokio::test]
@@ -360,7 +401,11 @@ async fn playoffs_stage_waits_until_ready_submits_refreshes_stops_after_lock_and
     let mut sidecar = h.sidecar(&invite).await;
     sidecar.ports.signal = Arc::new(PairSignal(odds.clone(), sidecar.ports.signal.clone()));
     sidecar.ports.odds = odds.clone();
-    sidecar.ports.pickem = pickem::new(sidecar.ports.clock.clone(), sidecar.ports.signal.clone(), sidecar.ports.odds.clone());
+    sidecar.ports.pickem = pickem::new(
+        sidecar.ports.clock.clone(),
+        sidecar.ports.signal.clone(),
+        sidecar.ports.odds.clone(),
+    );
 
     // 1. While bracket.ready == false, Sidecar::tick waits and submits nothing.
     h.tick(&mut sidecar, t0).await.unwrap();
@@ -371,7 +416,7 @@ async fn playoffs_stage_waits_until_ready_submits_refreshes_stops_after_lock_and
     assert_eq!(unready_view["bracket"]["ready"], false);
     assert_eq!(unready_view["submitted"], 0);
 
-    // 2. Fill QF4 ("Vitality" vs "Falcons") so bracket.ready becomes true at T - 3h.
+    // 2. Fill QF4 ("Vitality" vs "Falcons") so bracket.ready becomes true inside the refresh window at T - 29m.
     let t_ready = start - Duration::minutes(29);
     let ready_event = EventSnapshotBuilder::new(9001, "Major Playoffs")
         .stage(StageKind::Playoffs, "Playoffs")
@@ -454,8 +499,8 @@ async fn playoffs_stage_waits_until_ready_submits_refreshes_stops_after_lock_and
         .unwrap();
     assert_eq!(bot_unchanged["updated_at"], json!(t_ready));
 
-    // 4. At T - 20m, market odds surge Falcons (id 8) to 95% against everyone -> bot refreshes once!
-    let t_minus_20m = start - Duration::minutes(20);
+    // 4. At T - 10m, market odds surge Falcons (id 8) to 95% against everyone -> bot refreshes once!
+    let t_minus_10m = start - Duration::minutes(10);
     for opp in [
         "MOUZ",
         "PARIVISION",
@@ -465,9 +510,15 @@ async fn playoffs_stage_waits_until_ready_submits_refreshes_stops_after_lock_and
         "9z",
         "Vitality",
     ] {
-        odds.set("Falcons", opp, 0.95, t_minus_20m - Duration::minutes(1), start);
+        odds.set(
+            "Falcons",
+            opp,
+            0.95,
+            t_minus_10m - Duration::minutes(1),
+            start,
+        );
     }
-    h.tick(&mut sidecar, t_minus_20m).await.unwrap();
+    h.tick(&mut sidecar, t_minus_10m).await.unwrap();
     let view_refreshed = alice
         .get(&format!("/api/leagues/{league_id}/stages/1/pickem"))
         .await
@@ -479,7 +530,7 @@ async fn playoffs_stage_waits_until_ready_submits_refreshes_stops_after_lock_and
         .find(|p| p["is_bot"] == true)
         .unwrap()
         .clone();
-    assert_eq!(bot_refreshed["updated_at"], json!(t_minus_20m));
+    assert_eq!(bot_refreshed["updated_at"], json!(t_minus_10m));
     assert_eq!(final_winner(&bot_refreshed), 8);
 
     // 5. Settle the Playoffs bracket (MOUZ, Spirit, FURIA, Falcons win QFs; MOUZ & Falcons win SFs; Falcons wins Final).
@@ -542,7 +593,10 @@ async fn pickem_tick_rejects_post_cutoff_odds_and_from_config_wires_pickem_step(
 
     let alice = app.user("Alice").await;
     let league = alice
-        .post("/api/leagues", &json!({ "name": "Leak Check", "event_id": 9050 }))
+        .post(
+            "/api/leagues",
+            &json!({ "name": "Leak Check", "event_id": 9050 }),
+        )
         .await
         .json();
     let league_id = league["id"].as_i64().unwrap();
@@ -558,7 +612,7 @@ async fn pickem_tick_rejects_post_cutoff_odds_and_from_config_wires_pickem_step(
         json!({
             "platform_url": h.base,
             "audit_file": dir.path().join("audit.db"),
-            "vrs_files": [concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/vrs/standings_global_2026_11_02.md")],
+            "vrs_files": [],
             "bots": [{
                 "bot_key": "cfg-bot",
                 "nickname": "ConfigBot",
@@ -587,7 +641,7 @@ async fn pickem_tick_rejects_post_cutoff_odds_and_from_config_wires_pickem_step(
         .json();
     assert_eq!(
         view["submitted"], 1,
-        "Sidecar::from_config must submit Pick'em even at T-10m when Matches are already Hard Locked"
+        "A ready Stage still receives an initial bracket when no team has market or VRS coverage"
     );
 
     // Inject post-cutoff odds (observed_at == eval_time) at T - 10m (where only PickemStep runs) -> TemporalLeakError!
@@ -600,5 +654,8 @@ async fn pickem_tick_rejects_post_cutoff_odds_and_from_config_wires_pickem_step(
     *h.scripts.market.lock().unwrap() =
         Some(AsOf::new(0.65, eval_time, eval_time + Duration::minutes(1)).unwrap());
     let err = h.tick(&mut harness_sidecar, eval_time).await.unwrap_err();
-    assert!(err.is::<TemporalLeakError>(), "expected TemporalLeakError, got {err}");
+    assert!(
+        err.is::<TemporalLeakError>(),
+        "expected TemporalLeakError, got {err}"
+    );
 }

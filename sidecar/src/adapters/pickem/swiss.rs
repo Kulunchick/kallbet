@@ -62,15 +62,24 @@ fn pairing_tables() -> &'static PairingTables {
         // Valve Major Supplemental Rulebook, Swiss Bracket priority table.
         // Keep the published one-based seed numbers visible for review.
         six: [
-            [(1,6),(2,5),(3,4)], [(1,6),(2,4),(3,5)],
-            [(1,5),(2,6),(3,4)], [(1,5),(2,4),(3,6)],
-            [(1,4),(2,6),(3,5)], [(1,4),(2,5),(3,6)],
-            [(1,6),(2,3),(4,5)], [(1,5),(2,3),(4,6)],
-            [(1,3),(2,6),(4,5)], [(1,3),(2,5),(4,6)],
-            [(1,4),(2,3),(5,6)], [(1,3),(2,4),(5,6)],
-            [(1,2),(3,6),(4,5)], [(1,2),(3,5),(4,6)],
-            [(1,2),(3,4),(5,6)],
-        ].map(|row| row.map(|(a,b)| (a-1,b-1))).to_vec(),
+            [(1, 6), (2, 5), (3, 4)],
+            [(1, 6), (2, 4), (3, 5)],
+            [(1, 5), (2, 6), (3, 4)],
+            [(1, 5), (2, 4), (3, 6)],
+            [(1, 4), (2, 6), (3, 5)],
+            [(1, 4), (2, 5), (3, 6)],
+            [(1, 6), (2, 3), (4, 5)],
+            [(1, 5), (2, 3), (4, 6)],
+            [(1, 3), (2, 6), (4, 5)],
+            [(1, 3), (2, 5), (4, 6)],
+            [(1, 4), (2, 3), (5, 6)],
+            [(1, 3), (2, 4), (5, 6)],
+            [(1, 2), (3, 6), (4, 5)],
+            [(1, 2), (3, 5), (4, 6)],
+            [(1, 2), (3, 4), (5, 6)],
+        ]
+        .map(|row| row.map(|(a, b)| (a - 1, b - 1)))
+        .to_vec(),
         eight: generate_matchings::<4>(8),
     })
 }
@@ -198,11 +207,8 @@ pub(crate) fn solve_swiss(
             && bucket_formats[0][0].is_none()
             && stage_name.trim().eq_ignore_ascii_case("stage 3"));
 
-    let default_r1_format = bucket_formats[0][0].unwrap_or(if all_bo3 {
-        Format::Bo3
-    } else {
-        Format::Bo1
-    });
+    let default_r1_format =
+        bucket_formats[0][0].unwrap_or(if all_bo3 { Format::Bo3 } else { Format::Bo1 });
 
     let round1: [(usize, usize, Format); 8] = if valid_r1 {
         std::array::from_fn(|k| r1_matches[k])
@@ -398,8 +404,8 @@ fn optimal_swiss_assignment(
 ) -> (Vec<usize>, Vec<usize>, Vec<usize>) {
     // Role: 0 = unpicked, 1 = three_nil, 2 = zero_three, 3 = advance
     let neg_inf = f64::NEG_INFINITY;
-    let mut dp =
-        [[[[neg_inf; ADVANCE_SLOTS + 1]; ZERO_THREE_SLOTS + 1]; THREE_NIL_SLOTS + 1]; SWISS_TEAMS + 1];
+    let mut dp = [[[[neg_inf; ADVANCE_SLOTS + 1]; ZERO_THREE_SLOTS + 1]; THREE_NIL_SLOTS + 1];
+        SWISS_TEAMS + 1];
     let mut choice =
         [[[[0_u8; ADVANCE_SLOTS + 1]; ZERO_THREE_SLOTS + 1]; THREE_NIL_SLOTS + 1]; SWISS_TEAMS + 1];
     dp[0][0][0][0] = 0.0;

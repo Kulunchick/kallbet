@@ -118,13 +118,8 @@ impl MonteCarloPickemSolver {
             rating.at(cutoff)?;
         }
         check_no_mid_stage_leak(stage_val, cutoff)?;
-        if ratings.is_empty() {
-            return Ok(None);
-        }
         match stage_val["stage"]["kind"].as_str() {
-            Some("swiss") => {
-                swiss::solve_swiss(stage_val, ratings, cutoff, self.simulations, rng)
-            }
+            Some("swiss") => swiss::solve_swiss(stage_val, ratings, cutoff, self.simulations, rng),
             Some("playoffs") => playoffs::solve_playoffs(stage_val, ratings, cutoff),
             _ => Ok(None),
         }
@@ -150,7 +145,12 @@ pub fn new(
     signal: Arc<dyn SignalEstimator>,
     odds: Arc<dyn OddsSource>,
 ) -> Arc<dyn PickemStep> {
-    with_solver(clock, signal, odds, Arc::new(MonteCarloPickemSolver::default()))
+    with_solver(
+        clock,
+        signal,
+        odds,
+        Arc::new(MonteCarloPickemSolver::default()),
+    )
 }
 
 pub fn with_solver(

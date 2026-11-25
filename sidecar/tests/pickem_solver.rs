@@ -55,7 +55,7 @@ fn swiss_stage_json(teams: &[(i64, &str)], r1_format: &str, r1_pairs: &[(i64, i6
 
 #[test]
 fn swiss_solver_produces_deterministic_valid_disjoint_pickem_from_real_vrs_and_waits_when_incomplete()
-{
+ {
     let cut = cutoff();
     let obs = cut - Duration::hours(1);
     let standings = Standings::parse([VRS_NOV]).unwrap();
@@ -577,8 +577,10 @@ fn solves_real_pgl_singapore_2026_stage1_pre_start_liquipedia_fixture() {
     assert_eq!(team_ids_by_name.len(), 16);
     assert_eq!(r1_pairs.len(), 8);
 
-    let mut ordered_teams: Vec<(i64, String)> =
-        team_ids_by_name.into_iter().map(|(n, id)| (id, n)).collect();
+    let mut ordered_teams: Vec<(i64, String)> = team_ids_by_name
+        .into_iter()
+        .map(|(n, id)| (id, n))
+        .collect();
     ordered_teams.sort_by_key(|(id, _)| *id);
     let team_refs: Vec<(i64, &str)> = ordered_teams
         .iter()
@@ -616,7 +618,10 @@ fn solves_real_pgl_singapore_2026_stage1_pre_start_liquipedia_fixture() {
     )
     .unwrap();
     let solver = MonteCarloPickemSolver::seeded(8302);
-    let out = solver.solve(&stage, &ratings, stage_cutoff).unwrap().unwrap();
+    let out = solver
+        .solve(&stage, &ratings, stage_cutoff)
+        .unwrap()
+        .unwrap();
     let pickem = SwissPickem {
         three_nil: out["three_nil"]
             .as_array()
@@ -658,11 +663,22 @@ fn swiss_pairing_priorities_determine_the_last_advancer() {
     let cut = cutoff();
     let before = cut - Duration::minutes(1);
     let teams: Vec<_> = (1..=16).map(|id| (id, "team")).collect();
-    let pairs: Vec<_> = (1..=8).map(|id| (id,id+8)).collect();
+    let pairs: Vec<_> = (1..=8).map(|id| (id, id + 8)).collect();
     let stage = AsOf::new(swiss_stage_json(&teams, "bo1", &pairs), before, cut).unwrap();
-    let rating = AsOf::new(PairwiseProbability {first:1, second:2, map:0.5}, before, cut).unwrap();
+    let rating = AsOf::new(
+        PairwiseProbability {
+            first: 1,
+            second: 2,
+            map: 0.5,
+        },
+        before,
+        cut,
+    )
+    .unwrap();
     let mut outcomes = Outcomes("010011101011110100111000101110001".bytes());
-    let pick = MonteCarloPickemSolver::with_simulations(0,1)
-        .solve_with_rng(&stage,&[rating],cut,&mut outcomes).unwrap().unwrap();
-    assert_eq!(pick["advance"], json!([6,9,12,13,14,15]));
+    let pick = MonteCarloPickemSolver::with_simulations(0, 1)
+        .solve_with_rng(&stage, &[rating], cut, &mut outcomes)
+        .unwrap()
+        .unwrap();
+    assert_eq!(pick["advance"], json!([6, 9, 12, 13, 14, 15]));
 }
