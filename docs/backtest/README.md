@@ -51,7 +51,7 @@ at or after its cutoff. How the runner works is in `docs/agents/codebase.md`,
 
 ## What did not run
 
-- **Codex**: out of quota (usage limit) during the whole session, so the spec's
+- **Codex**: out of quota (usage limit) during the whole session (a probe after the spec-21 review's fixes, at 22:58 UTC, answered the same, with a reset at 23:37 UTC), so the spec's
   seating (Codex as Devil's Advocate) was not run and there are no Codex
   numbers. To produce them, once Codex answers again, from the repository root:
 
