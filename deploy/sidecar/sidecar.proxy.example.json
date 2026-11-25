@@ -53,7 +53,8 @@
   "debate": {
     "bots": {
       "oracle": {
-        "mode": "never"
+        "mode": "never",
+        "market_step_pp": 1
       }
     }
   },

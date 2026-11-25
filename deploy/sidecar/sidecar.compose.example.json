@@ -40,6 +40,7 @@
       "oracle": {
         "mode": "tiered",
         "lopsided": 0.8,
+        "market_step_pp": 1,
         "fast": ["claude", "codex"],
         "advocate": ["claude", "codex", "antigravity"],
         "devil": ["codex", "antigravity", "claude"],

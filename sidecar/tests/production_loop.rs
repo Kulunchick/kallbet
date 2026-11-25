@@ -54,7 +54,7 @@ const SETTINGS: LoopSettings = LoopSettings {
     interval: Duration::from_secs(60),
     tick_timeout: Duration::from_secs(300),
 };
-fn health() -> (tempfile::TempDir, Health) {
+fn temp_health() -> (tempfile::TempDir, Health) {
     let dir = tempfile::tempdir().unwrap();
     let health = Health::new(dir.path().join("sidecar.health"));
     (dir, health)
@@ -62,7 +62,7 @@ fn health() -> (tempfile::TempDir, Health) {
 
 #[tokio::test(start_paused = true)]
 async fn ticks_once_per_interval_until_the_shutdown_signal() {
-    let (_dir, health) = health();
+    let (_dir, health) = temp_health();
     let mut ticker = Scripted::new(vec![Ok(1), Ok(0), Ok(2)]);
     // The first tick is at once, then one per 60 s: ticks at 0, 60 and 120 s, and
     // the signal at 150 s arrives between the third and the fourth.
@@ -85,7 +85,7 @@ async fn ticks_once_per_interval_until_the_shutdown_signal() {
 
 #[tokio::test(start_paused = true)]
 async fn a_failing_tick_does_not_stop_the_loop_and_is_counted() {
-    let (_dir, health) = health();
+    let (_dir, health) = temp_health();
     let mut ticker = Scripted::new(vec![Err("platform down"), Err("platform down"), Ok(3)]);
     let summary = runner::run(
         &mut ticker,
@@ -102,7 +102,7 @@ async fn a_failing_tick_does_not_stop_the_loop_and_is_counted() {
 
 #[tokio::test(start_paused = true)]
 async fn the_failure_streak_is_visible_in_the_heartbeat() {
-    let (_dir, health) = health();
+    let (_dir, health) = temp_health();
     let mut ticker = Scripted::new(vec![Err("down"), Err("down")]);
     ticker.hang_after_script = true;
     let summary = runner::run(
@@ -120,7 +120,7 @@ async fn the_failure_streak_is_visible_in_the_heartbeat() {
 
 #[tokio::test(start_paused = true)]
 async fn a_signal_during_a_tick_drops_the_tick_and_returns() {
-    let (_dir, health) = health();
+    let (_dir, health) = temp_health();
     let mut ticker = Scripted::new(vec![]);
     ticker.hang_after_script = true;
     let started = ticker.started.clone();
@@ -137,7 +137,7 @@ async fn a_signal_during_a_tick_drops_the_tick_and_returns() {
 
 #[tokio::test(start_paused = true)]
 async fn a_tick_over_its_timeout_is_dropped_and_counts_as_a_failure() {
-    let (_dir, health) = health();
+    let (_dir, health) = temp_health();
     let mut ticker = Scripted::new(vec![]);
     ticker.hang_after_script = true;
     let settings = LoopSettings {
@@ -159,7 +159,7 @@ async fn a_tick_over_its_timeout_is_dropped_and_counts_as_a_failure() {
 
 #[tokio::test(start_paused = true)]
 async fn a_shutdown_that_is_already_signalled_runs_no_tick() {
-    let (_dir, health) = health();
+    let (_dir, health) = temp_health();
     let mut ticker = Scripted::new(vec![Ok(1)]);
     let summary = runner::run(&mut ticker, SETTINGS, &WallClock, &health, async {}).await;
     assert_eq!(summary.ticks, 0);
@@ -198,7 +198,7 @@ fn the_health_verdict_flags_a_stale_or_failing_loop() {
 fn the_heartbeat_file_round_trips_and_sits_beside_the_audit_file() {
     let health = Health::beside(std::path::Path::new("/data/sidecar.db"));
     assert_eq!(health.path, std::path::Path::new("/data/sidecar.health"));
-    let (_dir, health) = health();
+    let (_dir, health) = temp_health();
     let beat = Heartbeat {
         started_at: Utc::now(),
         finished_at: None,

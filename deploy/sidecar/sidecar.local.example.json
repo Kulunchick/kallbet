@@ -81,7 +81,8 @@
           "antigravity",
           "claude",
           "codex"
-        ]
+        ],
+        "market_step_pp": 1
       }
     }
   },
