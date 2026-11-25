@@ -5,6 +5,7 @@ use std::path::PathBuf;
 #[derive(Clone, Deserialize)]
 pub enum Policy {
     VrsOnly,
+    MarketOnly,
 }
 #[derive(Clone, Deserialize)]
 pub struct BotProfile {
@@ -23,6 +24,8 @@ pub struct Config {
     pub audit_file: PathBuf,
     pub vrs_files: Vec<PathBuf>,
     pub bots: Vec<BotProfile>,
+    #[serde(default)]
+    pub context: adapters::context::ContextConfig,
     #[serde(default)]
     pub llm: adapters::llm::LlmConfig,
 }

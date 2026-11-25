@@ -53,6 +53,26 @@ impl ProcessRunner for Runner {
         Ok(replies.remove(at).unwrap().1)
     }
 }
+/// VrsOnly picks, but asks the LLM first, as an LLM-backed policy (#29) will.
+struct WithLlm;
+impl DecisionPolicy for WithLlm {
+    fn wants_adjustment(&self, _: &BotProfile) -> bool {
+        true
+    }
+    fn decide(
+        &self,
+        bot: &BotProfile,
+        d: &Dossier,
+        tier: Tier,
+        adjustment: Option<LlmAdjustment>,
+    ) -> Result<Option<Prediction>> {
+        assert!(
+            adjustment.is_some(),
+            "the chain's answer reaches the policy"
+        );
+        kallbet_ai::adapters::baseline::VrsOnly.decide(bot, d, tier, adjustment)
+    }
+}
 struct ServerClock(Arc<kallbet::testing::FakeClock>);
 impl Clock for ServerClock {
     fn now(&self) -> Instant {
@@ -104,6 +124,7 @@ async fn claude_quota_fails_over_to_codex_and_cools_down_across_matches() {
     .unwrap();
     let mut sidecar = h.sidecar(&invite).await;
     sidecar.bots[0].provider_chain = vec!["claude".into(), "codex".into()];
+    sidecar.ports.policy = Arc::new(WithLlm);
     sidecar.ports.llm = Arc::new(Providers::new(
         &config,
         Mode::Live,

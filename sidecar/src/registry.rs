@@ -16,8 +16,8 @@ impl Sidecar {
             platform: Arc::new(HttpPlatform::new(&config.platform_url, secret)?),
             clock: Arc::new(SystemClock),
             signal: Arc::new(signal),
-            odds: adapters::odds::build(),
-            context: adapters::context::build(),
+            odds: adapters::odds::build(&audit)?,
+            context: adapters::context::build(&config.context, &audit, Arc::new(SystemClock)),
             llm: adapters::debate::build(adapters::llm::build(&config.llm, Arc::new(SystemClock))),
             policy: Arc::new(ConfiguredPolicy),
             pickem: adapters::pickem::build(),
@@ -42,6 +42,7 @@ impl DecisionPolicy for ConfiguredPolicy {
     ) -> Result<Option<Prediction>> {
         match bot.policy {
             Policy::VrsOnly => VrsOnly.decide(bot, d, tier, adjustment),
+            Policy::MarketOnly => adapters::odds::MarketOnly.decide(bot, d, tier, adjustment),
         }
     }
 }

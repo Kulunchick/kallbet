@@ -1,6 +1,22 @@
-//! Ticket #25 owns this adapter family and its registration.
-use crate::OddsSource;
+//! Pre-match series probabilities in OddsPapi, Polymarket, Kalshi priority order.
+use crate::{Audit, OddsSource, Result};
 use std::sync::Arc;
-pub fn build() -> Arc<dyn OddsSource> {
-    Arc::new(super::baseline::Noop)
+mod chain;
+mod feed;
+pub mod kalshi;
+mod lines;
+pub mod oddspapi;
+mod policy;
+pub mod polymarket;
+
+pub use chain::{FallbackOdds, OddsConfig};
+pub use feed::{FetchError, OddsTransport};
+pub use policy::MarketOnly;
+
+pub fn build(audit: &Audit) -> Result<Arc<dyn OddsSource>> {
+    Ok(Arc::new(FallbackOdds::new(
+        audit,
+        OddsConfig::from_env()?,
+        Arc::new(feed::HttpTransport::new()?),
+    )))
 }
