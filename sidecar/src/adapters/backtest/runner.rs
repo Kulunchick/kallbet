@@ -609,6 +609,7 @@ impl Backtest {
                 .as_ref()
                 .map(|p| format!("{}: no Pick'em view ({p}).", s.title()))
         }));
+        let major = self.major_detail(predictions, pickems);
         Ok(Report {
             archive_digest: self.archive.digest.clone(),
             archive_files: self.archive.files,
@@ -620,9 +621,73 @@ impl Backtest {
             tables,
             llm_moves,
             pickem,
+            major,
             llm,
             notes,
         })
+    }
+
+    /// The Major the direct (real-name) LLM Matches belong to, Match by Match
+    /// with every profile's Prediction, and the solver's Pick'em per Stage.
+    fn major_detail(
+        &self,
+        predictions: &[Submitted],
+        pickems: &[super::platform::SubmittedPickem],
+    ) -> Option<report::MajorDetail> {
+        let stages = &self.archive.stages;
+        let event = stages
+            .iter()
+            .find(|s| s.matches.iter().any(|m| self.plan.direct.contains(&m.game.id)))?
+            .event_id;
+        let mut detail = report::MajorDetail::default();
+        for stage in stages.iter().filter(|s| s.event_id == event) {
+            detail.event = stage.event.clone();
+            let name = |id: i64| {
+                stage
+                    .teams
+                    .iter()
+                    .find(|t| t.id == id)
+                    .map_or_else(|| id.to_string(), |t| t.name.clone())
+            };
+            for m in &stage.matches {
+                let picks = PROFILES
+                    .iter()
+                    .map(|(key, _)| {
+                        let pick = predictions
+                            .iter()
+                            .find(|p| p.bot == *key && p.match_id == m.game.id)
+                            .map(|p| report::MatchPick {
+                                team: name(p.prediction.team_id),
+                                p_win: p.prediction.rationale["p_win"].as_f64().unwrap_or(f64::NAN),
+                                correct: p.prediction.team_id == m.winner,
+                            });
+                        ((*key).to_owned(), pick)
+                    })
+                    .collect();
+                detail.matches.push(report::MatchRow {
+                    stage: stage.name.clone(),
+                    game: format!("{} vs {}", m.game.team_a.name, m.game.team_b.name),
+                    format: serde_json::to_value(m.game.format).unwrap_or_default(),
+                    scheduled_start: m.game.scheduled_start,
+                    winner: name(m.winner),
+                    picks,
+                });
+            }
+            if let Some(sub) = pickems.iter().find(|p| p.stage_id == stage.id) {
+                let (points, settled, picks) = report::pickem_points(stage, &sub.payload);
+                detail.pickems.push(report::PickemDetail {
+                    stage: stage.title(),
+                    status: if stage.complete {
+                        format!("final: the Stage is finished ({settled} of {picks} picks decided)")
+                    } else {
+                        format!("pending: the Stage is not finished ({settled} of {picks} picks decided)")
+                    },
+                    points,
+                    picks: report::pickem_detail(stage, &sub.payload),
+                });
+            }
+        }
+        Some(detail)
     }
 
     /// Of the anonymized slice, how many Matches' dossiers held a roster fact

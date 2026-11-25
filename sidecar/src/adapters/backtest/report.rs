@@ -267,6 +267,144 @@ pub struct LlmMove {
     pub factors: Value,
 }
 
+/// One profile's Prediction on one Match.
+#[derive(Clone, Debug, Serialize)]
+pub struct MatchPick {
+    pub team: String,
+    /// The picked team's probability.
+    pub p_win: f64,
+    pub correct: bool,
+}
+
+/// One Match of the post-cutoff Major, with every profile's Prediction.
+#[derive(Clone, Debug, Serialize)]
+pub struct MatchRow {
+    pub stage: String,
+    pub game: String,
+    pub format: Value,
+    pub scheduled_start: Option<crate::Instant>,
+    pub winner: String,
+    /// Profile -> its Prediction (`None`: it made none).
+    pub picks: BTreeMap<String, Option<MatchPick>>,
+}
+
+/// One team of a submitted Pick'em and how it stands.
+#[derive(Clone, Debug, Serialize)]
+pub struct PickedTeam {
+    pub team: String,
+    /// Wins-losses in the Stage so far.
+    pub record: String,
+    /// `correct`, `wrong` or `undecided`.
+    pub state: String,
+}
+
+/// The Pick'em the solver submitted for one Stage of the post-cutoff Major.
+#[derive(Clone, Debug, Serialize)]
+pub struct PickemDetail {
+    pub stage: String,
+    pub status: String,
+    /// Points so far (final when the Stage is finished).
+    pub points: usize,
+    /// Swiss: `three_nil`, `zero_three`, `advance`; Playoffs: one per slot.
+    pub picks: Vec<(String, Vec<PickedTeam>)>,
+}
+
+/// Every Match and Pick'em of the Major played after the models' training
+/// cutoff, in detail.
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct MajorDetail {
+    pub event: String,
+    pub matches: Vec<MatchRow>,
+    pub pickems: Vec<PickemDetail>,
+}
+
+/// How each picked team of a submitted Pick'em stands on the Stage's results.
+pub fn pickem_detail(stage: &ReplayStage, payload: &Value) -> Vec<(String, Vec<PickedTeam>)> {
+    let mut wins: BTreeMap<i64, usize> = BTreeMap::new();
+    let mut losses: BTreeMap<i64, usize> = BTreeMap::new();
+    for (w, l) in &stage.results {
+        *wins.entry(*w).or_default() += 1;
+        *losses.entry(*l).or_default() += 1;
+    }
+    let record = |id: i64| {
+        (
+            wins.get(&id).copied().unwrap_or(0),
+            losses.get(&id).copied().unwrap_or(0),
+        )
+    };
+    let name = |id: i64| {
+        stage
+            .teams
+            .iter()
+            .find(|t| t.id == id)
+            .map_or_else(|| id.to_string(), |t| t.name.clone())
+    };
+    let state = |correct: bool, wrong: bool| {
+        if correct {
+            "correct"
+        } else if wrong {
+            "wrong"
+        } else {
+            "undecided"
+        }
+        .to_owned()
+    };
+    match stage.kind {
+        StageKind::Swiss => ["three_nil", "zero_three", "advance"]
+            .into_iter()
+            .map(|bucket| {
+                let teams = payload[bucket]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_i64)
+                    .map(|id| {
+                        let (w, l) = record(id);
+                        let (correct, wrong) = match bucket {
+                            "three_nil" => ((w, l) == (3, 0), l > 0),
+                            "zero_three" => ((w, l) == (0, 3), w > 0),
+                            _ => (w == 3 && l > 0, l == 3 || (w, l) == (3, 0)),
+                        };
+                        PickedTeam {
+                            team: name(id),
+                            record: format!("{w}-{l}"),
+                            state: state(correct, wrong),
+                        }
+                    })
+                    .collect();
+                (bucket.to_owned(), teams)
+            })
+            .collect(),
+        StageKind::Playoffs => {
+            let slots: Vec<&Value> = payload["picks"].as_array().into_iter().flatten().collect();
+            let depth = slots
+                .iter()
+                .filter_map(|s| s["rounds_before_final"].as_u64())
+                .max()
+                .unwrap_or(0) as usize;
+            slots
+                .iter()
+                .map(|s| {
+                    let id = s["team_id"].as_i64().unwrap_or_default();
+                    let r = s["rounds_before_final"].as_u64().unwrap_or(0) as usize;
+                    let (w, l) = record(id);
+                    let won = w > depth - r;
+                    let label = format!(
+                        "rounds before final {r}, slot {}",
+                        s["slot"].as_u64().unwrap_or(0)
+                    );
+                    let pick = PickedTeam {
+                        team: name(id),
+                        record: format!("{w}-{l}"),
+                        state: state(won, !won && l > 0),
+                    };
+                    (label, vec![pick])
+                })
+                .collect()
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct Report {
     pub archive_digest: String,
@@ -276,6 +414,8 @@ pub struct Report {
     pub tables: Vec<Table>,
     pub llm_moves: Vec<LlmMove>,
     pub pickem: Vec<PickemRow>,
+    /// The Major after the models' training cutoff, Match by Match.
+    pub major: Option<MajorDetail>,
     pub llm: LlmTrack,
     pub notes: Vec<String>,
 }
@@ -414,6 +554,60 @@ impl Report {
                 p.picks,
                 p.rated_pairs
             ));
+        }
+        if let Some(major) = &self.major {
+            line(String::new());
+            line(format!("## {}: every Match", major.event));
+            line(String::new());
+            line("Each profile's pick and the probability it gave its pick; ✓ correct, ✗ wrong, – no Prediction.".into());
+            line(String::new());
+            let keys: Vec<&str> = self.profiles.iter().map(|(k, _)| k.as_str()).collect();
+            line(format!(
+                "| Stage | Match | Format | Scheduled Start (UTC) | Winner | {} |",
+                keys.join(" | ")
+            ));
+            line(format!("|---|---|---|---|---|{}", "---|".repeat(keys.len())));
+            for m in &major.matches {
+                let cells: Vec<String> = keys
+                    .iter()
+                    .map(|k| match m.picks.get(*k).cloned().flatten() {
+                        Some(p) => format!(
+                            "{} {} {:.0}%",
+                            if p.correct { "✓" } else { "✗" },
+                            p.team,
+                            p.p_win * 100.0
+                        ),
+                        None => "–".into(),
+                    })
+                    .collect();
+                line(format!(
+                    "| {} | {} | {} | {} | {} | {} |",
+                    m.stage,
+                    m.game,
+                    m.format.as_str().unwrap_or("").to_uppercase(),
+                    m.scheduled_start
+                        .map_or("–".into(), |t| t.format("%Y-%m-%d %H:%M").to_string()),
+                    m.winner,
+                    cells.join(" | ")
+                ));
+            }
+            for p in &major.pickems {
+                line(String::new());
+                line(format!("## {}: the solver's Pick'em", p.stage));
+                line(String::new());
+                line(format!("{}; {} Points so far.", p.status, p.points));
+                line(String::new());
+                line("| Pick | Team | Record | State |".into());
+                line("|---|---|---|---|".into());
+                for (bucket, teams) in &p.picks {
+                    for t in teams {
+                        line(format!(
+                            "| {} | {} | {} | {} |",
+                            bucket, t.team, t.record, t.state
+                        ));
+                    }
+                }
+            }
         }
         line(String::new());
         line("## LLM track".into());

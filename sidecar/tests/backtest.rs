@@ -850,6 +850,29 @@ fn the_backtest_subcommand_writes_the_report() {
         serde_json::from_str(&std::fs::read_to_string(out.path().join("report.json")).unwrap())
             .unwrap();
     assert_eq!(json["stages"][0]["with_vrs"], 24);
+    // The post-cutoff Major in detail: every Match with each profile's pick,
+    // and the solver's Pick'em with the state of each picked team.
+    let major = &json["major"];
+    assert_eq!(major["event"], "PGL Major Singapore 2026");
+    let matches = major["matches"].as_array().unwrap();
+    assert_eq!(matches.len(), 24);
+    for m in matches {
+        let vrs = &m["picks"]["vrs"];
+        assert!(vrs["team"].is_string() && vrs["p_win"].as_f64().unwrap() >= 0.5, "{m}");
+        assert_eq!(vrs["correct"], vrs["team"] == m["winner"], "{m}");
+        assert!(m["picks"]["single"].is_null(), "no LLM was configured");
+    }
+    assert!(report.contains("## PGL Major Singapore 2026: every Match"), "{report}");
+    let pickem = &major["pickems"][0];
+    assert!(pickem["status"].as_str().unwrap().starts_with("pending"), "{pickem}");
+    let picks = pickem["picks"].as_array().unwrap();
+    let sizes: Vec<_> = picks.iter().map(|p| p[1].as_array().unwrap().len()).collect();
+    assert_eq!(sizes, [2, 2, 6]);
+    for team in picks.iter().flat_map(|p| p[1].as_array().unwrap()) {
+        assert!(["correct", "wrong", "undecided"].contains(&team["state"].as_str().unwrap()));
+        assert!(team["record"].as_str().unwrap().contains('-'));
+    }
+    assert!(report.contains("the solver's Pick'em"), "{report}");
     // The run is recorded in the audit file beside the report.
     let runs = tokio::runtime::Runtime::new().unwrap().block_on(async {
         let audit = Audit::open(&out.path().join("audit.sqlite")).await.unwrap();
