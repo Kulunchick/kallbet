@@ -74,7 +74,11 @@ async fn a_bot_keeps_its_token_and_registers_again_only_when_it_is_refused() {
             .await
             .unwrap();
     }
-    assert_eq!(platform.logins.load(Ordering::SeqCst), 1, "one registration for four ticks");
+    assert_eq!(
+        platform.logins.load(Ordering::SeqCst),
+        1,
+        "one registration for four ticks"
+    );
 
     // Someone registers the same bot key: the kept token stops working.
     h.app.bot("vrs", "Baseline").await;

@@ -207,7 +207,12 @@ async fn a_failure_in_one_league_or_match_does_not_stop_the_others() {
     assert!(failures.iter().all(|f| f.bot == "vrs" && f.at == now));
 
     // The decided Prediction of Match 7 is sent again on the next tick.
-    assert_eq!(h.tick(&mut sidecar, now + Duration::minutes(1)).await.unwrap(), 0);
+    assert_eq!(
+        h.tick(&mut sidecar, now + Duration::minutes(1))
+            .await
+            .unwrap(),
+        0
+    );
 }
 
 #[tokio::test]
@@ -235,9 +240,15 @@ async fn a_reissued_invite_link_is_skipped_and_the_bots_other_league_goes_on() {
 
     let mut sidecar = h.sidecar(&dead).await;
     sidecar.bots[0].invite_links.push(valid);
-    assert_eq!(h.tick(&mut sidecar, now).await.unwrap(), 1, "the valid League is predicted");
     assert_eq!(
-        h.tick(&mut sidecar, now + Duration::minutes(1)).await.unwrap(),
+        h.tick(&mut sidecar, now).await.unwrap(),
+        1,
+        "the valid League is predicted"
+    );
+    assert_eq!(
+        h.tick(&mut sidecar, now + Duration::minutes(1))
+            .await
+            .unwrap(),
         0
     );
     let failures = sidecar.audit.failures().await.unwrap();

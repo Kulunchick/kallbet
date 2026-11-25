@@ -33,8 +33,14 @@ async fn a_snapshot_dropped_into_the_directory_is_used_after_the_next_scan() {
     let game = Match {
         event_id: 1,
         id: 1,
-        team_a: Team { id: 1, name: "MOUZ".into() },
-        team_b: Team { id: 2, name: "Vitality".into() },
+        team_a: Team {
+            id: 1,
+            name: "MOUZ".into(),
+        },
+        team_b: Team {
+            id: 2,
+            name: "Vitality".into(),
+        },
         format: Format::Bo3,
         scheduled_start: None,
     };
@@ -51,7 +57,11 @@ async fn a_snapshot_dropped_into_the_directory_is_used_after_the_next_scan() {
     .unwrap();
     let soon = now + RESCAN_EVERY - Duration::seconds(1);
     *clock.0.lock().unwrap() = soon;
-    assert_eq!(observed(signal.signal(&game, soon).await.unwrap()), october, "not every Match lists the directory");
+    assert_eq!(
+        observed(signal.signal(&game, soon).await.unwrap()),
+        october,
+        "not every Match lists the directory"
+    );
 
     let later = now + RESCAN_EVERY;
     *clock.0.lock().unwrap() = later;
@@ -62,5 +72,8 @@ async fn a_snapshot_dropped_into_the_directory_is_used_after_the_next_scan() {
     std::fs::write(vrs.join("standings_global_2026_12_07.md"), "not a snapshot").unwrap();
     let then = later + RESCAN_EVERY;
     *clock.0.lock().unwrap() = then;
-    assert_eq!(observed(signal.signal(&game, then).await.unwrap()), november);
+    assert_eq!(
+        observed(signal.signal(&game, then).await.unwrap()),
+        november
+    );
 }
