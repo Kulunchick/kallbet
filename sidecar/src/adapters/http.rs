@@ -33,11 +33,15 @@ impl HttpPlatform {
 }
 // Invite URLs contain a credential. Strip URLs before propagating transport errors.
 async fn send(req: RequestBuilder) -> Result<Response> {
-    Ok(req
-        .send()
-        .await
-        .and_then(Response::error_for_status)
-        .map_err(reqwest::Error::without_url)?)
+    checked(req.send().await.map_err(reqwest::Error::without_url)?)
+}
+/// A refused bot token is `PlatformError::Unauthorized` (the scheduler signs in
+/// again); any other non-success status is an error without the URL.
+fn checked(res: Response) -> Result<Response> {
+    if res.status() == reqwest::StatusCode::UNAUTHORIZED {
+        return Err(PlatformError::Unauthorized.into());
+    }
+    Ok(res.error_for_status().map_err(reqwest::Error::without_url)?)
 }
 #[derive(Deserialize)]
 struct Auth {
@@ -104,7 +108,15 @@ impl LeaguePlatform for HttpPlatform {
             .post(self.url("auth/bot"))
             .bearer_auth(self.secret.expose())
             .json(&profile);
-        Ok(send(req).await?.json::<Auth>().await?.token)
+        // A 401 here is the shared secret, not a bot token.
+        let res = send(req).await.map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
+            if e.is::<PlatformError>() {
+                "the Bot secret was refused (401 unauthorized)".into()
+            } else {
+                e
+            }
+        })?;
+        Ok(res.json::<Auth>().await?.token)
     }
     async fn join(&self, token: &str, invite: &str) -> Result<Join> {
         let url = reqwest::Url::parse(invite).ok();
@@ -139,8 +151,7 @@ impl LeaguePlatform for HttpPlatform {
                 _ => Err(format!("joining through an Invite Link answered {status}").into()),
             };
         }
-        res.error_for_status()
-            .map_err(reqwest::Error::without_url)?;
+        checked(res)?;
         Ok(Join::Member)
     }
     async fn leagues(&self, token: &str) -> Result<Vec<i64>> {
@@ -222,9 +233,7 @@ impl LeaguePlatform for HttpPlatform {
             if res.status() == reqwest::StatusCode::NOT_FOUND {
                 continue;
             }
-            let mut pv = res
-                .error_for_status()
-                .map_err(reqwest::Error::without_url)?
+            let mut pv = checked(res)?
                 .json::<serde_json::Value>()
                 .await
                 .map_err(reqwest::Error::without_url)?;
@@ -348,8 +357,7 @@ impl LeaguePlatform for HttpPlatform {
             }
             return Err("pickem conflict".into());
         }
-        res.error_for_status()
-            .map_err(reqwest::Error::without_url)?;
+        checked(res)?;
         Ok(true)
     }
 }

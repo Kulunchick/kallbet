@@ -14,6 +14,15 @@ pub struct StagePickem {
     pub stage: serde_json::Value,
 }
 
+/// A platform failure the scheduler acts on.
+#[derive(Debug, thiserror::Error, Clone, Copy, PartialEq, Eq)]
+pub enum PlatformError {
+    /// 401: the bot's token was refused (another registration under the same
+    /// bot key rotated it). The scheduler registers again and retries once.
+    #[error("the bot token was refused (401)")]
+    Unauthorized,
+}
+
 /// What joining through an Invite Link came to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Join {

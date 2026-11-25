@@ -38,6 +38,12 @@ pub struct Sidecar {
     /// Invite Links (bot key, link) that answered `invite_invalid` or
     /// `league_archived` in this run: logged once, then skipped.
     dead_invites: std::sync::Mutex<std::collections::HashSet<(String, String)>>,
+    /// Each bot's token, by bot key. Registering rotates it (and revokes the
+    /// previous one), so a bot registers once and again only on a 401.
+    tokens: std::sync::Mutex<std::collections::HashMap<String, String>>,
+}
+fn unauthorized(e: &(dyn std::error::Error + Send + Sync + 'static)) -> bool {
+    e.downcast_ref::<PlatformError>() == Some(&PlatformError::Unauthorized)
 }
 /// Where in a tick a failure happened.
 #[derive(Clone, Copy, Default)]
@@ -55,6 +61,7 @@ impl Sidecar {
             ports,
             on_failure: OnFailure::Isolate,
             dead_invites: Default::default(),
+            tokens: Default::default(),
         }
     }
     pub fn on_failure(mut self, on_failure: OnFailure) -> Self {
@@ -86,7 +93,8 @@ impl Sidecar {
         at: At,
         e: Box<dyn std::error::Error + Send + Sync>,
     ) -> Result<()> {
-        if self.on_failure == OnFailure::Abort || e.is::<TemporalLeakError>() {
+        // A refused token fails every step: the tick signs in again instead.
+        if self.on_failure == OnFailure::Abort || e.is::<TemporalLeakError>() || unauthorized(&*e) {
             return Err(e);
         }
         tracing::error!(
@@ -107,15 +115,40 @@ impl Sidecar {
         }
         Ok(())
     }
+    /// The bot's kept token, or a new registration.
+    async fn token(&self, bot: &BotProfile, fresh: bool) -> Result<String> {
+        if !fresh && let Some(token) = self.tokens.lock().unwrap().get(&bot.bot_key) {
+            return Ok(token.clone());
+        }
+        let token = self.ports.platform.login(bot).await?;
+        self.tokens
+            .lock()
+            .unwrap()
+            .insert(bot.bot_key.clone(), token.clone());
+        Ok(token)
+    }
+    /// One bot's tick with its kept token; when the platform refuses that token
+    /// (another registration under the same key rotated it), it registers again
+    /// and runs the tick once more (every step is idempotent through the audit).
     async fn tick_bot(&self, bot: &BotProfile, now: Instant) -> Result<usize> {
+        let token = self.token(bot, false).await?;
+        match self.tick_bot_with(bot, &token, now).await {
+            Err(e) if unauthorized(&*e) => {
+                tracing::info!(bot = %bot.bot_key, "bot token refused; registering again");
+                let token = self.token(bot, true).await?;
+                self.tick_bot_with(bot, &token, now).await
+            }
+            done => done,
+        }
+    }
+    async fn tick_bot_with(&self, bot: &BotProfile, token: &str, now: Instant) -> Result<usize> {
         let platform = self.ports.platform.as_ref();
-        let token = platform.login(bot).await?;
         for (n, invite) in bot.invite_links.iter().enumerate() {
             let key = (bot.bot_key.clone(), invite.clone());
             if self.dead_invites.lock().unwrap().contains(&key) {
                 continue;
             }
-            let why = match platform.join(&token, invite).await {
+            let why = match platform.join(token, invite).await {
                 Ok(Join::Member) => continue,
                 Ok(Join::InviteInvalid) => "invite_invalid",
                 Ok(Join::LeagueArchived) => "league_archived",
@@ -153,7 +186,7 @@ impl Sidecar {
             let pickem = self
                 .ports
                 .pickem
-                .tick(platform, &token, bot, league, now, &self.audit)
+                .tick(platform, token, bot, league, now, &self.audit)
                 .await;
             match pickem {
                 Ok(failures) => {
@@ -167,7 +200,7 @@ impl Sidecar {
                 }
                 Err(e) => self.failed(bot, now, "pickem", at, e).await?,
             }
-            let matches = match platform.matches(&token, league).await {
+            let matches = match platform.matches(token, league).await {
                 Ok(matches) => matches,
                 Err(e) => {
                     self.failed(bot, now, "matches", at, e).await?;
@@ -190,7 +223,7 @@ impl Sidecar {
                     match_id: Some(game.id),
                     ..at
                 };
-                match self.predict(bot, &token, league, game, tier, now).await {
+                match self.predict(bot, token, league, game, tier, now).await {
                     Ok(n) => submitted += n,
                     Err(e) => self.failed(bot, now, "predict", at, e).await?,
                 }

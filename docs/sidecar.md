@@ -116,7 +116,7 @@ Each prints a URL; open it in any browser, sign in, paste the code back if asked
 
 ## 5. Operating notes
 
-- **One sidecar per Bot identity.** Two processes with the same `bot_key` revoke each other's token on every registration (it rotates per tick). Do not run the local sidecar and the VPS one with the same bot keys at once; use different `bot_key`s to compare.
+- **One sidecar per Bot identity.** Two processes with the same `bot_key` revoke each other's token on every registration: each one registers again on the 401 it then gets, so they keep revoking each other. Do not run the local sidecar and the VPS one with the same bot keys at once; use different `bot_key`s to compare.
 - **Quota.** A subscription that hits its limit opens that provider's breaker for `llm.cooldown_minutes` (30) and the chain fails over (Claude → Codex → Antigravity). OddsPapi is capped at 200 requests a month by the sidecar itself.
 - **Upgrade.** `deploy.sh` (with the sidecar switch) or `docker compose --profile sidecar up -d --build sidecar`. The volume keeps the audit file and the CLI sign-in. Migrations of the audit file only move forward.
 - **Stop for good.** `docker compose --profile sidecar stop sidecar`. The bots stay Members; kick them in the League if they should go.
