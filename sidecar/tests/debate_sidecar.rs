@@ -428,7 +428,7 @@ async fn a_configured_hybrid_bot_debates_through_its_providers() {
     let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
 
     let h = Harness::new().await;
-    let now = chrono::Utc::now();
+    let now: Instant = "2026-11-26T12:00:00Z".parse().unwrap();
     h.app.clock.set(now);
     h.app.source.put_event(
         EventSnapshotBuilder::new(99, "Major")
@@ -468,7 +468,7 @@ async fn a_configured_hybrid_bot_debates_through_its_providers() {
         }]
     });
     std::fs::write(&path, config.to_string()).unwrap();
-    let mut sidecar = Sidecar::from_config(Config::load(&path).unwrap(), TEST_BOT_SECRET.into())
+    let mut sidecar = Sidecar::from_config(Config::load(&path).unwrap(), TEST_BOT_SECRET.into(), h.clock())
         .await
         .unwrap();
     sidecar.ports.odds = h.scripts.clone();

@@ -4,7 +4,10 @@ use crate::{
 };
 use std::sync::Arc;
 impl Sidecar {
-    pub async fn from_config(config: Config, secret: String) -> Result<Self> {
+    /// The production sidecar of `config`. Every port that reads the time reads
+    /// `clock` (production: `SystemClock`, the only adapter that reads the wall
+    /// clock; tests: their fake).
+    pub async fn from_config(config: Config, secret: String, clock: Arc<dyn Clock>) -> Result<Self> {
         let audit = Audit::open(&config.audit_file).await?;
         let mut signal = vrs::Standings::default();
         for path in vrs_paths(&config.vrs_files)? {
@@ -14,17 +17,16 @@ impl Sidecar {
         }
         let signal = Arc::new(signal);
         let odds = adapters::odds::build(&audit)?;
-        let clock = Arc::new(SystemClock);
         let ports = Ports {
             pickem: adapters::pickem::new(clock.clone(), signal.clone(), odds.clone()),
             platform: Arc::new(HttpPlatform::new(&config.platform_url, secret)?),
-            clock,
+            clock: clock.clone(),
             signal,
             odds,
-            context: adapters::context::build(&config.context, &audit, Arc::new(SystemClock)),
+            context: adapters::context::build(&config.context, &audit, clock.clone()),
             llm: adapters::debate::build(
                 &config.debate,
-                adapters::llm::build(&config.llm, Arc::new(SystemClock)),
+                adapters::llm::build(&config.llm, clock.clone()),
                 &audit,
             )?,
             policy: Arc::new(ConfiguredPolicy),

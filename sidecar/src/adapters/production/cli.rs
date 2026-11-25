@@ -11,7 +11,7 @@ use super::{
     runner::{self, LoopSettings},
     settings::Settings,
 };
-use crate::*;
+use crate::{adapters::baseline::SystemClock, *};
 use std::process::ExitCode;
 use tracing::{info, warn};
 
@@ -93,7 +93,7 @@ fn health(settings: &Settings) -> Result<ExitCode> {
     match health
         .read()
         .map_err(|e| e.to_string())
-        .and_then(|beat| beat.verdict(chrono::Utc::now(), &settings.limits()))
+        .and_then(|beat| beat.verdict(SystemClock.now(), &settings.limits()))
     {
         Ok(line) => {
             println!("{line}");
@@ -132,7 +132,8 @@ async fn run(settings: Settings, once: bool, redactor: &Redactor) -> Result<Exit
     if let Some(reason) = insecure_platform(&config.platform_url) {
         warn!("{reason}");
     }
-    let mut sidecar = Sidecar::from_config(config, secret).await?;
+    let clock: std::sync::Arc<dyn Clock> = std::sync::Arc::new(SystemClock);
+    let mut sidecar = Sidecar::from_config(config, secret, clock.clone()).await?;
     if once {
         let submitted = sidecar.tick().await?;
         info!(submitted, "single tick ok");
@@ -144,7 +145,7 @@ async fn run(settings: Settings, once: bool, redactor: &Redactor) -> Result<Exit
             interval: settings.tick_interval,
             tick_timeout: settings.tick_timeout,
         },
-        &crate::adapters::baseline::SystemClock,
+        clock.as_ref(),
         &health,
         runner::shutdown_signal(),
     )

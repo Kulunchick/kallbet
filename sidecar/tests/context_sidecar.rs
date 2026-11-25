@@ -307,7 +307,7 @@ async fn sidecar_from_config_loads_context_settings_and_runs_tick() {
     let (up_base, up_server) = start_upstream(upstream.clone()).await;
 
     let h = Harness::new().await;
-    let now = chrono::Utc::now();
+    let now: Instant = "2026-11-26T12:00:00Z".parse().unwrap();
     h.app.clock.set(now);
     h.app.source.put_event(
         EventSnapshotBuilder::new(99, "PGL Major Singapore 2026")
@@ -354,7 +354,7 @@ async fn sidecar_from_config_loads_context_settings_and_runs_tick() {
         config.context.liquipedia_pages.get(&99).map(String::as_str),
         Some("PGL/2026/Singapore")
     );
-    let mut sidecar = Sidecar::from_config(config, TEST_BOT_SECRET.into())
+    let mut sidecar = Sidecar::from_config(config, TEST_BOT_SECRET.into(), h.clock())
         .await
         .unwrap();
     sidecar.ports.odds = h.scripts.clone();

@@ -626,12 +626,12 @@ async fn pickem_tick_rejects_post_cutoff_odds_and_from_config_wires_pickem_step(
     )
     .unwrap();
     let config = Config::load(&cfg_path).unwrap();
-    let mut cfg_sidecar = Sidecar::from_config(config, TEST_BOT_SECRET.into())
+    let mut cfg_sidecar = Sidecar::from_config(config, TEST_BOT_SECRET.into(), h.clock())
         .await
         .unwrap();
-    // Replace clock with shared fake clock at T - 10m (after Match Hard Lock at T - 15m, so ONLY PickemStep runs!).
+    // Built on the shared fake clock: at T - 10m (after the Match's Hard Lock
+    // at T - 15m) only the PickemStep runs.
     let mut harness_sidecar = h.sidecar(&format!("{}/join/{invite_token}", h.base)).await;
-    cfg_sidecar.ports.clock = harness_sidecar.ports.clock.clone();
     h.tick(&mut cfg_sidecar, start - Duration::minutes(10))
         .await
         .unwrap();

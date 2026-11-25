@@ -592,7 +592,7 @@ The audit keeps the model's answer as given, with every factor it named. A new k
 
 Operators read `docs/sidecar.md`; this section is for whoever changes the entry point. Paths are relative to `sidecar/` unless they start with `deploy/` or the repository root.
 
-**What was already wired.** `registry.rs` (`Sidecar::from_config`) composes the production ports: odds chain, VRS estimator, composite context enricher, `Providers` + `TieredDebateLlm`, the `ConfiguredPolicy` registry (`HybridAnchored`, `MarketOnly`, `VrsOnly`) and `PickemSolver`. #30 adds the process around it: `src/adapters/production/`.
+**What was already wired.** `registry.rs` (`Sidecar::from_config(config, secret, clock)`) composes the production ports, every one that reads the time on the one `clock` it is given (`cli.rs` passes `SystemClock`, the only adapter that reads the wall clock; tests pass the harness's FakeClock, `Harness::clock()`): odds chain, VRS estimator, composite context enricher, `Providers` + `TieredDebateLlm`, the `ConfiguredPolicy` registry (`HybridAnchored`, `MarketOnly`, `VrsOnly`) and `PickemSolver`. #30 adds the process around it: `src/adapters/production/`.
 
 | File | Holds |
 |---|---|

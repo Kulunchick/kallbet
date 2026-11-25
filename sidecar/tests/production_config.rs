@@ -65,7 +65,11 @@ async fn every_example_composes_into_a_sidecar() {
         value["vrs_files"] = json!([concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/vrs")]);
         let path = dir.path().join("sidecar.json");
         std::fs::write(&path, value.to_string()).unwrap();
-        let sidecar = Sidecar::from_config(Config::load(&path).unwrap(), "secret".into())
+        let sidecar = Sidecar::from_config(
+            Config::load(&path).unwrap(),
+            "secret".into(),
+            std::sync::Arc::new(kallbet_ai::adapters::baseline::SystemClock),
+        )
             .await
             .unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!(sidecar.bots.len(), 3, "{name}");

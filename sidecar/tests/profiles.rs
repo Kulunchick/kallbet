@@ -13,7 +13,7 @@ async fn starts_with_two_profiles_and_an_independent_audit_file() {
     let profiles=["baseline","reference"].map(|name|json!({"bot_key":name,"nickname":name,"policy":"VrsOnly","provider_chain":["local"],"invite_links":[]}));
     std::fs::write(&path,json!({"platform_url":h.base,"audit_file":audit,"bots":profiles,"vrs_files":[concat!(env!("CARGO_MANIFEST_DIR"),"/tests/fixtures/vrs/standings_global_2026_11_02.md")]}).to_string()).unwrap();
     let config = Config::load(path).unwrap();
-    let mut sidecar = Sidecar::from_config(config, TEST_BOT_SECRET.into())
+    let mut sidecar = Sidecar::from_config(config, TEST_BOT_SECRET.into(), h.clock())
         .await
         .unwrap();
     assert!(audit.is_file());

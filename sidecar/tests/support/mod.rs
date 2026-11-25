@@ -151,6 +151,10 @@ impl Harness {
             ports,
         )
     }
+    /// The server's FakeClock as the sidecar's clock.
+    pub fn clock(&self) -> Arc<dyn Clock> {
+        Arc::new(SharedClock(self.app.clock.clone()))
+    }
     pub async fn tick(&self, sidecar: &mut Sidecar, now: Instant) -> Result<usize> {
         self.app.clock.set(now);
         sidecar.tick().await
