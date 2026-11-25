@@ -678,9 +678,9 @@ impl Backtest {
                 detail.pickems.push(report::PickemDetail {
                     stage: stage.title(),
                     status: if stage.complete {
-                        format!("final: the Stage is finished ({settled} of {picks} picks decided)")
+                        "final: the Stage is finished".to_string()
                     } else {
-                        format!("pending: the Stage is not finished ({settled} of {picks} picks decided)")
+                        format!("pending: the Stage is not finished ({settled} of the {picks} picked teams have finished it)")
                     },
                     points,
                     picks: report::pickem_detail(stage, &sub.payload),
