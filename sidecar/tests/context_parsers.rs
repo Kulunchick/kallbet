@@ -277,3 +277,58 @@ fn rss_relevance_filter_matches_teams_and_aliases_with_word_boundaries() {
             .any(|f| f.at(cutoff).unwrap().url.contains("chinggis-warriors-condemn-bcgame"))
     );
 }
+
+/// A saved Event revision of the backtest archive (gzip-compressed).
+fn archived_revision(name: &str) -> String {
+    use std::io::Read;
+    let path = format!(
+        "{}/tests/fixtures/backtest/{name}.json.gz",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let mut body = String::new();
+    flate2::read::GzDecoder::new(std::fs::File::open(path).unwrap())
+        .read_to_string(&mut body)
+        .unwrap();
+    body
+}
+
+#[test]
+fn older_pages_list_their_rosters_with_team_cards() {
+    // IEM Cologne Major 2026 before Stage 1 (revision 3380481, 2026-06-02).
+    let body = archived_revision("event-iem-cologne-2026-before-stage1");
+    let cutoff = "2026-06-03T00:00:00Z".parse().unwrap();
+    let parsed = parse_revision_rosters(&body, cutoff).unwrap().unwrap();
+    let event = parsed.at(cutoff).unwrap();
+    assert_eq!(event.revid, 3380481);
+    assert_eq!(event.teams.len(), 32, "every {{TeamCard}} of the page");
+    let team = |name: &str| event.teams.iter().find(|t| t.team == name).unwrap();
+
+    // `p3dnp=true` did not play; `s1` without `dnp` stood in for him.
+    let falcons = team("Team Falcons");
+    assert_eq!(falcons.active_players, ["NiKo", "TeSeS", "m0NESY", "kyousuke", "karrigan"]);
+    assert_eq!(falcons.benched_players, ["kyxsan"]);
+    assert_eq!(falcons.stand_ins.len(), 1);
+    assert_eq!(falcons.stand_ins[0].player, "karrigan");
+    assert_eq!(falcons.coaches[0].player, "zonic");
+    assert!(!falcons.coaches[0].emergency_sub);
+
+    // `s1dnp=true`: a substitute who did not play.
+    let navi = team("Natus Vincere");
+    assert_eq!(navi.active_players, ["b1t", "Aleksib", "iM", "w0nderful", "makazze"]);
+    assert_eq!(navi.unused_substitutes, ["jL"]);
+    assert!(navi.stand_ins.is_empty());
+    assert_eq!(navi.coaches[0].player, "B1ad3");
+
+    // `csub=true`: the coach is the emergency substitute.
+    assert!(team("The MongolZ").coaches[0].emergency_sub);
+    // `p5link` is a page link, not a player.
+    assert_eq!(team("Astralis").active_players[4], "ryu");
+
+    // Perfect World Shanghai Major 2024 (revision 3008976): the same template.
+    let body = archived_revision("roster-1079345");
+    let cutoff = "2024-12-01T00:00:00Z".parse().unwrap();
+    let parsed = parse_revision_rosters(&body, cutoff).unwrap().unwrap();
+    let event = parsed.at(cutoff).unwrap();
+    assert_eq!(event.teams.len(), 24);
+    assert!(event.teams.iter().all(|t| t.active_players.len() == 5));
+}

@@ -82,7 +82,17 @@ pub fn parse_revision_rosters(body: &str, cutoff: Instant) -> Result<Option<AsOf
         return Ok(None);
     };
 
-    let teams = parse_participants_wikitext(&rev.slots.main.content);
+    let content = &rev.slots.main.content;
+    let teams = parse_participants_wikitext(content);
+    if teams.is_empty() && lists_participants(content) {
+        // A page that names its teams in a form this parser does not read:
+        // the dossiers of its Matches would silently carry no roster.
+        tracing::warn!(
+            page = %page.title,
+            revid = rev.revid,
+            "Liquipedia page lists participants but no roster could be parsed"
+        );
+    }
     let event = EventRosters {
         source_url: revision_source_url(&page.title, rev.revid),
         page_title: page.title,
@@ -95,7 +105,9 @@ pub fn parse_revision_rosters(body: &str, cutoff: Instant) -> Result<Option<AsOf
 }
 
 /// Extracts participating teams, active lineups, coaches, stand-ins, and notes
-/// from `{{TeamParticipants}}` templates in Liquipedia wikitext.
+/// from Liquipedia wikitext: `{{TeamParticipants}}` (current pages) or, when
+/// a page has none, `{{TeamCard}}` (pages up to mid-2026, such as the 2024
+/// Shanghai and the June 2026 Cologne Majors).
 pub fn parse_participants_wikitext(wikitext: &str) -> Vec<TeamRoster> {
     let clean = strip_comments(wikitext);
     let mut rosters = Vec::new();
@@ -108,7 +120,84 @@ pub fn parse_participants_wikitext(wikitext: &str) -> Vec<TeamRoster> {
             }
         }
     }
+    if rosters.is_empty() {
+        rosters = find_templates(&clean, "TeamCard")
+            .iter()
+            .filter_map(parse_team_card)
+            .collect();
+    }
     rosters
+}
+
+/// Whether the page lists its participants at all (a roster template or a
+/// Participants section), whatever form they are in.
+fn lists_participants(wikitext: &str) -> bool {
+    ["{{TeamParticipants", "{{TeamCard", "{{Opponent", "==Participants=="]
+        .iter()
+        .any(|mark| wikitext.contains(mark))
+}
+
+/// One `{{TeamCard|team=...|p1=...|p1dnp=true|s1=...|c=...|csub=true}}`:
+/// `pN` are the five players (`pNdnp=true`: did not play), `sN` substitutes
+/// (one without `sNdnp=true` played, so stood in), `c` / `cN` coaches
+/// (`csub=true` / `cNsub=true`: the coach is the emergency substitute).
+/// `pNlink`, `pNflag` and the like are not players.
+fn parse_team_card(card: &Template) -> Option<TeamRoster> {
+    let team = card.get("team")?.trim().to_string();
+    if team.is_empty() {
+        return None;
+    }
+    let value = |key: String| card.get(&key).map(str::trim).filter(|s| !s.is_empty());
+    let flag = |key: String| value(key).is_some_and(|v| v.eq_ignore_ascii_case("true"));
+    let mut active_players = Vec::new();
+    let mut benched_players = Vec::new();
+    let mut stand_ins = Vec::new();
+    let mut unused_substitutes = Vec::new();
+    let mut coaches = Vec::new();
+    for n in 1..=10 {
+        if let Some(player) = value(format!("p{n}")) {
+            if flag(format!("p{n}dnp")) {
+                benched_players.push(player.to_string());
+            } else {
+                active_players.push(player.to_string());
+            }
+        }
+    }
+    for n in 1..=10 {
+        if let Some(sub) = value(format!("s{n}")) {
+            if flag(format!("s{n}dnp")) {
+                unused_substitutes.push(sub.to_string());
+            } else {
+                active_players.push(sub.to_string());
+                stand_ins.push(StandInEntry {
+                    player: sub.to_string(),
+                    from_team: None,
+                });
+            }
+        }
+    }
+    for (key, sub) in [("c".to_string(), "csub".to_string())]
+        .into_iter()
+        .chain((1..=3).map(|n| (format!("c{n}"), format!("c{n}sub"))))
+    {
+        if let Some(coach) = value(key) {
+            coaches.push(CoachEntry {
+                player: coach.to_string(),
+                emergency_sub: flag(sub),
+                former: false,
+            });
+        }
+    }
+    Some(TeamRoster {
+        team,
+        aliases: Vec::new(),
+        active_players,
+        stand_ins,
+        benched_players,
+        unused_substitutes,
+        coaches,
+        notes: Vec::new(),
+    })
 }
 
 fn parse_opponent(opponent: &Template) -> Option<TeamRoster> {

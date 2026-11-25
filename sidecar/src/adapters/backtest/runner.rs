@@ -482,9 +482,23 @@ impl Backtest {
             ));
         }
         if !self.plan.blind.is_empty() {
+            let (rosters, news) = self.blind_context(stages).await?;
+            let n = self.plan.blind.len();
+            let note = format!(
+                "All five profiles, only on the Matches every one of them predicted. The LLM seats saw TEAM_ALPHA/TEAM_BETA, {}, {}, no Event title and no dates.",
+                match rosters {
+                    0 => "no roster (no player names to mask)".to_string(),
+                    r if r == n => format!("PLAYER_01..10 for the rosters of all {n} Matches"),
+                    r => format!("PLAYER_01..10 for the rosters of {r} of {n} Matches"),
+                },
+                match news {
+                    0 => "no news item".to_string(),
+                    k => format!("news items on {k} of {n} Matches"),
+                },
+            );
             tables.push(report::table(
                 "LLM track: anonymized historical slice (BlindAnonymizer)",
-                "All five profiles, only on the Matches every one of them predicted. The LLM seats saw TEAM_ALPHA/TEAM_BETA, PLAYER_01..10, no Event title and no dates.",
+                &note,
                 stages,
                 &self.plan.blind,
                 predictions,
@@ -610,6 +624,26 @@ impl Backtest {
             llm,
             notes,
         })
+    }
+
+    /// Of the anonymized slice, how many Matches' dossiers held a roster fact
+    /// and how many a news item: what the report can say was masked.
+    async fn blind_context(&self, stages: &[ReplayStage]) -> Result<(usize, usize)> {
+        let (mut rosters, mut news) = (0, 0);
+        for m in stages.iter().flat_map(|s| &s.matches) {
+            if !self.plan.blind.contains(&m.game.id) {
+                continue;
+            }
+            let at = m.cutoff() - evaluation_lead();
+            let facts = self.feeds.context.facts(&m.game, at).await?;
+            let kinds: Vec<String> = facts
+                .iter()
+                .filter_map(|f| f.at(at).ok()?["kind"].as_str().map(str::to_owned))
+                .collect();
+            rosters += usize::from(kinds.iter().any(|k| k == "liquipedia_roster"));
+            news += usize::from(kinds.iter().any(|k| k == "news_item"));
+        }
+        Ok((rosters, news))
     }
 
     /// How many pairs of the Stage's teams had a rating or market line before it.
