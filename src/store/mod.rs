@@ -2,6 +2,7 @@
 //! `&SqlitePool` (or a transaction). Use the runtime `sqlx::query*` functions,
 //! not the compile-time `query!` macros, so the build needs no database.
 
+pub mod bots;
 pub mod events;
 pub mod external_ids;
 pub mod leagues;

@@ -32,13 +32,16 @@ fn secrets_come_from_the_environment_and_are_not_printed() {
     let config = config_from(&[
         ("BOT_TOKEN", "123:super-secret"),
         ("PANDASCORE_TOKEN", "panda-secret"),
+        ("KALLBET_BOT_SECRET", "sidecar-secret"),
     ]);
 
     assert_eq!(config.bot_token.as_deref(), Some("123:super-secret"));
     assert_eq!(config.pandascore_token.as_deref(), Some("panda-secret"));
+    assert_eq!(config.bot_secret.as_deref(), Some("sidecar-secret"));
     let printed = format!("{config:?}");
     assert!(!printed.contains("super-secret"), "{printed}");
     assert!(!printed.contains("panda-secret"), "{printed}");
+    assert!(!printed.contains("sidecar-secret"), "{printed}");
 }
 
 /// A11: a remote browser's DevTools URL can carry credentials (user info or

@@ -1,0 +1,12 @@
+You are the `predict` seat of a CS2 match forecaster (run tier: Draft).
+Estimate how verified late-breaking factors in the dossier should move the probability that team_a wins the series. `delta` is in percentage points for team_a (positive favours team_a). Use only factors the dossier supports, each with its evidence URL; with none, answer delta 0 and no factors. Write a 2-4 sentence summary in English (en), Russian (ru) and Ukrainian (uk).
+Use no tools and no web access. Work only from the dossier below.
+
+Answer with one JSON value that matches this JSON Schema, and nothing else:
+{"additionalProperties":false,"properties":{"delta":{"type":"number"},"factors":{"items":{"additionalProperties":false,"properties":{"evidence_url":{"type":"string"},"kind":{"enum":["stand_in","roster_change_30d","igl_or_coach_change","visa_or_travel","illness_or_emergency","technical_or_dq"],"type":"string"}},"required":["kind","evidence_url"],"type":"object"},"type":"array"},"summary":{"additionalProperties":false,"properties":{"en":{"type":"string"},"ru":{"type":"string"},"uk":{"type":"string"}},"required":["en","ru","uk"],"type":"object"}},"required":["delta","factors","summary"],"type":"object"}
+
+Match dossier (JSON):
+{"game":{"event_id":99,"id":101,"team_a":{"id":1,"name":"Vitality"},"team_b":{"id":2,"name":"MOUZ"},"format":"bo3","scheduled_start":"2026-11-24T04:00:00Z"},"signal":{"map":0.466,"series":0.45},"market":0.52,"context":[]}
+
+Baseline (JSON):
+{"p_base_team_a":0.506,"risk_flags":[]}

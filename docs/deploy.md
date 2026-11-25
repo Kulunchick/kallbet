@@ -10,6 +10,7 @@ KallBet runs on one small VPS as a docker compose stack behind the server's exis
 | `chrome` | container, `chromedp/headless-shell:stable` | No published port. Reachable only from `kallbet` over the compose network. |
 | Caddy | already on the server | Gets one site block (`deploy/Caddyfile.snippet`). |
 | backups | host cron + `backups/` in the deploy directory | `deploy/backup.sh`, daily, 7 days kept. |
+| `sidecar` (optional) | container, no port, compose profile `sidecar` | The AI sidecar (Bot Users). Not started by a plain `docker compose up -d`. Setup, logins and checks: [`sidecar.md`](sidecar.md). |
 
 Files: `Dockerfile`, `.dockerignore`, `docker-compose.yml`, and `deploy/` (`deploy.sh`, `backup.sh`, `restore.sh`, `Caddyfile.snippet`, `deploy.env.example`).
 
@@ -23,6 +24,7 @@ The server's env file `kallbet.env` (in the deploy directory, never committed) h
 BOT_TOKEN=...
 BOT_USERNAME=...        # the bot's @username without the @, needed by the Telegram login button
 PANDASCORE_TOKEN=...
+KALLBET_BOT_SECRET=...  # optional: lets an AI sidecar register its Bot Users (long and random; unset = no Bot Users)
 ```
 
 `docker-compose.yml` fixes the rest, so the env file cannot break them: `KALLBET_BIND=0.0.0.0:8095` (inside the container; the host side is loopback only), `DATABASE_URL=sqlite:///data/kallbet.db`, `KALLBET_DEV_LOGIN=false`, `KALLBET_CHROME_URL=http://chrome:9222`, `KALLBET_LOGO_DIR=/data/logos`.

@@ -6,6 +6,11 @@
 //! [`MatchCard`]: its `predictions` holds the Prediction count and, after
 //! Reveal, everyone's Predictions (#6); #7 adds the Points of the caller's
 //! Prediction. Never put another Member's Prediction in it before Reveal.
+//!
+//! A Bot User is shown another view of the same Match (ADR-0003's
+//! amendment): to it the Match is open until Hard Lock, and until then it is
+//! shown no revealed Prediction, even after the humans' early Reveal. It can
+//! still change its own pick, so it must not see anyone else's.
 
 use std::collections::BTreeMap;
 
@@ -18,10 +23,11 @@ use serde::Serialize;
 use crate::api::leagues::require_member;
 use crate::auth::session::CurrentUser;
 use crate::domain::lock_reveal::Outcome;
+use crate::domain::rationale::Rationale;
 use crate::domain::scoring::{self, Verdict};
 use crate::domain::{
     DataSourceKind, Event, LeagueId, MatchFormat, MatchId, MatchPlacement, MatchScore, MatchStatus,
-    StageKind, StageOrdinal, TeamId, UserId,
+    StageKind, StageOrdinal, TeamId, User, UserId,
 };
 use crate::error::ApiResult;
 use crate::league_matches::{self, LeagueMatches};
@@ -120,6 +126,32 @@ pub struct LockView {
     pub can_predict: bool,
 }
 
+impl LockView {
+    /// The Lock as a human Member lives it: an early Reveal Locks, and
+    /// during the final edit window only its owner can predict.
+    fn of_human(matches: &LeagueMatches, game: MatchId, outcome: &Outcome, viewer: UserId) -> Self {
+        let window = matches.edit_windows.get(&game);
+        LockView {
+            locks_at: outcome.lock_time,
+            locked_at: outcome.stamps.locked_at,
+            locked: outcome.is_locked(),
+            can_predict: !outcome.is_locked() && window.is_none_or(|(owner, _)| *owner == viewer),
+            edit_window: !outcome.is_locked() && window.is_some(),
+        }
+    }
+
+    /// The Lock as a Bot User lives it: the Hard Lock, and nothing else.
+    fn of_bot(outcome: &Outcome) -> Self {
+        LockView {
+            locks_at: outcome.hard_lock_time,
+            locked_at: outcome.stamps.hard_locked_at,
+            locked: outcome.is_hard_locked(),
+            can_predict: !outcome.is_hard_locked(),
+            edit_window: false,
+        }
+    }
+}
+
 /// The Predictions of a Match as a Member may see them (#6, ADR-0003).
 #[derive(Serialize)]
 pub struct PredictionsView {
@@ -141,15 +173,30 @@ pub struct RevealedPrediction {
     pub nickname: String,
     pub avatar_url: Option<String>,
     pub team_id: TeamId,
+    /// The Prediction of a Bot User.
+    pub is_bot: bool,
+    /// A Bot User's Prediction before Hard Lock: it may still change.
+    pub preliminary: bool,
+    /// #23: the Prediction's Rationale, if it has one. Shown only here, with
+    /// the revealed Prediction, so it is hidden exactly as the pick is.
+    pub rationale: Option<Rationale>,
 }
 
-fn predictions_view(matches: &LeagueMatches, game: MatchId, outcome: &Outcome) -> PredictionsView {
+/// What `viewer` may see of the Predictions of a Match. A Bot User is shown
+/// the revealed ones only from Hard Lock on (`blind` until then).
+fn predictions_view(
+    matches: &LeagueMatches,
+    game: MatchId,
+    outcome: &Outcome,
+    viewer: &User,
+) -> PredictionsView {
     let made: Vec<_> = matches
         .predictions
         .iter()
         .filter(|p| p.match_id == game && outcome.eligible.contains(&p.user_id))
         .collect();
-    let revealed = outcome.is_revealed().then(|| {
+    let blind = viewer.is_bot && !outcome.is_hard_locked();
+    let revealed = (outcome.is_revealed() && !blind).then(|| {
         made.iter()
             .filter_map(|p| {
                 let member = matches.profiles.iter().find(|m| m.user_id == p.user_id)?;
@@ -158,6 +205,9 @@ fn predictions_view(matches: &LeagueMatches, game: MatchId, outcome: &Outcome) -
                     nickname: member.nickname.clone(),
                     avatar_url: member.avatar_url.clone(),
                     team_id: p.team_id,
+                    is_bot: member.is_bot,
+                    preliminary: member.is_bot && !outcome.is_hard_locked(),
+                    rationale: p.rationale.clone(),
                 })
             })
             .collect()
@@ -165,7 +215,7 @@ fn predictions_view(matches: &LeagueMatches, game: MatchId, outcome: &Outcome) -
     PredictionsView {
         count: made.len(),
         eligible: outcome.eligible.len(),
-        revealed_at: outcome.stamps.revealed_at,
+        revealed_at: outcome.stamps.revealed_at.filter(|_| !blind),
         revealed,
     }
 }
@@ -213,11 +263,11 @@ async fn list(
 ) -> ApiResult<Json<MatchesView>> {
     let (league, _) = require_member(&state, &user, id).await?;
     let matches = league_matches::evaluate(&state.db, &league, state.clock.now()).await?;
-    Ok(Json(view_for(&matches, user.id)))
+    Ok(Json(view_for(&matches, &user)))
 }
 
-/// Builds the Matches view of `viewer`.
-pub fn view_for(matches: &LeagueMatches, viewer: UserId) -> MatchesView {
+/// Builds the Matches view of `viewer`: a human Member's, or a Bot User's.
+pub fn view_for(matches: &LeagueMatches, viewer: &User) -> MatchesView {
     let view = &matches.view;
     let team = |id: Option<TeamId>| {
         id.map(|id| TeamView {
@@ -245,7 +295,7 @@ pub fn view_for(matches: &LeagueMatches, viewer: UserId) -> MatchesView {
             let outcome = matches.outcome(game.id).cloned().unwrap_or_default();
             let verdict = scoring::judge(
                 game,
-                matches.prediction_of(game.id, viewer).map(|p| p.team_id),
+                matches.prediction_of(game.id, viewer.id).map(|p| p.team_id),
             );
             groups
                 .entry((key.order(), key))
@@ -264,20 +314,15 @@ pub fn view_for(matches: &LeagueMatches, viewer: UserId) -> MatchesView {
                     status: game.status,
                     winner: game.winner,
                     score: game.score,
-                    lock: LockView {
-                        locks_at: outcome.lock_time,
-                        locked_at: outcome.stamps.locked_at,
-                        locked: outcome.is_locked(),
-                        can_predict: !outcome.is_locked()
-                            && matches
-                                .edit_windows
-                                .get(&game.id)
-                                .is_none_or(|(owner, _)| *owner == viewer),
-                        edit_window: !outcome.is_locked()
-                            && matches.edit_windows.contains_key(&game.id),
+                    lock: if viewer.is_bot {
+                        LockView::of_bot(&outcome)
+                    } else {
+                        LockView::of_human(matches, game.id, &outcome, viewer.id)
                     },
-                    my_prediction: matches.prediction_of(game.id, viewer).map(|p| p.team_id),
-                    predictions: predictions_view(matches, game.id, &outcome),
+                    my_prediction: matches
+                        .prediction_of(game.id, viewer.id)
+                        .map(|p| p.team_id),
+                    predictions: predictions_view(matches, game.id, &outcome, viewer),
                     my_result: verdict,
                     my_points: verdict.points() * matches.points_for(game.stage),
                     source: (!added).then_some(m.source),

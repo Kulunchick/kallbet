@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+   <channel>
+      <title>www.dust2.us</title>
+      <description>Dust2.us - CS2 Community and News</description>
+      <link>https://www.dust2.us/</link>
+      <language>en-us</language>
+      <ttl>60</ttl>
+      <image>
+         <url>https://www.dust2.us/dust2/img/static/dust2logo.png</url>
+         <title>www.dust2.us</title>
+         <link>https://www.dust2.us/</link>
+      </image>
+      <atom:link href="https://www.dust2.us/rss"
+                 rel="self"
+                 type="application/rss+xml"/>
+      <item>
+         <title>Have you ever wanted to watch a CS2 Major in Minecraft? Look no further</title>
+         <description>First person in my bloodline to watch a Jame save in Minecraft.</description>
+         <link>https://www.dust2.us/news/80253/have-you-ever-wanted-to-watch-a-cs2-major-in-minecraft-look-no-further</link>
+         <guid isPermaLink="false">news80253</guid>
+         <pubDate>Tue, 24 Nov 2026 18:14:00 -0500</pubDate>
+      </item>
+      <item>
+         <title>Wildcard begin PGL Major Singapore with FaZe win, loss in NA derby to Liquid</title>
+         <description>Wildcard are 1-1 at the Major.</description>
+         <link>https://www.dust2.us/news/80252/wildcard-begin-pgl-major-singapore-with-faze-win-loss-in-na-derby-to-liquid</link>
+         <guid isPermaLink="false">news80252</guid>
+         <pubDate>Tue, 24 Nov 2026 17:48:00 -0500</pubDate>
+      </item>
+      <item>
+         <title>FaZe overcome Wildcard loss for 1-1 record at PGL Major Singapore</title>
+         <description>Are BC.Game just a free win?</description>
+         <link>https://www.dust2.us/news/80251/faze-overcome-wildcard-loss-for-1-1-record-at-pgl-major-singapore</link>
+         <guid isPermaLink="false">news80251</guid>
+         <pubDate>Tue, 24 Nov 2026 16:54:00 -0500</pubDate>
+      </item>
+      <item>
+         <title>M80 recover from opening PGL Major Singapore loss to earn 1-1 record after day one</title>
+         <description>Another Bo1 awaits them on day two.</description>
+         <link>https://www.dust2.us/news/80249/m80-recover-from-opening-pgl-major-singapore-loss-to-earn-1-1-record-after-day-one</link>
+         <guid isPermaLink="false">news80249</guid>
+         <pubDate>Tue, 24 Nov 2026 15:11:00 -0500</pubDate>
+      </item>
+      <item>
+         <title>Liquid go up 2-0 in PGL Major Singapore Stage 1 after a confident day one</title>
+         <description>A great start that gives them many chances to make Stage 2.</description>
+         <link>https://www.dust2.us/news/80247/liquid-go-up-2-0-in-pgl-major-singapore-stage-1-after-a-confident-day-one</link>
+         <guid isPermaLink="false">news80247</guid>
+         <pubDate>Tue, 24 Nov 2026 14:31:00 -0500</pubDate>
+      </item>
+      <item>
+         <title>Official: oSee replaces CeRq on Without a Roof</title>
+         <description>oSee joins WaR as a free agent after being released by NRG in September.</description>
+         <link>https://www.dust2.us/news/80193/official-osee-replaces-cerq-on-without-a-roof</link>
+         <guid isPermaLink="false">news80193</guid>
+         <pubDate>Mon, 23 Nov 2026 19:50:00 -0500</pubDate>
+      </item>
+      <item>
+         <title>ESEA Advanced S59 playoffs headlined by LAG, Marsborne set to start tomorrow</title>
+         <description>The final Advanced season of 2026 is coming to a close.</description>
+         <link>https://www.dust2.us/news/80192/esea-advanced-s59-playoffs-headlined-by-lag-marsborne-set-to-start-tomorrow</link>
+         <guid isPermaLink="false">news80192</guid>
+         <pubDate>Mon, 23 Nov 2026 19:24:00 -0500</pubDate>
+      </item>
+      <item>
+         <title>FaZe, Liquid to each take home over $90,000 from 2026 ESL Club Incentive program</title>
+         <description>FaZe's incentive earnings are over six figures.</description>
+         <link>https://www.dust2.us/news/80191/faze-liquid-to-each-take-home-over-90000-from-2026-esl-club-incentive-program</link>
+         <guid isPermaLink="false">news80191</guid>
+         <pubDate>Mon, 23 Nov 2026 18:49:00 -0500</pubDate>
+      </item>
+      <item>
+         <title>Did HEROIC leak the PGL Major Singapore trophy on social media?</title>
+         <description>Has the Major trophy been posted prematurely?</description>
+         <link>https://www.dust2.us/news/80189/did-heroic-leak-the-pgl-major-singapore-trophy-on-social-media</link>
+         <guid isPermaLink="false">news80189</guid>
+         <pubDate>Mon, 23 Nov 2026 18:25:00 -0500</pubDate>
+      </item>
+      <item>
+         <title>"The worst start ever": SAW manager claims PGL Major Singapore sticker revenue is ridiculously low, lagging behind Cologne</title>
+         <description>Another Major of low sticker revenue could have significant implications for the scene.</description>
+         <link>https://www.dust2.us/news/80188/the-worst-start-ever-saw-manager-claims-pgl-major-singapore-sticker-revenue-is-ridiculously-low-lagging-behind-cologne</link>
+         <guid isPermaLink="false">news80188</guid>
+         <pubDate>Mon, 23 Nov 2026 17:14:00 -0500</pubDate>
+      </item>
+   </channel>
+</rss>

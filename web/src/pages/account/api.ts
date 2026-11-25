@@ -15,6 +15,8 @@ export type User = {
   avatar_url: string | null;
   language: Language;
   notifications: NotificationPrefs;
+  /** A Bot User (never signed in to the SPA; here for completeness). */
+  is_bot: boolean;
 };
 
 /** What the Telegram Login Widget hands the page (plus our `hash` check). */

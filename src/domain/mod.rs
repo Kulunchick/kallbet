@@ -10,6 +10,7 @@ pub mod league;
 pub mod lock_reveal;
 pub mod model;
 pub mod pickem;
+pub mod rationale;
 pub mod scoring;
 pub mod user;
 

@@ -116,15 +116,7 @@ pub async fn evaluate_in(
     now: DateTime<Utc>,
 ) -> Result<LeagueMatches, sqlx::Error> {
     let (view, overrides) = effective_view_and_overrides(&mut *db, league).await?;
-    let members: Vec<MemberSpan> = leagues::all_memberships(&mut *db, league.id)
-        .await?
-        .into_iter()
-        .map(|m| MemberSpan {
-            user_id: m.user_id,
-            joined_at: m.joined_at,
-            left_at: m.left_at,
-        })
-        .collect();
+    let members: Vec<MemberSpan> = leagues::member_spans(&mut *db, league.id).await?;
     // A Prediction counts only while its team plays the Match in the
     // effective view (#13): after a teams Override, a pick of a team that no
     // longer plays it is as good as none (it does not count toward Reveal and

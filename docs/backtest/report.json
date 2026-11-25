@@ -1,0 +1,2267 @@
+{
+  "archive_digest": "25459d150e1fac87409e38d17a73ab2110444401703a056b1c4d4c846c4df782",
+  "archive_files": 272,
+  "profiles": [
+    [
+      "vrs",
+      "VrsOnly"
+    ],
+    [
+      "market",
+      "MarketOnly"
+    ],
+    [
+      "anchor",
+      "HybridAnchored without LLM (the anchor)"
+    ],
+    [
+      "single",
+      "Single LLM agent (HybridAnchored, debate mode `never`)"
+    ],
+    [
+      "debate",
+      "3-agent AdversarialDebateLlm (HybridAnchored, debate mode `always`)"
+    ]
+  ],
+  "stages": [
+    {
+      "stage": "PGL Major Copenhagen 2024 / Opening Stage",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 1,
+      "with_vrs": 0,
+      "with_market": 0,
+      "with_rosters": 0,
+      "opening_view": null
+    },
+    {
+      "stage": "PGL Major Copenhagen 2024 / Elimination Stage",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 0,
+      "with_vrs": 0,
+      "with_market": 0,
+      "with_rosters": 0,
+      "opening_view": null
+    },
+    {
+      "stage": "PGL Major Copenhagen 2024 / Playoffs",
+      "kind": "playoffs",
+      "complete": true,
+      "scored_matches": 7,
+      "unscored_matches": 0,
+      "with_vrs": 0,
+      "with_market": 0,
+      "with_rosters": 0,
+      "opening_view": null
+    },
+    {
+      "stage": "Perfect World Major Shanghai Major 2024 / Opening Stage",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 0,
+      "with_vrs": 33,
+      "with_market": 0,
+      "with_rosters": 33,
+      "opening_view": null
+    },
+    {
+      "stage": "Perfect World Major Shanghai Major 2024 / Elimination Stage",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 0,
+      "with_vrs": 33,
+      "with_market": 0,
+      "with_rosters": 33,
+      "opening_view": null
+    },
+    {
+      "stage": "Perfect World Major Shanghai Major 2024 / Playoffs",
+      "kind": "playoffs",
+      "complete": true,
+      "scored_matches": 7,
+      "unscored_matches": 0,
+      "with_vrs": 7,
+      "with_market": 0,
+      "with_rosters": 7,
+      "opening_view": null
+    },
+    {
+      "stage": "BLAST.tv Major Austin 2025 / Stage 1",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 3,
+      "with_vrs": 33,
+      "with_market": 0,
+      "with_rosters": 0,
+      "opening_view": null
+    },
+    {
+      "stage": "BLAST.tv Major Austin 2025 / Stage 2",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 0,
+      "with_vrs": 33,
+      "with_market": 0,
+      "with_rosters": 0,
+      "opening_view": null
+    },
+    {
+      "stage": "BLAST.tv Major Austin 2025 / Stage 3",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 0,
+      "with_vrs": 33,
+      "with_market": 0,
+      "with_rosters": 0,
+      "opening_view": null
+    },
+    {
+      "stage": "BLAST.tv Major Austin 2025 / Playoffs",
+      "kind": "playoffs",
+      "complete": true,
+      "scored_matches": 7,
+      "unscored_matches": 0,
+      "with_vrs": 7,
+      "with_market": 0,
+      "with_rosters": 0,
+      "opening_view": null
+    },
+    {
+      "stage": "StarLadder Major Budapest 2025 / Stage 1",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 0,
+      "with_vrs": 33,
+      "with_market": 0,
+      "with_rosters": 0,
+      "opening_view": null
+    },
+    {
+      "stage": "StarLadder Major Budapest 2025 / Stage 2",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 0,
+      "with_vrs": 33,
+      "with_market": 0,
+      "with_rosters": 0,
+      "opening_view": null
+    },
+    {
+      "stage": "StarLadder Major Budapest 2025 / Stage 3",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 0,
+      "with_vrs": 33,
+      "with_market": 0,
+      "with_rosters": 0,
+      "opening_view": null
+    },
+    {
+      "stage": "StarLadder Major Budapest 2025 / Playoffs",
+      "kind": "playoffs",
+      "complete": true,
+      "scored_matches": 7,
+      "unscored_matches": 0,
+      "with_vrs": 7,
+      "with_market": 0,
+      "with_rosters": 0,
+      "opening_view": null
+    },
+    {
+      "stage": "IEM Cologne Major 2026 / Stage 1",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 0,
+      "with_vrs": 33,
+      "with_market": 21,
+      "with_rosters": 33,
+      "opening_view": null
+    },
+    {
+      "stage": "IEM Cologne Major 2026 / Stage 2",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 0,
+      "with_vrs": 33,
+      "with_market": 27,
+      "with_rosters": 33,
+      "opening_view": null
+    },
+    {
+      "stage": "IEM Cologne Major 2026 / Stage 3",
+      "kind": "swiss",
+      "complete": true,
+      "scored_matches": 33,
+      "unscored_matches": 0,
+      "with_vrs": 33,
+      "with_market": 33,
+      "with_rosters": 33,
+      "opening_view": null
+    },
+    {
+      "stage": "IEM Cologne Major 2026 / Playoffs",
+      "kind": "playoffs",
+      "complete": true,
+      "scored_matches": 7,
+      "unscored_matches": 0,
+      "with_vrs": 7,
+      "with_market": 7,
+      "with_rosters": 7,
+      "opening_view": null
+    },
+    {
+      "stage": "PGL Major Singapore 2026 / Stage 1",
+      "kind": "swiss",
+      "complete": false,
+      "scored_matches": 24,
+      "unscored_matches": 9,
+      "with_vrs": 24,
+      "with_market": 24,
+      "with_rosters": 24,
+      "opening_view": null
+    }
+  ],
+  "tables": [
+    {
+      "title": "Non-LLM track: every completed Match",
+      "note": "Each profile on every Match it predicted. VrsOnly needs both teams in a Valve snapshot before the cutoff, MarketOnly a pre-match market line (OddsPapi, else Polymarket, else Kalshi; without one it falls back to VRS, so its rows include those Matches), the anchor either.",
+      "rows": [
+        {
+          "profile": "VrsOnly",
+          "format": "all",
+          "scores": {
+            "matches": 415,
+            "correct": 255,
+            "accuracy": 0.6144578313253012,
+            "log_loss": 0.7754695496630716,
+            "brier": 0.25828127906529624,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "VrsOnly",
+          "format": "bo1",
+          "scores": {
+            "matches": 220,
+            "correct": 127,
+            "accuracy": 0.5772727272727273,
+            "log_loss": 0.8075215967320508,
+            "brier": 0.2767692879572326,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "VrsOnly",
+          "format": "bo3",
+          "scores": {
+            "matches": 193,
+            "correct": 126,
+            "accuracy": 0.6528497409326425,
+            "log_loss": 0.7465267581389404,
+            "brier": 0.23985985807461865,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "VrsOnly",
+          "format": "bo5",
+          "scores": {
+            "matches": 2,
+            "correct": 2,
+            "accuracy": 1.0,
+            "log_loss": 0.042723754154170346,
+            "brier": 0.0022674265526964723,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "all",
+          "scores": {
+            "matches": 415,
+            "correct": 258,
+            "accuracy": 0.6216867469879518,
+            "log_loss": 0.7484143611137274,
+            "brier": 0.24837174115609112,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "bo1",
+          "scores": {
+            "matches": 220,
+            "correct": 128,
+            "accuracy": 0.5818181818181818,
+            "log_loss": 0.7865352011874743,
+            "brier": 0.26829977224073814,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "bo3",
+          "scores": {
+            "matches": 193,
+            "correct": 128,
+            "accuracy": 0.6632124352331606,
+            "log_loss": 0.7097449093540642,
+            "brier": 0.22728791743965504,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "bo5",
+          "scores": {
+            "matches": 2,
+            "correct": 2,
+            "accuracy": 1.0,
+            "log_loss": 0.28672404780906335,
+            "brier": 0.09087731048100955,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "all",
+          "scores": {
+            "matches": 415,
+            "correct": 258,
+            "accuracy": 0.6216867469879518,
+            "log_loss": 0.7484485791289923,
+            "brier": 0.2485410515239301,
+            "overrides": 6,
+            "override_hits": 3,
+            "override_hit_rate": 0.5
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "bo1",
+          "scores": {
+            "matches": 220,
+            "correct": 129,
+            "accuracy": 0.5863636363636363,
+            "log_loss": 0.7876992911471509,
+            "brier": 0.26889556482765803,
+            "overrides": 3,
+            "override_hits": 2,
+            "override_hit_rate": 0.6666666666666666
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "bo3",
+          "scores": {
+            "matches": 193,
+            "correct": 127,
+            "accuracy": 0.6580310880829016,
+            "log_loss": 0.7094000275104664,
+            "brier": 0.22739572449523635,
+            "overrides": 3,
+            "override_hits": 1,
+            "override_hit_rate": 0.3333333333333333
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "bo5",
+          "scores": {
+            "matches": 2,
+            "correct": 2,
+            "accuracy": 1.0,
+            "log_loss": 0.1990554883194382,
+            "brier": 0.05006864638283066,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        }
+      ]
+    },
+    {
+      "title": "Non-LLM track: Matches with both a market line and a rating",
+      "note": "The same profiles, only on the Matches where every one of them predicted and the dossier held both a market line and a VRS rating.",
+      "rows": [
+        {
+          "profile": "VrsOnly",
+          "format": "all",
+          "scores": {
+            "matches": 112,
+            "correct": 67,
+            "accuracy": 0.5982142857142857,
+            "log_loss": 0.7336441721882754,
+            "brier": 0.2576758687064259,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "VrsOnly",
+          "format": "bo1",
+          "scores": {
+            "matches": 49,
+            "correct": 27,
+            "accuracy": 0.5510204081632653,
+            "log_loss": 0.76035598285358,
+            "brier": 0.27565696898873504,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "VrsOnly",
+          "format": "bo3",
+          "scores": {
+            "matches": 62,
+            "correct": 39,
+            "accuracy": 0.6290322580645161,
+            "log_loss": 0.7232853441328586,
+            "brier": 0.24755330003947829,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "VrsOnly",
+          "format": "bo5",
+          "scores": {
+            "matches": 1,
+            "correct": 1,
+            "accuracy": 1.0,
+            "log_loss": 0.06701278902418478,
+            "brier": 0.004201212224032627,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "all",
+          "scores": {
+            "matches": 112,
+            "correct": 70,
+            "accuracy": 0.625,
+            "log_loss": 0.6333950360456134,
+            "brier": 0.22095749163213865,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "bo1",
+          "scores": {
+            "matches": 49,
+            "correct": 28,
+            "accuracy": 0.5714285714285714,
+            "log_loss": 0.6661313497962992,
+            "brier": 0.23763057189426934,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "bo3",
+          "scores": {
+            "matches": 62,
+            "correct": 41,
+            "accuracy": 0.6612903225806451,
+            "log_loss": 0.6087870083992919,
+            "brier": 0.20841806548225275,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "bo5",
+          "scores": {
+            "matches": 1,
+            "correct": 1,
+            "accuracy": 1.0,
+            "log_loss": 0.5550133763339709,
+            "brier": 0.1814209800806588,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "all",
+          "scores": {
+            "matches": 112,
+            "correct": 70,
+            "accuracy": 0.625,
+            "log_loss": 0.6335218260128922,
+            "brier": 0.22158484701297096,
+            "overrides": 6,
+            "override_hits": 3,
+            "override_hit_rate": 0.5
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "bo1",
+          "scores": {
+            "matches": 49,
+            "correct": 29,
+            "accuracy": 0.5918367346938775,
+            "log_loss": 0.6713578761458673,
+            "brier": 0.24030555901921657,
+            "overrides": 3,
+            "override_hits": 2,
+            "override_hit_rate": 0.6666666666666666
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "bo3",
+          "scores": {
+            "matches": 62,
+            "correct": 40,
+            "accuracy": 0.6451612903225806,
+            "log_loss": 0.6077134245958346,
+            "brier": 0.2087536584133362,
+            "overrides": 3,
+            "override_hits": 1,
+            "override_hit_rate": 0.3333333333333333
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "bo5",
+          "scores": {
+            "matches": 1,
+            "correct": 1,
+            "accuracy": 1.0,
+            "log_loss": 0.3796762573547205,
+            "brier": 0.099803651884301,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        }
+      ]
+    },
+    {
+      "title": "Market sources on the post-cutoff Matches",
+      "note": "The favourite of each source's last pre-cutoff price (Pinnacle de-vigged; Polymarket's last trade price; Kalshi's two bid/ask mids normalised), on the Matches every source priced. Not a profile: no policy, no fallback.",
+      "rows": [
+        {
+          "profile": "OddsPapi (Pinnacle)",
+          "format": "all",
+          "scores": {
+            "matches": 19,
+            "correct": 7,
+            "accuracy": 0.3684210526315789,
+            "log_loss": 0.763720369332583,
+            "brier": 0.28498210425798065,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "OddsPapi (Pinnacle)",
+          "format": "bo1",
+          "scores": {
+            "matches": 16,
+            "correct": 7,
+            "accuracy": 0.4375,
+            "log_loss": 0.7694783751113812,
+            "brier": 0.2878077759580564,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "OddsPapi (Pinnacle)",
+          "format": "bo3",
+          "scores": {
+            "matches": 3,
+            "correct": 0,
+            "accuracy": 0.0,
+            "log_loss": 0.733011005178993,
+            "brier": 0.26991185519091015,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "Polymarket",
+          "format": "all",
+          "scores": {
+            "matches": 19,
+            "correct": 8,
+            "accuracy": 0.42105263157894735,
+            "log_loss": 0.7634040548312628,
+            "brier": 0.28482499999999994,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "Polymarket",
+          "format": "bo1",
+          "scores": {
+            "matches": 16,
+            "correct": 8,
+            "accuracy": 0.5,
+            "log_loss": 0.7682075735648919,
+            "brier": 0.28717499999999996,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "Polymarket",
+          "format": "bo3",
+          "scores": {
+            "matches": 3,
+            "correct": 0,
+            "accuracy": 0.0,
+            "log_loss": 0.7377852882519078,
+            "brier": 0.27229166666666665,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "Kalshi",
+          "format": "all",
+          "scores": {
+            "matches": 19,
+            "correct": 9,
+            "accuracy": 0.47368421052631576,
+            "log_loss": 0.757560191014115,
+            "brier": 0.2819922538582804,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "Kalshi",
+          "format": "bo1",
+          "scores": {
+            "matches": 16,
+            "correct": 8,
+            "accuracy": 0.5,
+            "log_loss": 0.7650957118595738,
+            "brier": 0.28572361395670803,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "Kalshi",
+          "format": "bo3",
+          "scores": {
+            "matches": 3,
+            "correct": 1,
+            "accuracy": 0.3333333333333333,
+            "log_loss": 0.7173707465050015,
+            "brier": 0.26209166666666667,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        }
+      ]
+    },
+    {
+      "title": "LLM track: post-cutoff Matches, real names",
+      "note": "All five profiles, only on the Matches every one of them predicted.",
+      "rows": [
+        {
+          "profile": "VrsOnly",
+          "format": "all",
+          "scores": {
+            "matches": 24,
+            "correct": 13,
+            "accuracy": 0.5416666666666666,
+            "log_loss": 0.7595114464948459,
+            "brier": 0.28019374451764895,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "VrsOnly",
+          "format": "bo1",
+          "scores": {
+            "matches": 20,
+            "correct": 11,
+            "accuracy": 0.55,
+            "log_loss": 0.7470857516603644,
+            "brier": 0.27406290144234036,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "VrsOnly",
+          "format": "bo3",
+          "scores": {
+            "matches": 4,
+            "correct": 2,
+            "accuracy": 0.5,
+            "log_loss": 0.8216399206672549,
+            "brier": 0.31084795989419217,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "all",
+          "scores": {
+            "matches": 24,
+            "correct": 11,
+            "accuracy": 0.4583333333333333,
+            "log_loss": 0.749489489045316,
+            "brier": 0.2753983031795017,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "bo1",
+          "scores": {
+            "matches": 20,
+            "correct": 11,
+            "accuracy": 0.55,
+            "log_loss": 0.7022872708245991,
+            "brier": 0.25595993553676555,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "bo3",
+          "scores": {
+            "matches": 4,
+            "correct": 0,
+            "accuracy": 0.0,
+            "log_loss": 0.9855005801489004,
+            "brier": 0.3725901413931826,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "all",
+          "scores": {
+            "matches": 24,
+            "correct": 12,
+            "accuracy": 0.5,
+            "log_loss": 0.7472566016749798,
+            "brier": 0.27534516042116847,
+            "overrides": 1,
+            "override_hits": 1,
+            "override_hit_rate": 1.0
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "bo1",
+          "scores": {
+            "matches": 20,
+            "correct": 11,
+            "accuracy": 0.55,
+            "log_loss": 0.7074709773480913,
+            "brier": 0.25827921167367457,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "bo3",
+          "scores": {
+            "matches": 4,
+            "correct": 1,
+            "accuracy": 0.25,
+            "log_loss": 0.9461847233094217,
+            "brier": 0.36067490415863784,
+            "overrides": 1,
+            "override_hits": 1,
+            "override_hit_rate": 1.0
+          }
+        },
+        {
+          "profile": "Single LLM agent (HybridAnchored, debate mode `never`)",
+          "format": "all",
+          "scores": {
+            "matches": 24,
+            "correct": 11,
+            "accuracy": 0.4583333333333333,
+            "log_loss": 0.7436147707286027,
+            "brier": 0.27371569998513773,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "Single LLM agent (HybridAnchored, debate mode `never`)",
+          "format": "bo1",
+          "scores": {
+            "matches": 20,
+            "correct": 11,
+            "accuracy": 0.55,
+            "log_loss": 0.7000540355102347,
+            "brier": 0.25480130237322407,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "Single LLM agent (HybridAnchored, debate mode `never`)",
+          "format": "bo3",
+          "scores": {
+            "matches": 4,
+            "correct": 0,
+            "accuracy": 0.0,
+            "log_loss": 0.9614184468204432,
+            "brier": 0.3682876880447059,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "3-agent AdversarialDebateLlm (HybridAnchored, debate mode `always`)",
+          "format": "all",
+          "scores": {
+            "matches": 24,
+            "correct": 11,
+            "accuracy": 0.4583333333333333,
+            "log_loss": 0.7448550456609011,
+            "brier": 0.2742666786721731,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "3-agent AdversarialDebateLlm (HybridAnchored, debate mode `always`)",
+          "format": "bo1",
+          "scores": {
+            "matches": 20,
+            "correct": 11,
+            "accuracy": 0.55,
+            "log_loss": 0.7030889408238655,
+            "brier": 0.2562350051862733,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "3-agent AdversarialDebateLlm (HybridAnchored, debate mode `always`)",
+          "format": "bo3",
+          "scores": {
+            "matches": 4,
+            "correct": 0,
+            "accuracy": 0.0,
+            "log_loss": 0.953685569846079,
+            "brier": 0.3644250461016719,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        }
+      ]
+    },
+    {
+      "title": "LLM track: anonymized historical slice (BlindAnonymizer)",
+      "note": "All five profiles, only on the Matches every one of them predicted. The LLM seats saw TEAM_ALPHA/TEAM_BETA, PLAYER_01..10 for the rosters of all 6 Matches, no news item, no Event title and no dates.",
+      "rows": [
+        {
+          "profile": "VrsOnly",
+          "format": "all",
+          "scores": {
+            "matches": 6,
+            "correct": 2,
+            "accuracy": 0.3333333333333333,
+            "log_loss": 0.9892724637201166,
+            "brier": 0.36612686276240153,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "VrsOnly",
+          "format": "bo1",
+          "scores": {
+            "matches": 6,
+            "correct": 2,
+            "accuracy": 0.3333333333333333,
+            "log_loss": 0.9892724637201166,
+            "brier": 0.36612686276240153,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "all",
+          "scores": {
+            "matches": 6,
+            "correct": 3,
+            "accuracy": 0.5,
+            "log_loss": 0.7891955551357911,
+            "brier": 0.2920753051099423,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "MarketOnly",
+          "format": "bo1",
+          "scores": {
+            "matches": 6,
+            "correct": 3,
+            "accuracy": 0.5,
+            "log_loss": 0.7891955551357911,
+            "brier": 0.2920753051099423,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "all",
+          "scores": {
+            "matches": 6,
+            "correct": 3,
+            "accuracy": 0.5,
+            "log_loss": 0.8123100992537445,
+            "brier": 0.3016414536237641,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "HybridAnchored without LLM (the anchor)",
+          "format": "bo1",
+          "scores": {
+            "matches": 6,
+            "correct": 3,
+            "accuracy": 0.5,
+            "log_loss": 0.8123100992537445,
+            "brier": 0.3016414536237641,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "Single LLM agent (HybridAnchored, debate mode `never`)",
+          "format": "all",
+          "scores": {
+            "matches": 6,
+            "correct": 3,
+            "accuracy": 0.5,
+            "log_loss": 0.8123100992537445,
+            "brier": 0.3016414536237641,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "Single LLM agent (HybridAnchored, debate mode `never`)",
+          "format": "bo1",
+          "scores": {
+            "matches": 6,
+            "correct": 3,
+            "accuracy": 0.5,
+            "log_loss": 0.8123100992537445,
+            "brier": 0.3016414536237641,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "3-agent AdversarialDebateLlm (HybridAnchored, debate mode `always`)",
+          "format": "all",
+          "scores": {
+            "matches": 6,
+            "correct": 3,
+            "accuracy": 0.5,
+            "log_loss": 0.8123100992537445,
+            "brier": 0.3016414536237641,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        },
+        {
+          "profile": "3-agent AdversarialDebateLlm (HybridAnchored, debate mode `always`)",
+          "format": "bo1",
+          "scores": {
+            "matches": 6,
+            "correct": 3,
+            "accuracy": 0.5,
+            "log_loss": 0.8123100992537445,
+            "brier": 0.3016414536237641,
+            "overrides": 0,
+            "override_hits": 0,
+            "override_hit_rate": null
+          }
+        }
+      ]
+    }
+  ],
+  "llm_moves": [
+    {
+      "profile": "single",
+      "game": "9z vs Lynn Vision (bo1)",
+      "anchor_team_a": 0.6678909286901477,
+      "llm_team_a": 0.6328909286901476,
+      "pick": "9z",
+      "winner": "Lynn Vision",
+      "factors": [
+        {
+          "evidence_url": "https://liquipedia.net/counterstrike/index.php?title=PGL/2026/Singapore&oldid=3473596",
+          "kind": "stand_in"
+        }
+      ]
+    },
+    {
+      "profile": "debate",
+      "game": "9z vs Lynn Vision (bo1)",
+      "anchor_team_a": 0.6678909286901477,
+      "llm_team_a": 0.6478909286901476,
+      "pick": "9z",
+      "winner": "Lynn Vision",
+      "factors": [
+        {
+          "evidence_url": "https://liquipedia.net/counterstrike/index.php?title=PGL/2026/Singapore&oldid=3473596",
+          "kind": "stand_in"
+        }
+      ]
+    },
+    {
+      "profile": "single",
+      "game": "9z vs M80 (bo1)",
+      "anchor_team_a": 0.49311642001398415,
+      "llm_team_a": 0.4681164200139841,
+      "pick": "M80",
+      "winner": "M80",
+      "factors": [
+        {
+          "evidence_url": "https://liquipedia.net/counterstrike/index.php?title=PGL/2026/Singapore&oldid=3473790",
+          "kind": "stand_in"
+        }
+      ]
+    },
+    {
+      "profile": "debate",
+      "game": "9z vs M80 (bo1)",
+      "anchor_team_a": 0.49311642001398415,
+      "llm_team_a": 0.47811642001398413,
+      "pick": "M80",
+      "winner": "M80",
+      "factors": [
+        {
+          "evidence_url": "https://liquipedia.net/counterstrike/index.php?title=PGL/2026/Singapore&oldid=3473790",
+          "kind": "stand_in"
+        }
+      ]
+    },
+    {
+      "profile": "single",
+      "game": "9z vs DENDELE CS (bo3)",
+      "anchor_team_a": 0.5074810742621272,
+      "llm_team_a": 0.47748107426212716,
+      "pick": "DENDELE CS",
+      "winner": "9z",
+      "factors": [
+        {
+          "evidence_url": "https://liquipedia.net/counterstrike/index.php?title=PGL/2026/Singapore&oldid=3474443",
+          "kind": "stand_in"
+        }
+      ]
+    },
+    {
+      "profile": "debate",
+      "game": "9z vs DENDELE CS (bo3)",
+      "anchor_team_a": 0.5074810742621272,
+      "llm_team_a": 0.49248107426212717,
+      "pick": "DENDELE CS",
+      "winner": "9z",
+      "factors": [
+        {
+          "evidence_url": "https://liquipedia.net/counterstrike/index.php?title=PGL/2026/Singapore&oldid=3474443",
+          "kind": "stand_in"
+        }
+      ]
+    }
+  ],
+  "pickem": [
+    {
+      "stage": "PGL Major Copenhagen 2024 / Opening Stage",
+      "kind": "swiss",
+      "status": "final",
+      "points": 2,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 0
+    },
+    {
+      "stage": "PGL Major Copenhagen 2024 / Elimination Stage",
+      "kind": "swiss",
+      "status": "final",
+      "points": 3,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 0
+    },
+    {
+      "stage": "PGL Major Copenhagen 2024 / Playoffs",
+      "kind": "playoffs",
+      "status": "final",
+      "points": 4,
+      "settled_picks": 7,
+      "picks": 7,
+      "rated_pairs": 0
+    },
+    {
+      "stage": "Perfect World Major Shanghai Major 2024 / Opening Stage",
+      "kind": "swiss",
+      "status": "final",
+      "points": 3,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 120
+    },
+    {
+      "stage": "Perfect World Major Shanghai Major 2024 / Elimination Stage",
+      "kind": "swiss",
+      "status": "final",
+      "points": 5,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 120
+    },
+    {
+      "stage": "Perfect World Major Shanghai Major 2024 / Playoffs",
+      "kind": "playoffs",
+      "status": "final",
+      "points": 3,
+      "settled_picks": 7,
+      "picks": 7,
+      "rated_pairs": 28
+    },
+    {
+      "stage": "BLAST.tv Major Austin 2025 / Stage 1",
+      "kind": "swiss",
+      "status": "final",
+      "points": 6,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 120
+    },
+    {
+      "stage": "BLAST.tv Major Austin 2025 / Stage 2",
+      "kind": "swiss",
+      "status": "final",
+      "points": 2,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 120
+    },
+    {
+      "stage": "BLAST.tv Major Austin 2025 / Stage 3",
+      "kind": "swiss",
+      "status": "final",
+      "points": 4,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 120
+    },
+    {
+      "stage": "BLAST.tv Major Austin 2025 / Playoffs",
+      "kind": "playoffs",
+      "status": "final",
+      "points": 6,
+      "settled_picks": 7,
+      "picks": 7,
+      "rated_pairs": 28
+    },
+    {
+      "stage": "StarLadder Major Budapest 2025 / Stage 1",
+      "kind": "swiss",
+      "status": "final",
+      "points": 6,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 120
+    },
+    {
+      "stage": "StarLadder Major Budapest 2025 / Stage 2",
+      "kind": "swiss",
+      "status": "final",
+      "points": 5,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 120
+    },
+    {
+      "stage": "StarLadder Major Budapest 2025 / Stage 3",
+      "kind": "swiss",
+      "status": "final",
+      "points": 4,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 120
+    },
+    {
+      "stage": "StarLadder Major Budapest 2025 / Playoffs",
+      "kind": "playoffs",
+      "status": "final",
+      "points": 1,
+      "settled_picks": 7,
+      "picks": 7,
+      "rated_pairs": 28
+    },
+    {
+      "stage": "IEM Cologne Major 2026 / Stage 1",
+      "kind": "swiss",
+      "status": "final",
+      "points": 4,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 120
+    },
+    {
+      "stage": "IEM Cologne Major 2026 / Stage 2",
+      "kind": "swiss",
+      "status": "final",
+      "points": 5,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 120
+    },
+    {
+      "stage": "IEM Cologne Major 2026 / Stage 3",
+      "kind": "swiss",
+      "status": "final",
+      "points": 4,
+      "settled_picks": 10,
+      "picks": 10,
+      "rated_pairs": 120
+    },
+    {
+      "stage": "IEM Cologne Major 2026 / Playoffs",
+      "kind": "playoffs",
+      "status": "final",
+      "points": 4,
+      "settled_picks": 7,
+      "picks": 7,
+      "rated_pairs": 28
+    },
+    {
+      "stage": "PGL Major Singapore 2026 / Stage 1",
+      "kind": "swiss",
+      "status": "pending: Stage not finished (1 Points on 1 decided picks so far)",
+      "points": null,
+      "settled_picks": 1,
+      "picks": 10,
+      "rated_pairs": 120
+    }
+  ],
+  "major": {
+    "event": "PGL Major Singapore 2026",
+    "matches": [
+      {
+        "stage": "Stage 1",
+        "game": "9z vs Lynn Vision",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T04:00:00Z",
+        "winner": "Lynn Vision",
+        "picks": {
+          "anchor": {
+            "team": "9z",
+            "p_win": 0.6678909286901477,
+            "correct": false
+          },
+          "debate": {
+            "team": "9z",
+            "p_win": 0.6478909286901476,
+            "correct": false
+          },
+          "market": {
+            "team": "9z",
+            "p_win": 0.6367131186929361,
+            "correct": false
+          },
+          "single": {
+            "team": "9z",
+            "p_win": 0.6328909286901476,
+            "correct": false
+          },
+          "vrs": {
+            "team": "9z",
+            "p_win": 0.7770923668491492,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Heroic vs Imperial",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T04:00:00Z",
+        "winner": "Imperial",
+        "picks": {
+          "anchor": {
+            "team": "Heroic",
+            "p_win": 0.6749518359261328,
+            "correct": false
+          },
+          "debate": {
+            "team": "Heroic",
+            "p_win": 0.6749518359261328,
+            "correct": false
+          },
+          "market": {
+            "team": "Heroic",
+            "p_win": 0.6714023831347388,
+            "correct": false
+          },
+          "single": {
+            "team": "Heroic",
+            "p_win": 0.6749518359261328,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Heroic",
+            "p_win": 0.6889470161791494,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "NIP vs M80",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T05:00:00Z",
+        "winner": "NIP",
+        "picks": {
+          "anchor": {
+            "team": "NIP",
+            "p_win": 0.5695603197019479,
+            "correct": true
+          },
+          "debate": {
+            "team": "NIP",
+            "p_win": 0.5695603197019479,
+            "correct": true
+          },
+          "market": {
+            "team": "NIP",
+            "p_win": 0.5609631147540983,
+            "correct": true
+          },
+          "single": {
+            "team": "NIP",
+            "p_win": 0.5695603197019479,
+            "correct": true
+          },
+          "vrs": {
+            "team": "NIP",
+            "p_win": 0.6034833894974426,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "100 Thieves vs Chinggis Warriors",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T05:25:00Z",
+        "winner": "100 Thieves",
+        "picks": {
+          "anchor": {
+            "team": "100 Thieves",
+            "p_win": 0.7994814731138297,
+            "correct": true
+          },
+          "debate": {
+            "team": "100 Thieves",
+            "p_win": 0.7994814731138297,
+            "correct": true
+          },
+          "market": {
+            "team": "100 Thieves",
+            "p_win": 0.8012651555086979,
+            "correct": true
+          },
+          "single": {
+            "team": "100 Thieves",
+            "p_win": 0.7994814731138297,
+            "correct": true
+          },
+          "vrs": {
+            "team": "100 Thieves",
+            "p_win": 0.7922270049693828,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Liquid vs GOSH",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T06:10:00Z",
+        "winner": "Liquid",
+        "picks": {
+          "anchor": {
+            "team": "Liquid",
+            "p_win": 0.5964356405162379,
+            "correct": true
+          },
+          "debate": {
+            "team": "Liquid",
+            "p_win": 0.5964356405162379,
+            "correct": true
+          },
+          "market": {
+            "team": "Liquid",
+            "p_win": 0.555,
+            "correct": true
+          },
+          "single": {
+            "team": "Liquid",
+            "p_win": 0.5964356405162379,
+            "correct": true
+          },
+          "vrs": {
+            "team": "Liquid",
+            "p_win": 0.7445211221060142,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "PVISION vs DENDELE CS",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T06:25:00Z",
+        "winner": "PVISION",
+        "picks": {
+          "anchor": {
+            "team": "PVISION",
+            "p_win": 0.6127681847293728,
+            "correct": true
+          },
+          "debate": {
+            "team": "PVISION",
+            "p_win": 0.6127681847293728,
+            "correct": true
+          },
+          "market": {
+            "team": "PVISION",
+            "p_win": 0.6087602078693393,
+            "correct": true
+          },
+          "single": {
+            "team": "PVISION",
+            "p_win": 0.6127681847293728,
+            "correct": true
+          },
+          "vrs": {
+            "team": "PVISION",
+            "p_win": 0.6286432491917464,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "FaZe vs Wildcard",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T07:00:00Z",
+        "winner": "Wildcard",
+        "picks": {
+          "anchor": {
+            "team": "FaZe",
+            "p_win": 0.6835585839965544,
+            "correct": false
+          },
+          "debate": {
+            "team": "FaZe",
+            "p_win": 0.6835585839965544,
+            "correct": false
+          },
+          "market": {
+            "team": "FaZe",
+            "p_win": 0.6803797468354431,
+            "correct": false
+          },
+          "single": {
+            "team": "FaZe",
+            "p_win": 0.6835585839965544,
+            "correct": false
+          },
+          "vrs": {
+            "team": "FaZe",
+            "p_win": 0.6961013799556869,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Eternal Fire vs FlyQuest",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T07:15:00Z",
+        "winner": "FlyQuest",
+        "picks": {
+          "anchor": {
+            "team": "Eternal Fire",
+            "p_win": 0.6165249897609356,
+            "correct": false
+          },
+          "debate": {
+            "team": "Eternal Fire",
+            "p_win": 0.6165249897609356,
+            "correct": false
+          },
+          "market": {
+            "team": "Eternal Fire",
+            "p_win": 0.5794534412955467,
+            "correct": false
+          },
+          "single": {
+            "team": "Eternal Fire",
+            "p_win": 0.6165249897609356,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Eternal Fire",
+            "p_win": 0.7487584329363818,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "NIP vs Lynn Vision",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T08:45:00Z",
+        "winner": "NIP",
+        "picks": {
+          "anchor": {
+            "team": "NIP",
+            "p_win": 0.7400017996669171,
+            "correct": true
+          },
+          "debate": {
+            "team": "NIP",
+            "p_win": 0.7400017996669171,
+            "correct": true
+          },
+          "market": {
+            "team": "NIP",
+            "p_win": 0.7092350546389544,
+            "correct": true
+          },
+          "single": {
+            "team": "NIP",
+            "p_win": 0.7400017996669171,
+            "correct": true
+          },
+          "vrs": {
+            "team": "NIP",
+            "p_win": 0.8406674069499905,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Heroic vs Chinggis Warriors",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T08:45:00Z",
+        "winner": "Heroic",
+        "picks": {
+          "anchor": {
+            "team": "Heroic",
+            "p_win": 0.8002669534292328,
+            "correct": true
+          },
+          "debate": {
+            "team": "Heroic",
+            "p_win": 0.8002669534292328,
+            "correct": true
+          },
+          "market": {
+            "team": "Heroic",
+            "p_win": 0.7938931297709924,
+            "correct": true
+          },
+          "single": {
+            "team": "Heroic",
+            "p_win": 0.8002669534292328,
+            "correct": true
+          },
+          "vrs": {
+            "team": "Heroic",
+            "p_win": 0.824277637385116,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "9z vs M80",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T09:35:00Z",
+        "winner": "M80",
+        "picks": {
+          "anchor": {
+            "team": "M80",
+            "p_win": 0.5068835799860159,
+            "correct": true
+          },
+          "debate": {
+            "team": "M80",
+            "p_win": 0.5218835799860159,
+            "correct": true
+          },
+          "market": {
+            "team": "M80",
+            "p_win": 0.5089540617700493,
+            "correct": true
+          },
+          "single": {
+            "team": "M80",
+            "p_win": 0.5318835799860159,
+            "correct": true
+          },
+          "vrs": {
+            "team": "9z",
+            "p_win": 0.5013999982864173,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "100 Thieves vs Imperial",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T10:00:00Z",
+        "winner": "Imperial",
+        "picks": {
+          "anchor": {
+            "team": "100 Thieves",
+            "p_win": 0.6313911653084537,
+            "correct": false
+          },
+          "debate": {
+            "team": "100 Thieves",
+            "p_win": 0.6313911653084537,
+            "correct": false
+          },
+          "market": {
+            "team": "100 Thieves",
+            "p_win": 0.6284882310118902,
+            "correct": false
+          },
+          "single": {
+            "team": "100 Thieves",
+            "p_win": 0.6313911653084537,
+            "correct": false
+          },
+          "vrs": {
+            "team": "100 Thieves",
+            "p_win": 0.6429063089118064,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Eternal Fire vs DENDELE CS",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T10:50:00Z",
+        "winner": "Eternal Fire",
+        "picks": {
+          "anchor": {
+            "team": "Eternal Fire",
+            "p_win": 0.5376599312091408,
+            "correct": true
+          },
+          "debate": {
+            "team": "Eternal Fire",
+            "p_win": 0.5376599312091408,
+            "correct": true
+          },
+          "market": {
+            "team": "Eternal Fire",
+            "p_win": 0.5306756406937613,
+            "correct": true
+          },
+          "single": {
+            "team": "Eternal Fire",
+            "p_win": 0.5376599312091408,
+            "correct": true
+          },
+          "vrs": {
+            "team": "Eternal Fire",
+            "p_win": 0.5654228491952843,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "PVISION vs FlyQuest",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T11:00:00Z",
+        "winner": "FlyQuest",
+        "picks": {
+          "anchor": {
+            "team": "PVISION",
+            "p_win": 0.6971680279163203,
+            "correct": false
+          },
+          "debate": {
+            "team": "PVISION",
+            "p_win": 0.6971680279163203,
+            "correct": false
+          },
+          "market": {
+            "team": "PVISION",
+            "p_win": 0.6689655172413794,
+            "correct": false
+          },
+          "single": {
+            "team": "PVISION",
+            "p_win": 0.6971680279163203,
+            "correct": false
+          },
+          "vrs": {
+            "team": "PVISION",
+            "p_win": 0.7949787712552727,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Liquid vs Wildcard",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T12:00:00Z",
+        "winner": "Liquid",
+        "picks": {
+          "anchor": {
+            "team": "Liquid",
+            "p_win": 0.6896618421305071,
+            "correct": true
+          },
+          "debate": {
+            "team": "Liquid",
+            "p_win": 0.6896618421305071,
+            "correct": true
+          },
+          "market": {
+            "team": "Liquid",
+            "p_win": 0.6913361400398848,
+            "correct": true
+          },
+          "single": {
+            "team": "Liquid",
+            "p_win": 0.6896618421305071,
+            "correct": true
+          },
+          "vrs": {
+            "team": "Liquid",
+            "p_win": 0.6829151173158743,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "FaZe vs GOSH",
+        "format": "bo1",
+        "scheduled_start": "2026-11-24T12:10:00Z",
+        "winner": "FaZe",
+        "picks": {
+          "anchor": {
+            "team": "FaZe",
+            "p_win": 0.6071681407618222,
+            "correct": true
+          },
+          "debate": {
+            "team": "FaZe",
+            "p_win": 0.6071681407618222,
+            "correct": true
+          },
+          "market": {
+            "team": "FaZe",
+            "p_win": 0.565,
+            "correct": true
+          },
+          "single": {
+            "team": "FaZe",
+            "p_win": 0.6071681407618222,
+            "correct": true
+          },
+          "vrs": {
+            "team": "FaZe",
+            "p_win": 0.7560605767106526,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Eternal Fire vs 100 Thieves",
+        "format": "bo1",
+        "scheduled_start": "2026-11-25T06:00:00Z",
+        "winner": "Eternal Fire",
+        "picks": {
+          "anchor": {
+            "team": "100 Thieves",
+            "p_win": 0.5718608062208996,
+            "correct": false
+          },
+          "debate": {
+            "team": "100 Thieves",
+            "p_win": 0.5718608062208996,
+            "correct": false
+          },
+          "market": {
+            "team": "100 Thieves",
+            "p_win": 0.5901557006529382,
+            "correct": false
+          },
+          "single": {
+            "team": "100 Thieves",
+            "p_win": 0.5718608062208996,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Eternal Fire",
+            "p_win": 0.5027999746210874,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Heroic vs M80",
+        "format": "bo1",
+        "scheduled_start": "2026-11-25T06:00:00Z",
+        "winner": "M80",
+        "picks": {
+          "anchor": {
+            "team": "Heroic",
+            "p_win": 0.6022832729090959,
+            "correct": false
+          },
+          "debate": {
+            "team": "Heroic",
+            "p_win": 0.6022832729090959,
+            "correct": false
+          },
+          "market": {
+            "team": "Heroic",
+            "p_win": 0.6073376301437778,
+            "correct": false
+          },
+          "single": {
+            "team": "Heroic",
+            "p_win": 0.6022832729090959,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Heroic",
+            "p_win": 0.5818568115037938,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Wildcard vs Lynn Vision",
+        "format": "bo1",
+        "scheduled_start": "2026-11-25T07:00:00Z",
+        "winner": "Lynn Vision",
+        "picks": {
+          "anchor": {
+            "team": "Wildcard",
+            "p_win": 0.5346643498191962,
+            "correct": false
+          },
+          "debate": {
+            "team": "Wildcard",
+            "p_win": 0.5346643498191962,
+            "correct": false
+          },
+          "market": {
+            "team": "Wildcard",
+            "p_win": 0.5,
+            "correct": false
+          },
+          "single": {
+            "team": "Wildcard",
+            "p_win": 0.5346643498191962,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Wildcard",
+            "p_win": 0.6669452271329639,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "PVISION vs FaZe",
+        "format": "bo1",
+        "scheduled_start": "2026-11-25T07:15:00Z",
+        "winner": "PVISION",
+        "picks": {
+          "anchor": {
+            "team": "PVISION",
+            "p_win": 0.5495371278596165,
+            "correct": true
+          },
+          "debate": {
+            "team": "PVISION",
+            "p_win": 0.5495371278596165,
+            "correct": true
+          },
+          "market": {
+            "team": "PVISION",
+            "p_win": 0.5545571245186136,
+            "correct": true
+          },
+          "single": {
+            "team": "PVISION",
+            "p_win": 0.5495371278596165,
+            "correct": true
+          },
+          "vrs": {
+            "team": "PVISION",
+            "p_win": 0.5293662045877111,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "9z vs DENDELE CS",
+        "format": "bo3",
+        "scheduled_start": "2026-11-25T08:10:00Z",
+        "winner": "9z",
+        "picks": {
+          "anchor": {
+            "team": "9z",
+            "p_win": 0.5074810742621272,
+            "correct": true
+          },
+          "debate": {
+            "team": "DENDELE CS",
+            "p_win": 0.5075189257378728,
+            "correct": false
+          },
+          "market": {
+            "team": "DENDELE CS",
+            "p_win": 0.5032526671870934,
+            "correct": false
+          },
+          "single": {
+            "team": "DENDELE CS",
+            "p_win": 0.5225189257378728,
+            "correct": false
+          },
+          "vrs": {
+            "team": "9z",
+            "p_win": 0.5502488154276207,
+            "correct": true
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "Imperial vs FlyQuest",
+        "format": "bo3",
+        "scheduled_start": "2026-11-25T08:30:00Z",
+        "winner": "FlyQuest",
+        "picks": {
+          "anchor": {
+            "team": "Imperial",
+            "p_win": 0.5614040938619581,
+            "correct": false
+          },
+          "debate": {
+            "team": "Imperial",
+            "p_win": 0.5614040938619581,
+            "correct": false
+          },
+          "market": {
+            "team": "Imperial",
+            "p_win": 0.5306756406937613,
+            "correct": false
+          },
+          "single": {
+            "team": "Imperial",
+            "p_win": 0.5614040938619581,
+            "correct": false
+          },
+          "vrs": {
+            "team": "Imperial",
+            "p_win": 0.6776263656902153,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "GOSH vs Chinggis Warriors",
+        "format": "bo3",
+        "scheduled_start": "2026-11-25T10:10:00Z",
+        "winner": "Chinggis Warriors",
+        "picks": {
+          "anchor": {
+            "team": "GOSH",
+            "p_win": 0.7941258729073746,
+            "correct": false
+          },
+          "debate": {
+            "team": "GOSH",
+            "p_win": 0.7941258729073746,
+            "correct": false
+          },
+          "market": {
+            "team": "GOSH",
+            "p_win": 0.825,
+            "correct": false
+          },
+          "single": {
+            "team": "GOSH",
+            "p_win": 0.7941258729073746,
+            "correct": false
+          },
+          "vrs": {
+            "team": "GOSH",
+            "p_win": 0.6335543333231626,
+            "correct": false
+          }
+        }
+      },
+      {
+        "stage": "Stage 1",
+        "game": "NIP vs Liquid",
+        "format": "bo3",
+        "scheduled_start": "2026-11-25T11:00:00Z",
+        "winner": "NIP",
+        "picks": {
+          "anchor": {
+            "team": "Liquid",
+            "p_win": 0.504295811799679,
+            "correct": false
+          },
+          "debate": {
+            "team": "Liquid",
+            "p_win": 0.504295811799679,
+            "correct": false
+          },
+          "market": {
+            "team": "Liquid",
+            "p_win": 0.5242668050869452,
+            "correct": false
+          },
+          "single": {
+            "team": "Liquid",
+            "p_win": 0.504295811799679,
+            "correct": false
+          },
+          "vrs": {
+            "team": "NIP",
+            "p_win": 0.57509162540446,
+            "correct": true
+          }
+        }
+      }
+    ],
+    "pickems": [
+      {
+        "stage": "PGL Major Singapore 2026 / Stage 1",
+        "status": "pending: the Stage is not finished (1 of the 10 picked teams have finished it)",
+        "points": 1,
+        "picks": [
+          [
+            "three_nil",
+            [
+              {
+                "team": "NIP",
+                "record": "3-0",
+                "state": "correct"
+              },
+              {
+                "team": "Heroic",
+                "record": "1-2",
+                "state": "wrong"
+              }
+            ]
+          ],
+          [
+            "zero_three",
+            [
+              {
+                "team": "Chinggis Warriors",
+                "record": "1-2",
+                "state": "wrong"
+              },
+              {
+                "team": "Lynn Vision",
+                "record": "2-1",
+                "state": "wrong"
+              }
+            ]
+          ],
+          [
+            "advance",
+            [
+              {
+                "team": "PVISION",
+                "record": "2-1",
+                "state": "undecided"
+              },
+              {
+                "team": "Liquid",
+                "record": "2-1",
+                "state": "undecided"
+              },
+              {
+                "team": "FaZe",
+                "record": "1-2",
+                "state": "undecided"
+              },
+              {
+                "team": "100 Thieves",
+                "record": "1-2",
+                "state": "undecided"
+              },
+              {
+                "team": "Eternal Fire",
+                "record": "2-1",
+                "state": "undecided"
+              },
+              {
+                "team": "M80",
+                "record": "2-1",
+                "state": "undecided"
+              }
+            ]
+          ]
+        ]
+      }
+    ]
+  },
+  "llm": {
+    "providers": [],
+    "planned": {
+      "debate": 30,
+      "single": 30
+    },
+    "answered": {
+      "debate": 30,
+      "single": 30
+    },
+    "calls": {},
+    "answered_by": {
+      "debate": {
+        "advocate by claude": 30,
+        "arbiter by claude": 30,
+        "devil by antigravity": 30
+      },
+      "single": {
+        "predict by claude": 30
+      }
+    },
+    "failures": {},
+    "stopped": null,
+    "exhausted": {}
+  },
+  "notes": [
+    "Each Match is evaluated 1 s before its cutoff min(Scheduled Start − 15 min, actual start); every odds line, VRS snapshot and Liquipedia revision in its dossier was observed strictly before that instant. Each Stage's Pick'em is made 1 s before its first Match starts, from the Liquipedia Stage revision saved from before that instant (teams, Round 1 pairings, seeds).",
+    "Scheduled Start and actual start come from PandaScore's final records (`scheduled_at`, `begin_at`).",
+    "Market lines: OddsPapi historical Pinnacle series-winner prices, which exist for settled fixtures since January 2026 only (IEM Cologne Major 2026 and PGL Major Singapore 2026), then Polymarket and Kalshi price histories, saved for PGL Major Singapore 2026 Stage 1 only.",
+    "Valve's global standings start in August 2024, so PGL Major Copenhagen 2024 has no rating: its Matches are not predicted and its Pick'em is drawn from even odds.",
+    "Rosters: Liquipedia Event page revisions saved for some Matches only (see the Rosters column). No dated news archive exists, so no dossier holds news."
+  ]
+}

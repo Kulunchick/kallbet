@@ -26,6 +26,10 @@ pub struct Config {
     pub bot_username: Option<String>,
     /// `PANDASCORE_TOKEN` (secret).
     pub pandascore_token: Option<String>,
+    /// `KALLBET_BOT_SECRET` (secret): what a sidecar presents to
+    /// `POST /api/auth/bot` to register Bot Users. Unset means that endpoint
+    /// answers 503 and no Bot User can authenticate anew.
+    pub bot_secret: Option<String>,
     /// `KALLBET_CHROME_URL`: the DevTools endpoint of the headless Chrome the
     /// HLTV adapter loads pages with (`http://chrome:9222` in compose). Unset
     /// means the HLTV adapter is skipped.
@@ -118,6 +122,7 @@ impl Config {
             bot_token: get("BOT_TOKEN"),
             bot_username: get("BOT_USERNAME").map(|u| u.trim_start_matches('@').to_string()),
             pandascore_token: get("PANDASCORE_TOKEN"),
+            bot_secret: get("KALLBET_BOT_SECRET"),
             chrome_url: get("KALLBET_CHROME_URL"),
             logo_dir: get("KALLBET_LOGO_DIR")
                 .map(PathBuf::from)
@@ -135,6 +140,7 @@ impl Config {
             bot_token: Some(crate::testing::TEST_BOT_TOKEN.into()),
             bot_username: None,
             pandascore_token: None,
+            bot_secret: Some(crate::testing::TEST_BOT_SECRET.into()),
             chrome_url: None,
             logo_dir: PathBuf::from("logos"),
             breaker_failures: 3,
@@ -174,6 +180,7 @@ impl fmt::Debug for Config {
             .field("bot_token", &redact(&self.bot_token))
             .field("bot_username", &self.bot_username)
             .field("pandascore_token", &redact(&self.pandascore_token))
+            .field("bot_secret", &redact(&self.bot_secret))
             .field("chrome_url", &self.chrome_url.as_deref().map(url_origin))
             .field("logo_dir", &self.logo_dir)
             .field("breaker_failures", &self.breaker_failures)

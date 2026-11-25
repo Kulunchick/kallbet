@@ -11,6 +11,7 @@ use crate::error::ApiError;
 use crate::state::AppState;
 
 pub mod auth;
+pub mod bot_auth;
 pub mod dev_login;
 pub mod events;
 pub mod health;
@@ -26,6 +27,7 @@ pub mod teams;
 pub fn router(config: &Config) -> Router<AppState> {
     let mut router = Router::new()
         .merge(auth::router())
+        .merge(bot_auth::router())
         .merge(events::router())
         .merge(health::router())
         .merge(leaderboard::router())

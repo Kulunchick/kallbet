@@ -1,0 +1,13 @@
+{
+  "llm": {
+    "providers": {
+      "claude": {"kind": "claude", "model": "sonnet", "timeout_seconds": 300},
+      "codex": {"kind": "codex", "timeout_seconds": 300},
+      "antigravity": {"kind": "antigravity", "model": "gemini-3.8-flash-medium", "timeout_seconds": 300}
+    }
+  },
+  "single": ["claude"],
+  "advocate": ["claude"],
+  "devil": ["codex"],
+  "arbiter": ["antigravity"]
+}

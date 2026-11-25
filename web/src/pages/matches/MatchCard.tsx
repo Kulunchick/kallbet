@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Avatar } from "../../components/Avatar";
 import { TeamLogo } from "../../components/TeamLogo";
 import type { MatchCard as Card, RevealedPrediction, TeamRef } from "./api";
-import { cardState } from "./layout";
+import { cardState, hasPreliminaryPick, pickMark } from "./layout";
+import { RationaleList } from "./RationalePanel";
 import { formatAgo, formatSpan, formatStart } from "./time";
 
 type Props = {
@@ -64,6 +65,8 @@ export function MatchCard({ card, now, saving, onPredict }: Props) {
         {side(card.team_b, "end")}
       </div>
 
+      <RationaleList card={card} />
+
       <footer className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-line pt-2.5 text-xs">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
           {revealed === null && (
@@ -71,6 +74,9 @@ export function MatchCard({ card, now, saving, onPredict }: Props) {
           )}
           {!showChoices && (myTeam || card.my_result !== "pending") && (
             <PredictionResult result={card.my_result} team={myTeam ?? undefined} />
+          )}
+          {hasPreliminaryPick(revealed) && (
+            <span className="text-mute">{t("bot.preliminaryHint")}</span>
           )}
         </div>
         <span className="ml-auto text-right text-mute">
@@ -152,15 +158,38 @@ function TeamSide({
       </div>
       {picks !== null && (
         <ul className={`flex min-h-6 flex-wrap gap-1 ${end ? "justify-end" : ""}`}>
-          {teamPicks.map((pick) => (
-            <li key={pick.user_id} title={pick.nickname}>
-              <Avatar url={pick.avatar_url} nickname={pick.nickname} className="size-6" />
-              <span className="sr-only">{pick.nickname}</span>
-            </li>
-          ))}
+          {teamPicks.map((pick) => <RevealedPick key={pick.user_id} pick={pick} />)}
         </ul>
       )}
     </div>
+  );
+}
+
+/** One revealed Prediction: the Member's avatar; a Bot User's also carries a bot badge. */
+function RevealedPick({ pick }: { pick: RevealedPrediction }) {
+  const { t } = useTranslation("matches");
+  const mark = pickMark(pick);
+  if (mark === "human") {
+    return (
+      <li title={pick.nickname}>
+        <Avatar url={pick.avatar_url} nickname={pick.nickname} className="size-6" />
+        <span className="sr-only">{pick.nickname}</span>
+      </li>
+    );
+  }
+  const preliminary = mark === "bot_preliminary";
+  const label = t(preliminary ? "bot.preliminaryPrediction" : "bot.pick", { nickname: pick.nickname });
+  return (
+    <li
+      title={label}
+      className={`flex items-center gap-1 rounded-full border bg-raised pr-1.5 ${preliminary ? "border-dashed border-gold-a/60" : "border-line"}`}
+    >
+      <Avatar url={pick.avatar_url} nickname={pick.nickname} className="size-6" />
+      <span aria-hidden="true" className="text-[0.625rem] font-bold uppercase leading-none text-gold-a">
+        {t("bot.badge")}{preliminary && "*"}
+      </span>
+      <span className="sr-only">{label}</span>
+    </li>
   );
 }
 

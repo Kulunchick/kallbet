@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+  <title>HLTV.org - The home of competitive Counter-Strike</title>
+  <description>HLTV.org is the leading Counter-Strike site in the world, featuring news, demos, pictures, statistics, on-site coverage and much much more!</description>
+  <link>https://www.hltv.org/</link>
+  <language>en</language>
+  <ttl>60</ttl>
+  <image>
+    <url>https://www.hltv.org/img/static/openGraphHltvLogo.png</url>
+    <title>HLTV.org - The home of competitive Counter-Strike</title>
+    <link>https://www.hltv.org/</link>
+  </image>
+  <link xmlns="http://www.w3.org/2005/Atom" rel="self" type="application/rss+xml" href="https://www.hltv.org/rss/news"></link>
+  <item>
+    <title>Media: oSee joins Without a Roof </title>
+    <description>The orgless squad has found their CeRq replacement. </description>
+    <link>https://www.hltv.org/news/46055/media-osee-joins-without-a-roof</link>
+    <guid isPermaLink="false">hltvnews46055</guid>
+    <pubDate>Wed, 25 Nov 2026 15:30:00 GMT</pubDate>
+    <media:content url="https://img-cdn.hltv.org/gallerypicture/G_F2RFkacFwN5yCo8JumK8.jpg?auto=compress&amp;ixlib=java-2.1.0&amp;m=%2Fm.png&amp;mw=107&amp;mx=20&amp;my=473&amp;q=75&amp;rect=903%2C254%2C4335%2C2887&amp;w=800&amp;s=9bf02bd87b6aab44401a45959487e0a3"></media:content>
+  </item>
+  <item>
+    <title>On the ground at PGL Major Singapore Stage 1 </title>
+    <description>Welcome to the home of our behind the scenes action for Stage 1. </description>
+    <link>https://www.hltv.org/news/46033/on-the-ground-at-pgl-major-singapore-stage-1</link>
+    <guid isPermaLink="false">hltvnews46033</guid>
+    <pubDate>Wed, 25 Nov 2026 14:41:00 GMT</pubDate>
+    <media:content url="https://img-cdn.hltv.org/gallerypicture/Bi5G7VzhL9kiitQKlyZvFh.jpg?auto=compress&amp;ixlib=java-2.1.0&amp;m=%2Fm.png&amp;mw=107&amp;mx=20&amp;my=473&amp;q=75&amp;rect=0%2C0%2C5518%2C3678&amp;w=800&amp;s=808ea066f06222f47d5543f7ee405123"></media:content>
+  </item>
+  <item>
+    <title>Singapore Major Stage 1 day 3 matchups set </title>
+    <description>FaZe vs HEROIC headlines tomorrow's three elimination matches at the Singapore Major. </description>
+    <link>https://www.hltv.org/news/46054/singapore-major-stage-1-day-3-matchups-set</link>
+    <guid isPermaLink="false">hltvnews46054</guid>
+    <pubDate>Wed, 25 Nov 2026 13:53:00 GMT</pubDate>
+    <media:content url="https://img-cdn.hltv.org/gallerypicture/CtN8nktpZZOOvKw9LMyrpL.jpg?auto=compress&amp;ixlib=java-2.1.0&amp;m=%2Fm.png&amp;mw=107&amp;mx=20&amp;my=474&amp;q=75&amp;w=800&amp;s=396cf68e7631e26435ed67c87cb1225f"></media:content>
+  </item>
+  <item>
+    <title>PGL Major Singapore Stage 1 highlights </title>
+    <description>Check out the best plays and broadcast highlights from the opening stage of the Major, all in one place. </description>
+    <link>https://www.hltv.org/news/46032/pgl-major-singapore-stage-1-highlights</link>
+    <guid isPermaLink="false">hltvnews46032</guid>
+    <pubDate>Wed, 25 Nov 2026 13:28:00 GMT</pubDate>
+    <media:content url="https://img-cdn.hltv.org/gallerypicture/Bi5G7VzhL9kiitQKlyZvFh.jpg?auto=compress&amp;ixlib=java-2.1.0&amp;m=%2Fm.png&amp;mw=107&amp;mx=20&amp;my=473&amp;q=75&amp;rect=17%2C502%2C4014%2C2673&amp;w=800&amp;s=dcbfe0f16f6f06843ced273c88eeb749"></media:content>
+  </item>
+  <item>
+    <title>Chinggis Warriors condemn BC.Game to 0-3 exit in Singapore </title>
+    <description>s1mple and company exit the Major without a victory to their name. </description>
+    <link>https://www.hltv.org/news/46053/chinggis-warriors-condemn-bcgame-to-0-3-exit-in-singapore</link>
+    <guid isPermaLink="false">hltvnews46053</guid>
+    <pubDate>Wed, 25 Nov 2026 13:19:00 GMT</pubDate>
+    <media:content url="https://img-cdn.hltv.org/gallerypicture/cE34hJLZ8m4Y2a3EHeIIqY.jpg?auto=compress&amp;ixlib=java-2.1.0&amp;m=%2Fm.png&amp;mw=107&amp;mx=20&amp;my=472&amp;q=75&amp;rect=852%2C1601%2C4295%2C2856&amp;w=800&amp;s=deeac52383d15984a5c0517c9b3c7462"></media:content>
+  </item>
+  <item>
+    <title>NIP beat Liquid to reach Stage 2 in Singapore </title>
+    <description>NIP went 3-0 on their return to the Major after missing Cologne. </description>
+    <link>https://www.hltv.org/news/46052/nip-beat-liquid-to-reach-stage-2-in-singapore</link>
+    <guid isPermaLink="false">hltvnews46052</guid>
+    <pubDate>Wed, 25 Nov 2026 12:43:00 GMT</pubDate>
+    <media:content url="https://img-cdn.hltv.org/gallerypicture/bnDn0zxo5zXA8rg79D2XM_.jpg?auto=compress&amp;ixlib=java-2.1.0&amp;m=%2Fm.png&amp;mw=107&amp;mx=20&amp;my=474&amp;q=75&amp;w=800&amp;s=361fabd8c01e56e6306d156564d0f4e4"></media:content>
+  </item>
+  <item>
+    <title>HUASOPEEK: &quot;history is another voice with max, he helps a lot inside and outside the game&quot; </title>
+    <description>9z ended their loss streak, and HUASOPEEK is confident they can now go 3-2 in Singapore. </description>
+    <link>https://www.hltv.org/news/46049/huasopeek-history-is-another-voice-with-max-he-helps-a-lot-inside-and-outside-the-game</link>
+    <guid isPermaLink="false">hltvnews46049</guid>
+    <pubDate>Wed, 25 Nov 2026 11:18:00 GMT</pubDate>
+    <media:content url="https://img-cdn.hltv.org/gallerypicture/5VPUIkAIvZdERr-0xMxcPf.jpg?auto=compress&amp;ixlib=java-2.1.0&amp;m=%2Fm.png&amp;mw=107&amp;mx=20&amp;my=473&amp;q=75&amp;rect=0%2C0%2C7002%2C4664&amp;w=800&amp;s=045eb120e12131bba2b288d9ad4eaff2"></media:content>
+  </item>
+  <item>
+    <title>FlyQuest beat Imperial to secure Stage 2 spot </title>
+    <description>The Aussies complete a surprise run to a 3-0 finish in Stage 1. </description>
+    <link>https://www.hltv.org/news/46050/flyquest-beat-imperial-to-secure-stage-2-spot</link>
+    <guid isPermaLink="false">hltvnews46050</guid>
+    <pubDate>Wed, 25 Nov 2026 10:55:00 GMT</pubDate>
+    <media:content url="https://img-cdn.hltv.org/gallerypicture/Q46QQ2pmxQJ1LEeppFSAK2.jpg?auto=compress&amp;ixlib=java-2.1.0&amp;m=%2Fm.png&amp;mw=107&amp;mx=20&amp;my=472&amp;q=75&amp;rect=1875%2C116%2C5150%2C3426&amp;w=800&amp;s=2817b6efd6d0613a352cba496fc80fa6"></media:content>
+  </item>
+  <item>
+    <title>9z snap losing streak to send DENDELE packing in Singapore </title>
+    <description>The former Sharks roster is the first team to be sent home at the Major. </description>
+    <link>https://www.hltv.org/news/46048/9z-snap-losing-streak-to-send-dendele-packing-in-singapore</link>
+    <guid isPermaLink="false">hltvnews46048</guid>
+    <pubDate>Wed, 25 Nov 2026 09:56:00 GMT</pubDate>
+    <media:content url="https://img-cdn.hltv.org/gallerypicture/WENThABKBRImaYEBeLJqqq.jpg?auto=compress&amp;ixlib=java-2.1.0&amp;m=%2Fm.png&amp;mw=107&amp;mx=20&amp;my=473&amp;q=75&amp;w=800&amp;s=8beef8277d36b4389e479b7daf5852a7"></media:content>
+  </item>
+  <item>
+    <title>TYLOO bench Moseyuh </title>
+    <description>The Chinese team is pulling the trigger on changes after missing out on a Singapore spot. </description>
+    <link>https://www.hltv.org/news/46047/tyloo-bench-moseyuh</link>
+    <guid isPermaLink="false">hltvnews46047</guid>
+    <pubDate>Wed, 25 Nov 2026 09:36:00 GMT</pubDate>
+    <media:content url="https://img-cdn.hltv.org/gallerypicture/HqOTgSHpdPtN4KQzKn-jQ7.jpg?auto=compress&amp;ixlib=java-2.1.0&amp;m=%2Fm.png&amp;mw=107&amp;mx=20&amp;my=474&amp;q=75&amp;w=800&amp;s=51f24a0ff3f94131bceb949dd665b341"></media:content>
+  </item>
+</channel>
+</rss>

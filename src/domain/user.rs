@@ -52,17 +52,20 @@ pub fn nickname_attempt(base: &str, attempt: u32) -> String {
     format!("{}{suffix}", head.trim_end())
 }
 
-/// A person signed in to KallBet via Telegram, identified by a site-wide
-/// unique Nickname.
+/// A person signed in to KallBet via Telegram, or a Bot User, identified by
+/// a site-wide unique Nickname.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct User {
     pub id: UserId,
+    /// A Bot User's is a synthetic negative number.
     #[serde(skip)]
     pub telegram_id: TelegramId,
     pub nickname: String,
     pub avatar_url: Option<String>,
     pub language: Language,
     pub notifications: NotificationPrefs,
+    /// A Bot User: automated, authenticated by a Bearer token (`auth::bot`).
+    pub is_bot: bool,
 }
 
 /// Which Telegram notifications a User wants. All on by default.
