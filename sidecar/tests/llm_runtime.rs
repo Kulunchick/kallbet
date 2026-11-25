@@ -528,3 +528,70 @@ async fn the_prompt_tells_the_tool_rule() {
             .contains("hltv.org and liquipedia.net only")
     );
 }
+
+/// Fails with a quota, then hangs once (its run is dropped), then answers.
+struct HangsOnce(Mutex<usize>);
+#[async_trait]
+impl LlmRuntime for HangsOnce {
+    async fn evaluate(
+        &self,
+        _: &BotProfile,
+        _: &Dossier,
+        _: Tier,
+        _: &RolePrompt,
+    ) -> Result<Option<Value>, LlmError> {
+        let call = {
+            let mut n = self.0.lock().unwrap();
+            *n += 1;
+            *n
+        };
+        match call {
+            1 => Err(LlmError::QuotaExceeded),
+            2 => std::future::pending().await,
+            _ => Ok(Some(json!({"sum": 5}))),
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_half_open_trial_that_is_dropped_reopens_the_breaker() {
+    let clock = Arc::new(ManualClock(Mutex::new(
+        "2026-11-25T12:00:00Z".parse().unwrap(),
+    )));
+    let runtime = Arc::new(HangsOnce(Mutex::new(0)));
+    let providers = Providers::from_runtimes(
+        [("claude".to_string(), runtime.clone() as Arc<dyn LlmRuntime>)],
+        chrono::Duration::minutes(30),
+        clock.clone(),
+    );
+    let chain = providers.chain(&["claude".into()]);
+    let b = bot("oracle", &["claude"]);
+    let (d, prompt) = (dossier(), sum_prompt());
+    let ask = || chain.answer(&b, &d, Tier::PreLock, &prompt);
+    assert_eq!(ask().await.unwrap_err(), LlmError::QuotaExceeded);
+
+    // After the cool-down the trial starts and its tick is dropped mid-run (the
+    // loop's tick timeout, or a shutdown), so it never reports.
+    clock.advance(30);
+    let mut trial = Box::pin(ask());
+    std::future::poll_fn(|cx| {
+        assert!(trial.as_mut().poll(cx).is_pending());
+        std::task::Poll::Ready(())
+    })
+    .await;
+    assert_eq!(providers.breaker("claude"), Some(BreakerState::HalfOpen));
+    drop(trial);
+    assert!(
+        matches!(
+            providers.breaker("claude"),
+            Some(BreakerState::Open { cause: LlmError::Timeout, .. })
+        ),
+        "{:?}",
+        providers.breaker("claude")
+    );
+    assert_eq!(ask().await.unwrap_err(), LlmError::Timeout, "cooling down");
+    clock.advance(30);
+    assert_eq!(ask().await.unwrap().unwrap().value, json!({"sum": 5}));
+    assert_eq!(providers.breaker("claude"), Some(BreakerState::Closed));
+    assert_eq!(*runtime.0.lock().unwrap(), 3);
+}

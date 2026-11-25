@@ -38,17 +38,30 @@ impl Breaker {
     pub fn state(&self) -> BreakerState {
         *self.state.lock().unwrap()
     }
-    /// `Err(cause)` while the provider must be skipped.
-    fn admit(&self) -> Result<(), LlmError> {
+    /// `Err(cause)` while the provider must be skipped. `Ok(true)`: this
+    /// request is the half-open trial.
+    fn admit(&self) -> Result<bool, LlmError> {
         let mut state = self.state.lock().unwrap();
         match *state {
-            BreakerState::Closed => Ok(()),
+            BreakerState::Closed => Ok(false),
             BreakerState::Open { until, cause } if self.clock.now() < until => Err(cause),
             BreakerState::Open { .. } => {
                 *state = BreakerState::HalfOpen;
-                Ok(())
+                Ok(true)
             }
             BreakerState::HalfOpen => Err(LlmError::Transient),
+        }
+    }
+    /// The trial was dropped before it reported (its tick timed out or the
+    /// process is shutting down): open again for a new cool-down, as a timeout,
+    /// so the provider is tried after it instead of staying half-open.
+    fn abandon(&self) {
+        let mut state = self.state.lock().unwrap();
+        if *state == BreakerState::HalfOpen {
+            *state = BreakerState::Open {
+                until: self.clock.now() + self.cooldown,
+                cause: LlmError::Timeout,
+            };
         }
     }
     fn record(&self, outcome: Result<(), LlmError>) {
@@ -62,6 +75,19 @@ impl Breaker {
             }
             _ => BreakerState::Closed,
         };
+    }
+}
+
+/// Reopens the breaker if a half-open trial is dropped before it reports.
+struct Trial<'a> {
+    breaker: &'a Breaker,
+    armed: bool,
+}
+impl Drop for Trial<'_> {
+    fn drop(&mut self) {
+        if self.armed {
+            self.breaker.abandon();
+        }
     }
 }
 
@@ -106,13 +132,22 @@ impl FallbackLlm {
         }
         let mut last = LlmError::NotConfigured;
         for link in &self.links {
-            if let Err(cause) = link.breaker.admit() {
-                tracing::info!(provider = %link.name, cause = %cause, "llm: provider is cooling down; skipped");
-                last = cause;
-                continue;
-            }
+            let mut trial = match link.breaker.admit() {
+                Ok(armed) => Trial {
+                    breaker: &link.breaker,
+                    armed,
+                },
+                Err(cause) => {
+                    tracing::info!(provider = %link.name, cause = %cause, "llm: provider is cooling down; skipped");
+                    last = cause;
+                    continue;
+                }
+            };
             let started = std::time::Instant::now();
-            match link.runtime.evaluate(bot, dossier, tier, prompt).await {
+            let outcome = link.runtime.evaluate(bot, dossier, tier, prompt).await;
+            // It reports below, so the guard has nothing left to do.
+            trial.armed = false;
+            match outcome {
                 Ok(Some(value)) => {
                     link.breaker.record(Ok(()));
                     return Ok(Some(Answer {
