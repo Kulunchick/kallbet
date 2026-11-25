@@ -42,6 +42,7 @@ impl DecisionPolicy for ConfiguredPolicy {
     ) -> Result<Option<Prediction>> {
         match bot.policy {
             Policy::VrsOnly => VrsOnly.decide(bot, d, tier, adjustment),
+            Policy::MarketOnly => adapters::odds::MarketOnly.decide(bot, d, tier, adjustment),
         }
     }
 }

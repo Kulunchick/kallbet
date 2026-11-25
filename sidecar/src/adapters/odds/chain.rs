@@ -1,5 +1,5 @@
 use super::{
-    OddsTransport,
+    FetchError, OddsTransport,
     feed::Feed,
     lines::{self, Line},
 };
@@ -75,7 +75,7 @@ pub struct FallbackOdds {
     config: OddsConfig,
     db: SqlitePool,
     transport: Arc<dyn OddsTransport>,
-    gates: [Mutex<()>; 3],
+    gates: [Mutex<Breaker>; 3],
 }
 
 impl FallbackOdds {
@@ -159,7 +159,7 @@ impl FallbackOdds {
             let Some((scope, feed)) = provider else {
                 continue;
             };
-            let _guard = gate.lock().await;
+            let mut breaker = gate.lock().await;
             if let Some(clock) = clock {
                 cutoff = cutoff.max(clock.now()).min(hard_lock);
                 if cutoff == hard_lock {
@@ -173,10 +173,29 @@ impl FallbackOdds {
                 (Some(lines), _) => lines,
                 (None, None) => continue,
                 (None, Some(clock)) => {
+                    if !breaker.allows(cutoff) {
+                        continue;
+                    }
+                    if matches!(feed, Feed::OddsPapi { .. }) {
+                        // OddsPapi rejects concurrent Event batches even when
+                        // they use different tournament IDs.
+                        breaker.next_request = Some(cutoff + Duration::seconds(1));
+                    }
                     let fetched = feed.fetch(self.transport.as_ref(), clock).await;
                     let captured_at = clock.now();
                     cutoff = cutoff.max(clock.now()).min(hard_lock);
-                    let Ok(lines) = fetched else { continue };
+                    let lines = match fetched {
+                        Ok(lines) => {
+                            breaker.succeeded();
+                            lines
+                        }
+                        Err(error) => {
+                            let limited =
+                                matches!(error.downcast_ref(), Some(FetchError::RateLimited));
+                            breaker.failed(cutoff, limited);
+                            continue;
+                        }
+                    };
                     sqlx::query(
                         "INSERT INTO odds_batches(scope, captured_at, lines) VALUES (?, ?, ?)
                          ON CONFLICT DO NOTHING",
@@ -197,6 +216,32 @@ impl FallbackOdds {
             }
         }
         Ok((cutoff, None))
+    }
+}
+
+#[derive(Default)]
+struct Breaker {
+    failures: u32,
+    open_until: Option<Instant>,
+    next_request: Option<Instant>,
+}
+
+impl Breaker {
+    fn allows(&self, now: Instant) -> bool {
+        self.open_until.is_none_or(|until| now >= until)
+            && self.next_request.is_none_or(|next| now >= next)
+    }
+
+    fn succeeded(&mut self) {
+        self.failures = 0;
+        self.open_until = None;
+    }
+
+    fn failed(&mut self, now: Instant, limited: bool) {
+        self.failures = self.failures.saturating_add(1);
+        if limited || self.failures >= 3 || self.open_until.is_some() {
+            self.open_until = Some(now + Duration::minutes(15));
+        }
     }
 }
 

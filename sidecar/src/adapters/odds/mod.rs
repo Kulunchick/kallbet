@@ -6,10 +6,12 @@ mod feed;
 pub mod kalshi;
 mod lines;
 pub mod oddspapi;
+mod policy;
 pub mod polymarket;
 
 pub use chain::{FallbackOdds, OddsConfig};
 pub use feed::{FetchError, OddsTransport};
+pub use policy::MarketOnly;
 
 pub fn build(audit: &Audit) -> Result<Arc<dyn OddsSource>> {
     Ok(Arc::new(FallbackOdds::new(

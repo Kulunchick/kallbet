@@ -5,6 +5,7 @@ use std::path::PathBuf;
 #[derive(Clone, Deserialize)]
 pub enum Policy {
     VrsOnly,
+    MarketOnly,
 }
 #[derive(Clone, Deserialize)]
 pub struct BotProfile {

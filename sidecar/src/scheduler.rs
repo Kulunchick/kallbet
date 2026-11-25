@@ -75,8 +75,18 @@ impl Sidecar {
         tier: Tier,
         now: Instant,
     ) -> Result<usize> {
+        let (now, market) = self
+            .ports
+            .odds
+            .live_quote(&game, now, self.ports.clock.as_ref())
+            .await?;
+        if game
+            .scheduled_start
+            .is_some_and(|start| start - now <= Duration::minutes(15))
+        {
+            return Ok(0);
+        }
         let signal = self.ports.signal.signal(&game, now).await?;
-        let market = self.ports.odds.quote(&game, now).await?;
         let context = self.ports.context.facts(&game, now).await?;
         let mut facts = context
             .iter()
@@ -101,14 +111,17 @@ impl Sidecar {
             Decision::Complete => return Ok(0),
             Decision::Submit(pick) => pick,
             Decision::Pending => {
-                let adjustment = self
-                    .ports
-                    .llm
-                    .evaluate(bot, &dossier, tier, &RolePrompt::adjustment())
-                    .await?
-                    .map(serde_json::from_value)
-                    .transpose()
-                    .map_err(|_| LlmError::InvalidOutput)?;
+                let adjustment = if self.ports.policy.wants_adjustment(bot) {
+                    self.ports
+                        .llm
+                        .evaluate(bot, &dossier, tier, &RolePrompt::adjustment())
+                        .await?
+                        .map(serde_json::from_value)
+                        .transpose()
+                        .map_err(|_| LlmError::InvalidOutput)?
+                } else {
+                    None
+                };
                 let pick = self.ports.policy.decide(bot, &dossier, tier, adjustment)?;
                 self.audit.decide(run_id, pick.as_ref()).await?;
                 let Some(pick) = pick else { return Ok(0) };
