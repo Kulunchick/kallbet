@@ -261,7 +261,7 @@ impl Sidecar {
         let (now, market) = self
             .ports
             .odds
-            .live_quote(&game, now, self.ports.clock.as_ref())
+            .live_quote(&game, now, tier, self.ports.clock.as_ref())
             .await?;
         if game
             .scheduled_start

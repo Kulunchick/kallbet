@@ -3,7 +3,7 @@ use super::{
     feed::Feed,
     lines::{self, Line},
 };
-use crate::{AsOf, Audit, Clock, Instant, Match, OddsSource, Result};
+use crate::{AsOf, Audit, Clock, Instant, Match, OddsSource, Result, Tier};
 use async_trait::async_trait;
 use chrono::Duration;
 use serde::de::DeserializeOwned;
@@ -11,12 +11,25 @@ use sqlx::SqlitePool;
 use std::{collections::BTreeMap, sync::Arc};
 use tokio::sync::Mutex;
 
+/// OddsPapi batches (billable requests, cached or not, a 429 too) this audit
+/// file may start per UTC month. The free plan has 250.
+pub const ODDSPAPI_MONTHLY_BUDGET: i32 = 200;
+/// Of those, what Draft and Pick'em lookups may use: the last 50 are kept for
+/// the PreLock refresh, where the closing line matters.
+pub const ODDSPAPI_DRAFT_BUDGET: i32 = 150;
+/// Default of `SIDECAR_ODDS_PRELOCK_MAX_AGE_SECONDS`.
+pub const DEFAULT_PRELOCK_MAX_AGE: Duration = Duration::minutes(10);
+
 #[derive(Clone)]
 pub struct OddsConfig {
     pub oddspapi_key: Option<String>,
     pub oddspapi_tournaments: BTreeMap<i64, Vec<u64>>,
     pub polymarket_tags: BTreeMap<i64, String>,
     pub kalshi_enabled: bool,
+    /// The oldest batch the PreLock pass (T-25..15) reuses; older ones are
+    /// fetched again, so the final Prediction sees the closing line. A Draft
+    /// keeps each feed's own TTL (six hours for OddsPapi).
+    pub prelock_max_age: Duration,
 }
 
 impl std::fmt::Debug for OddsConfig {
@@ -26,6 +39,7 @@ impl std::fmt::Debug for OddsConfig {
             .field("oddspapi_tournaments", &self.oddspapi_tournaments)
             .field("polymarket_tags", &self.polymarket_tags)
             .field("kalshi_enabled", &self.kalshi_enabled)
+            .field("prelock_max_age", &self.prelock_max_age)
             .finish()
     }
 }
@@ -37,6 +51,7 @@ impl Default for OddsConfig {
             oddspapi_tournaments: BTreeMap::new(),
             polymarket_tags: BTreeMap::new(),
             kalshi_enabled: true,
+            prelock_max_age: DEFAULT_PRELOCK_MAX_AGE,
         }
     }
 }
@@ -52,6 +67,15 @@ impl OddsConfig {
                     .parse::<bool>()
                     .map_err(|_| "SIDECAR_KALSHI_ENABLED must be true or false")
             })?,
+            prelock_max_age: match env("SIDECAR_ODDS_PRELOCK_MAX_AGE_SECONDS") {
+                None => DEFAULT_PRELOCK_MAX_AGE,
+                Some(value) => value
+                    .parse::<i64>()
+                    .ok()
+                    .filter(|s| (60..=21_600).contains(s))
+                    .map(Duration::seconds)
+                    .ok_or("SIDECAR_ODDS_PRELOCK_MAX_AGE_SECONDS must be 60 to 21600")?,
+            },
         };
         if config
             .oddspapi_tournaments
@@ -121,8 +145,11 @@ impl FallbackOdds {
         Ok(raw.map(|raw| serde_json::from_slice(&raw)).transpose()?)
     }
 
-    async fn reserve_oddspapi_request(&self, now: Instant) -> Result<bool> {
-        const MONTHLY_BUDGET: i32 = 200;
+    async fn reserve_oddspapi_request(&self, now: Instant, tier: Tier) -> Result<bool> {
+        let budget = match tier {
+            Tier::PreLock => ODDSPAPI_MONTHLY_BUDGET,
+            Tier::Draft => ODDSPAPI_DRAFT_BUDGET,
+        };
         // Reserve before sending. Even an upstream 429 can count against
         // the free plan, and an interrupted tick must keep the reservation.
         let update = sqlx::query(
@@ -131,7 +158,7 @@ impl FallbackOdds {
              WHERE attempts < ?2",
         )
         .bind(now.format("%Y-%m").to_string())
-        .bind(MONTHLY_BUDGET)
+        .bind(budget)
         .execute(&self.db)
         .await?;
         Ok(update.rows_affected() != 0)
@@ -141,6 +168,7 @@ impl FallbackOdds {
         &self,
         game: &Match,
         mut cutoff: Instant,
+        tier: Tier,
         clock: Option<&dyn Clock>,
     ) -> Result<(Instant, Option<AsOf<f64>>)> {
         let Some(hard_lock) = game
@@ -193,9 +221,11 @@ impl FallbackOdds {
                     return Ok((cutoff, None));
                 }
             }
-            let cached = self
-                .cached(&scope, cutoff, feed.ttl(), clock.is_some())
-                .await?;
+            let ttl = match tier {
+                Tier::PreLock => feed.ttl().min(self.config.prelock_max_age),
+                Tier::Draft => feed.ttl(),
+            };
+            let cached = self.cached(&scope, cutoff, ttl, clock.is_some()).await?;
             let lines = match (cached, clock) {
                 (Some(lines), _) => lines,
                 (None, None) => continue,
@@ -204,7 +234,8 @@ impl FallbackOdds {
                         continue;
                     }
                     if matches!(feed, Feed::OddsPapi { .. }) {
-                        if !self.reserve_oddspapi_request(cutoff).await? {
+                        if !self.reserve_oddspapi_request(cutoff, tier).await? {
+                            tracing::warn!(tier = tier.name(), "OddsPapi monthly budget reached; trying the next Odds Source");
                             continue;
                         }
                         // OddsPapi rejects concurrent Event batches even when
@@ -278,15 +309,16 @@ impl Breaker {
 #[async_trait]
 impl OddsSource for FallbackOdds {
     async fn quote(&self, game: &Match, cutoff: Instant) -> Result<Option<AsOf<f64>>> {
-        Ok(self.lookup(game, cutoff, None).await?.1)
+        Ok(self.lookup(game, cutoff, Tier::Draft, None).await?.1)
     }
 
     async fn live_quote(
         &self,
         game: &Match,
         cutoff: Instant,
+        tier: Tier,
         clock: &dyn Clock,
     ) -> Result<(Instant, Option<AsOf<f64>>)> {
-        self.lookup(game, cutoff, Some(clock)).await
+        self.lookup(game, cutoff, tier, Some(clock)).await
     }
 }

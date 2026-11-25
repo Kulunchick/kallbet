@@ -54,6 +54,7 @@ impl OddsSource for PairOdds {
         &self,
         game: &AiMatch,
         cutoff: Instant,
+        _: kallbet_ai::Tier,
         _: &dyn kallbet_ai::Clock,
     ) -> AiResult<(Instant, Option<AsOf<f64>>)> {
         if game

@@ -117,7 +117,7 @@ Each prints a URL; open it in any browser, sign in, paste the code back if asked
 ## 5. Operating notes
 
 - **One sidecar per Bot identity.** Two processes with the same `bot_key` revoke each other's token on every registration: each one registers again on the 401 it then gets, so they keep revoking each other. Do not run the local sidecar and the VPS one with the same bot keys at once; use different `bot_key`s to compare.
-- **Quota.** A subscription that hits its limit opens that provider's breaker for `llm.cooldown_minutes` (30) and the chain fails over (Claude → Codex → Antigravity). OddsPapi is capped at 200 requests a month by the sidecar itself.
+- **Quota.** A subscription that hits its limit opens that provider's breaker for `llm.cooldown_minutes` (30) and the chain fails over (Claude → Codex → Antigravity). OddsPapi is capped at 200 requests a month by the sidecar itself, of which Drafts may use 150 so the pre-Hard-Lock refresh (one batch at most 10 minutes old, `SIDECAR_ODDS_PRELOCK_MAX_AGE_SECONDS`) keeps 50; one Major needs at most about 166 (arithmetic in `docs/agents/codebase.md`, "Odds and MarketOnly"). When the cap is reached the chain uses Polymarket, then Kalshi. Do not run a local sidecar with the same OddsPapi key beside the VPS one: they share the account's 250.
 - **Upgrade.** `deploy.sh` (with the sidecar switch) or `docker compose --profile sidecar up -d --build sidecar`. The volume keeps the audit file and the CLI sign-in. Migrations of the audit file only move forward.
 - **Stop for good.** `docker compose --profile sidecar stop sidecar`. The bots stay Members; kick them in the League if they should go.
 - **Backtest.** The retrospective benchmark is a subcommand (`kallbet-ai backtest`, ticket #31).

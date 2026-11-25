@@ -231,7 +231,9 @@ impl PickemRunner {
                     self.odds.quote(game, now).await?.map(|q| (now, q))
                 } else {
                     let (as_of, quote) =
-                        self.odds.live_quote(game, now, self.clock.as_ref()).await?;
+                        self.odds
+                            .live_quote(game, now, Tier::Draft, self.clock.as_ref())
+                            .await?;
                     quote.map(|q| (as_of, q))
                 };
                 let (map, observed_at) = if let Some((as_of, q)) = market {
