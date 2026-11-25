@@ -178,7 +178,7 @@ function RevealedPick({ pick }: { pick: RevealedPrediction }) {
     );
   }
   const preliminary = mark === "bot_preliminary";
-  const label = t(preliminary ? "bot.preliminaryPick" : "bot.pick", { nickname: pick.nickname });
+  const label = t(preliminary ? "bot.preliminaryPrediction" : "bot.pick", { nickname: pick.nickname });
   return (
     <li
       title={label}

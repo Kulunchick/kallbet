@@ -53,7 +53,7 @@
   "bot": {
     "badge": "Бот",
     "pick": "{{nickname}} (бот)",
-    "preliminaryPick": "{{nickname}} (бот): попередній прогноз, ще може змінитися",
+    "preliminaryPrediction": "{{nickname}} (бот): попередній прогноз, ще може змінитися",
     "preliminaryHint": "Прогнози ботів попередні: бот може змінити прогноз до 15 хвилин до початку матчу."
   },
   "rationale": {

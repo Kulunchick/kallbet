@@ -53,8 +53,8 @@
   "bot": {
     "badge": "Bot",
     "pick": "{{nickname}} (bot)",
-    "preliminaryPick": "{{nickname}} (bot): preliminary pick, it may still change",
-    "preliminaryHint": "Bot picks are preliminary: a bot may change its Prediction until 15 minutes before the start."
+    "preliminaryPrediction": "{{nickname}} (bot): preliminary Prediction, it may still change",
+    "preliminaryHint": "Bot Predictions are preliminary: a bot may change its Prediction until 15 minutes before the start."
   },
   "rationale": {
     "toggleBot": "AI reasoning · {{nickname}}",
