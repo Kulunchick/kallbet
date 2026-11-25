@@ -1,0 +1,73 @@
+{
+  "platform_url": "http://kallbet:8095",
+  "audit_file": "/data/sidecar.db",
+  "vrs_files": [
+    "/data/vrs"
+  ],
+  "bots": [
+    {
+      "bot_key": "oracle",
+      "nickname": "AI Oracle",
+      "language": "en",
+      "invite_links": [
+        "https://kallbet.kulunchick.tech/join/REPLACE_WITH_INVITE_CODE"
+      ],
+      "policy": "HybridAnchored",
+      "provider_chain": [
+        "proxy"
+      ]
+    },
+    {
+      "bot_key": "market",
+      "nickname": "Market Favourite",
+      "invite_links": [
+        "https://kallbet.kulunchick.tech/join/REPLACE_WITH_INVITE_CODE"
+      ],
+      "policy": "MarketOnly",
+      "provider_chain": []
+    },
+    {
+      "bot_key": "vrs",
+      "nickname": "VRS Baseline",
+      "invite_links": [
+        "https://kallbet.kulunchick.tech/join/REPLACE_WITH_INVITE_CODE"
+      ],
+      "policy": "VrsOnly",
+      "provider_chain": []
+    }
+  ],
+  "llm": {
+    "providers": {
+      "proxy": {
+        "kind": "http",
+        "api": "anthropic",
+        "base_url": "http://llm-proxy:8080/v1",
+        "model": "claude-opus-5-5",
+        "api_key_env": "KALLBET_AI_LLM_API_KEY",
+        "timeout_seconds": 180
+      }
+    },
+    "web_search_bots": [],
+    "cooldown_minutes": 30
+  },
+  "debate": {
+    "bots": {
+      "oracle": {
+        "mode": "never"
+      }
+    }
+  },
+  "context": {
+    "liquipedia_pages": {
+      "8302": "PGL/2026/Singapore"
+    },
+    "rss_feeds": [
+      {
+        "url": "https://www.hltv.org/rss/news"
+      },
+      {
+        "url": "https://www.dust2.us/rss"
+      }
+    ]
+  }
+}

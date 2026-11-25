@@ -15,3 +15,4 @@ web/dist
 *.db-wal
 Dockerfile
 docker-compose.yml
+sidecar/tests

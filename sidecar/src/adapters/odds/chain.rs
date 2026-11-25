@@ -19,6 +19,17 @@ pub struct OddsConfig {
     pub kalshi_enabled: bool,
 }
 
+impl std::fmt::Debug for OddsConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OddsConfig")
+            .field("oddspapi_key", &self.oddspapi_key.as_ref().map(|_| "[REDACTED]"))
+            .field("oddspapi_tournaments", &self.oddspapi_tournaments)
+            .field("polymarket_tags", &self.polymarket_tags)
+            .field("kalshi_enabled", &self.kalshi_enabled)
+            .finish()
+    }
+}
+
 impl Default for OddsConfig {
     fn default() -> Self {
         Self {

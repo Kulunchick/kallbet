@@ -107,7 +107,7 @@ impl FallbackLlm {
         let mut last = LlmError::NotConfigured;
         for link in &self.links {
             if let Err(cause) = link.breaker.admit() {
-                eprintln!("llm: {} is cooling down after {cause}; skipped", link.name);
+                tracing::info!(provider = %link.name, cause = %cause, "llm: provider is cooling down; skipped");
                 last = cause;
                 continue;
             }
@@ -128,7 +128,7 @@ impl FallbackLlm {
                 Err(e) => {
                     link.breaker.record(Err(e));
                     if e != LlmError::NotConfigured {
-                        eprintln!("llm: {} failed: {e}; trying the next provider", link.name);
+                        tracing::warn!(provider = %link.name, error = %e, "llm: provider failed; trying the next one");
                         last = e;
                     }
                 }

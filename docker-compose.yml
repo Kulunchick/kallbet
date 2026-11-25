@@ -53,8 +53,49 @@ services:
     mem_limit: 768m
     networks: [internal]
 
+  # Optional AI sidecar (spec #21, docs/sidecar.md). Off unless the `sidecar`
+  # profile is requested: `docker compose --profile sidecar up -d`. Plain
+  # `docker compose up -d` starts only kallbet and chrome, as before.
+  sidecar:
+    profiles: ["sidecar"]
+    image: kallbet-ai:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.sidecar
+      # `sidecar` (binary only) or `sidecar-cli` (adds the claude and codex CLIs).
+      target: ${KALLBET_AI_TARGET:-sidecar}
+    restart: unless-stopped
+    # Reaps the CLI subprocesses and forwards the stop signal.
+    init: true
+    # KALLBET_BOT_SECRET (the same value as in kallbet.env), ODDSPAPI_API_KEY, ...
+    env_file: sidecar.env
+    environment:
+      # Fixed here so that the env file cannot get these wrong.
+      SIDECAR_CONFIG: /config/sidecar.json
+      HOME: /data/home
+    volumes:
+      # SQLite audit file and the CLI sign-in (home/).
+      - sidecar-data:/data
+      # Valve snapshots, filled by deploy/sidecar/fetch-vrs.sh (read at start-up).
+      - ./vrs:/data/vrs:ro
+      - ./sidecar.json:/config/sidecar.json:ro
+    depends_on:
+      kallbet:
+        condition: service_healthy
+    # A tick is dropped on SIGTERM at once; this is only slack for the audit write.
+    stop_grace_period: 30s
+    mem_limit: 512m
+    # Bounded container logs: the server is short on disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks: [internal]
+
 volumes:
   kallbet-data:
+  sidecar-data:
 
 networks:
   internal:

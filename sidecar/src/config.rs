@@ -2,7 +2,7 @@ use crate::*;
 use serde::Deserialize;
 use std::path::PathBuf;
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub enum Policy {
     VrsOnly,
     MarketOnly,
@@ -31,6 +31,31 @@ pub struct Config {
     pub llm: adapters::llm::LlmConfig,
     #[serde(default)]
     pub debate: adapters::debate::DebateConfig,
+}
+/// Invite Links grant League membership: `Debug` shows how many there are, not
+/// what they say.
+impl std::fmt::Debug for BotProfile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BotProfile")
+            .field("bot_key", &self.bot_key)
+            .field("nickname", &self.nickname)
+            .field("language", &self.language)
+            .field("avatar_url", &self.avatar_url)
+            .field("invite_links", &format_args!("[{} redacted]", self.invite_links.len()))
+            .field("policy", &self.policy)
+            .field("provider_chain", &self.provider_chain)
+            .finish()
+    }
+}
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("platform_url", &self.platform_url)
+            .field("audit_file", &self.audit_file)
+            .field("vrs_files", &self.vrs_files)
+            .field("bots", &self.bots)
+            .finish_non_exhaustive()
+    }
 }
 impl Config {
     pub fn load(path: impl AsRef<std::path::Path>) -> Result<Self> {

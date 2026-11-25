@@ -10,6 +10,7 @@ KallBet runs on one small VPS as a docker compose stack behind the server's exis
 | `chrome` | container, `chromedp/headless-shell:stable` | No published port. Reachable only from `kallbet` over the compose network. |
 | Caddy | already on the server | Gets one site block (`deploy/Caddyfile.snippet`). |
 | backups | host cron + `backups/` in the deploy directory | `deploy/backup.sh`, daily, 7 days kept. |
+| `sidecar` (optional) | container, no port, compose profile `sidecar` | The AI sidecar (Bot Users). Not started by a plain `docker compose up -d`. Setup, logins and checks: [`sidecar.md`](sidecar.md). |
 
 Files: `Dockerfile`, `.dockerignore`, `docker-compose.yml`, and `deploy/` (`deploy.sh`, `backup.sh`, `restore.sh`, `Caddyfile.snippet`, `deploy.env.example`).
 
