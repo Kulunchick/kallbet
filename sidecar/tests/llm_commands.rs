@@ -147,6 +147,9 @@ fn agy_print_mode_denies_every_tool() {
         "execute_url(*)",
         "mcp(*)",
         "search_web(*)",
+        // A rule agy.exe knows (found in the binary with every other rule
+        // name above); it fetches a URL, so it is denied in both modes.
+        "download_url(*)",
     ] {
         assert!(deny.contains(&json!(rule)), "{rule}");
     }
@@ -164,6 +167,7 @@ fn agy_whitelisted_web_reads_only_two_sites() {
     let deny = settings["permissions"]["deny"].as_array().unwrap();
     assert!(!deny.contains(&json!("read_url(*)")));
     assert!(deny.contains(&json!("search_web(*)")) && deny.contains(&json!("command(*)")));
+    assert!(deny.contains(&json!("download_url(*)")), "only read_url is opened");
 }
 #[test]
 fn configured_binary_path_is_used() {

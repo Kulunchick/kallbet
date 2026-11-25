@@ -6,11 +6,18 @@ use super::{CliConfig, Finished, Invocation, ToolAccess, WEB_DOMAINS, classify, 
 use crate::LlmError;
 use serde_json::{Value, json};
 
+/// Every permission rule `agy.exe` knows, but `read_url` (denied or narrowed
+/// below): the rule names are strings in the binary (`command(*)`,
+/// `read_file(*)`, `write_file(*)`, `read_url(*)`, `execute_url(*)`,
+/// `download_url(*)`, `mcp(*)`; `unsandboxed` it reports as no longer valid),
+/// plus `search_web(*)` for its search tool. A tool none of them names is left
+/// to `toolPermission: strict`, which asks, and nobody answers in print mode.
 const DENY_ALWAYS: &[&str] = &[
     "command(*)",
     "read_file(*)",
     "write_file(*)",
     "execute_url(*)",
+    "download_url(*)",
     "mcp(*)",
     "search_web(*)",
 ];
