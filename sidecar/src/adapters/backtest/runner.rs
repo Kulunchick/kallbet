@@ -178,10 +178,8 @@ impl Backtest {
             self.runner.clone(),
         ));
         let debate = debate::build(&self.plan.debate_config()?, providers.clone(), audit)?;
-        let llm: Arc<dyn LlmRuntime> = Arc::new(Required(Arc::new(Blind::new(
-            debate,
-            self.plan.blind.clone(),
-        ))));
+        let blind = Blind::new(debate, self.plan.blind.clone()).knowing(self.archive.known_names());
+        let llm: Arc<dyn LlmRuntime> = Arc::new(Required(Arc::new(blind)));
         let scope: BTreeMap<String, BTreeSet<i64>> = LLM_BOTS
             .iter()
             .map(|b| ((*b).to_owned(), self.plan.matches()))

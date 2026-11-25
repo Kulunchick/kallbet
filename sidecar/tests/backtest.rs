@@ -12,7 +12,7 @@ use kallbet_ai::{
             feeds::{MarketSource, ReplayOdds},
             runner::{DEBATE, MARKET, SINGLE, VRS},
         },
-        llm::{Cli, CliConfig, Finished, Invocation, ProcessRunner, RunError, ToolAccess},
+        llm::{Cli, CliConfig, Finished, Invocation, ProcessRunner, RunError},
     },
     *,
 };
@@ -455,15 +455,40 @@ async fn backtest_cli_runs_have_no_tools_and_no_web_even_for_web_search_profiles
                 .unwrap(),
         )
         .unwrap();
-        let locked = cli.command(&config, &prompt, &schema, ToolAccess::None);
-        let open = cli.command(&config, &prompt, &schema, ToolAccess::WhitelistedWeb);
-        assert_eq!(run.args, locked.args, "{cli:?} ran with the no-tools flags");
-        assert_ne!(run.args, open.args);
-        let args = run.args.join(" ");
-        assert!(
-            !args.contains("WebFetch") && !args.contains("web_search=\"live\""),
-            "{args}"
-        );
+        let _ = (&config, &schema);
+        let args = &run.args;
+        let has = |flag: &str| args.iter().any(|a| a == flag);
+        let pair = |flag: &str, value: &str| args.windows(2).any(|w| w[0] == flag && w[1] == value);
+        let joined = args.join(" ");
+        // Nothing anywhere that grants the web.
+        for never in ["WebFetch", "WebSearch(", "web_search=\"live\"", "allowed_domains", "read_url(hltv", "read_url(liquipedia", "--dangerously"] {
+            assert!(!joined.contains(never), "{cli:?} ran with {never}: {joined}");
+        }
+        match cli {
+            Cli::Claude => {
+                assert!(pair("--tools", ""), "claude: no tool at all: {joined}");
+                assert!(has("--strict-mcp-config") && has("--disable-slash-commands"), "{joined}");
+                assert!(!has("--settings"), "claude: no permission settings to widen it");
+            }
+            Cli::Codex => {
+                assert!(pair("--sandbox", "read-only"), "{joined}");
+                assert!(pair("-c", "web_search=\"disabled\""), "{joined}");
+                assert!(pair("-c", "mcp_servers={}"), "{joined}");
+            }
+            Cli::Antigravity => {
+                assert!(has("--sandbox") && has("--disable-slash-commands"), "{joined}");
+                let settings: Value = serde_json::from_str(
+                    &args[args.iter().position(|a| a == "--settings").unwrap() + 1],
+                )
+                .unwrap();
+                assert_eq!(settings["toolPermission"], "strict");
+                assert_eq!(settings["permissions"]["allow"], json!([]));
+                let deny = settings["permissions"]["deny"].as_array().unwrap();
+                for tool in ["read_url(*)", "search_web(*)", "command(*)", "mcp(*)"] {
+                    assert!(deny.contains(&json!(tool)), "agy must deny {tool}: {settings}");
+                }
+            }
+        }
     }
     // Antigravity's saved run is its quota error: it was asked once, and the
     // Arbiter seat fell back to Claude for both Matches.
@@ -532,7 +557,9 @@ fn real_names(archive: &ReplayArchive) -> Vec<String> {
         names.extend(team.active_players.clone());
         names.extend(team.coaches.iter().map(|c| c.player.clone()));
     }
-    names.retain(|n| n.len() > 2);
+    names.retain(|n| !n.trim().is_empty());
+    names.sort();
+    names.dedup();
     names
 }
 
@@ -561,11 +588,80 @@ fn word(text: &str, name: &str) -> bool {
     })
 }
 
+/// A news item for every dossier, naming in free text a team and a player
+/// that no structured field of the dossier names (as a real headline would).
+struct WithHeadline {
+    inner: Arc<dyn ContextEnricher>,
+    title: String,
+}
+#[async_trait]
+impl ContextEnricher for WithHeadline {
+    async fn facts(&self, game: &Match, cutoff: Instant) -> kallbet_ai::Result<Vec<AsOf<Value>>> {
+        let mut facts = self.inner.facts(game, cutoff).await?;
+        facts.push(AsOf::new(
+            json!({"kind": "news_item", "source": "HLTV", "feed_url": "https://www.hltv.org/rss/news",
+                   "title": self.title, "description": format!("{} (2026)", self.title),
+                   "url": "https://www.hltv.org/news/1/x", "published_at": (cutoff - Duration::hours(30)).to_rfc3339(),
+                   "matched_teams": [game.team_a.name]}),
+            cutoff - Duration::hours(30),
+            cutoff,
+        )?);
+        Ok(facts)
+    }
+}
+
+/// A seat's brief written on the masked dossier (placeholders only), in the
+/// real Claude envelope.
+fn placeholder_brief(run: &Invocation) -> String {
+    let brief = json!({
+        "position": "TEAM_ALPHA is favoured by the baseline; PLAYER_03 is unchanged.",
+        "claims": [{"claim": "No verified change for TEAM_BETA.", "kind": "none",
+                    "evidence_url": "https://evidence.invalid/1", "favours": "team_a"}],
+        "delta": 0
+    });
+    if program_of(run) == "codex" {
+        // The real codex stream, its final agent message replaced.
+        return saved("devil-codex.jsonl")
+            .lines()
+            .map(|line| {
+                let mut event: Value = serde_json::from_str(line).unwrap();
+                if event["type"] == "item.completed" && event["item"]["type"] == "agent_message" {
+                    event["item"]["text"] = json!(brief.to_string());
+                }
+                event.to_string()
+            })
+            .collect::<Vec<_>>()
+            .join("
+");
+    }
+    let mut envelope: Value = serde_json::from_str(&saved("advocate-claude.json")).unwrap();
+    envelope["structured_output"] = brief;
+    envelope.to_string()
+}
+
 #[tokio::test]
 async fn blind_prompts_carry_no_real_team_player_event_or_year() {
     let dir = singapore();
-    let clis = Clis::saved();
+    // The seats answer what a model would on the masked dossier; the Arbiter
+    // prompt carries their briefs, and is checked whole.
+    let clis = Clis::with(Box::new(|run: &Invocation| {
+        matches!(role_of(run).as_str(), "advocate" | "devil").then(|| placeholder_brief(run))
+    }));
     let mut backtest = Backtest::new(load(&dir), clis.clone()).unwrap();
+    // A headline naming a team and a player of the Stage that are not in
+    // this Match (so no structured field of its dossier names them).
+    let stage = &backtest.archive.stages[0];
+    let third = stage.teams.last().unwrap().name.clone();
+    let revision = backtest.archive.event_pages["PGL/2026/Singapore"].last().unwrap();
+    let at = revision.timestamp + Duration::seconds(1);
+    let rosters = kallbet_ai::adapters::context::liquipedia::parse_revision_rosters(&revision.body, at)
+        .unwrap()
+        .unwrap();
+    let player = rosters.at(at).unwrap().teams.last().unwrap().active_players[0].clone();
+    backtest.feeds.context = Arc::new(WithHeadline {
+        inner: backtest.feeds.context.clone(),
+        title: format!("{third} sign {player} after a strong year"),
+    });
     backtest.simulations = 200;
     backtest.llm = llm_config();
     chains(&mut backtest.plan, &["claude"]);
@@ -587,17 +683,10 @@ async fn blind_prompts_carry_no_real_team_player_event_or_year() {
         "one single agent and three seats per Match"
     );
     for run in &started {
-        // What the pipeline wrote. The Arbiter's attached briefs are the seats'
-        // answers, here the saved briefs of another (unmasked) debate.
+        // The whole prompt, the Arbiter's attached briefs included.
         let prompt = prompt_of(run);
-        let prompt = prompt
-            .split(
-                "
-Market Advocate brief (JSON):",
-            )
-            .next()
-            .unwrap();
-        for name in &names {
+        let prompt = prompt.as_str();
+        for name in names.iter().chain([&third, &player]) {
             assert!(!word(prompt, name), "{name:?} in a blind prompt");
         }
         assert_eq!(has_year(prompt), None, "a year in a blind prompt");

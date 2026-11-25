@@ -136,6 +136,45 @@ pub fn read_file(path: &Path) -> Result<Vec<u8>> {
 }
 
 impl ReplayArchive {
+    /// Every team and person the archive names: the Stages' teams (PandaScore
+    /// names and acronyms) and, from every saved Liquipedia Event revision, the
+    /// teams, players and coaches. The anonymizer masks those that free text
+    /// mentions.
+    pub fn known_names(&self) -> Vec<(String, &'static str)> {
+        let mut known = std::collections::BTreeSet::new();
+        for stage in &self.stages {
+            for team in &stage.teams {
+                known.insert((team.name.clone(), "TEAM"));
+            }
+        }
+        for revision in self.event_pages.values().flatten() {
+            let at = revision.timestamp + chrono::Duration::seconds(1);
+            let Ok(Some(rosters)) =
+                crate::adapters::context::liquipedia::parse_revision_rosters(&revision.body, at)
+            else {
+                continue;
+            };
+            let Ok(event) = rosters.at(at) else { continue };
+            for team in &event.teams {
+                known.insert((team.team.clone(), "TEAM"));
+                for player in team
+                    .active_players
+                    .iter()
+                    .chain(&team.benched_players)
+                    .chain(&team.unused_substitutes)
+                {
+                    known.insert((player.clone(), "PLAYER"));
+                }
+                for coach in &team.coaches {
+                    known.insert((coach.player.clone(), "COACH"));
+                }
+            }
+        }
+        known.into_iter().collect()
+    }
+}
+
+impl ReplayArchive {
     pub fn load(dir: &Path) -> Result<Self> {
         let mut names: Vec<_> = std::fs::read_dir(dir)
             .map_err(|e| format!("replay archive {}: {e}", dir.display()))?

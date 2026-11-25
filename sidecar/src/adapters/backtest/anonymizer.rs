@@ -77,10 +77,20 @@ pub struct BlindAnonymizer {
 }
 
 impl BlindAnonymizer {
-    /// The masked dossier and the mapping back. Facts that would still carry a
-    /// real name after masking (free text naming someone the facts do not list
-    /// is caught by the residual check against every name met) are dropped.
+    /// The masked dossier and the mapping back, knowing only the names the
+    /// dossier's own fields hold (see `mask_knowing`).
     pub fn mask(original: &Dossier) -> (Dossier, Self) {
+        Self::mask_knowing(original, &[])
+    }
+
+    /// The masked dossier and the mapping back. Names come from the dossier's
+    /// fields (teams, players, coaches, the Event title) and from `known`:
+    /// every team and person the caller knows of (`(name, "TEAM" | "PLAYER" |
+    /// "COACH")`), of which those that the dossier's free text mentions get a
+    /// placeholder too. So a headline naming a team or a player that no field
+    /// of this dossier names is masked as well. Facts that would still carry a
+    /// known name or a year after masking are dropped.
+    pub fn mask_knowing(original: &Dossier, known: &[(String, &'static str)]) -> (Dossier, Self) {
         let game = &original.game;
         let mut map = Self {
             names: BTreeMap::new(),
@@ -121,6 +131,23 @@ impl BlindAnonymizer {
         // Then everyone else the facts name, before any free text is rewritten.
         for fact in &original.context {
             map.collect("", fact);
+        }
+        // And anyone known who is only mentioned in free text.
+        let text = original
+            .context
+            .iter()
+            .flat_map(strings)
+            .collect::<Vec<_>>()
+            .join("\n")
+            .to_ascii_lowercase();
+        for (name, kind) in known {
+            let name = name.trim();
+            if !name.is_empty()
+                && !map.names.contains_key(name)
+                && contains_word(&text, &name.to_ascii_lowercase())
+            {
+                map.placeholder(kind, name);
+            }
         }
         let masked_game = Match {
             event_id: 0,
@@ -411,10 +438,20 @@ fn replace_word(text: &str, needle: &str, with: &str) -> String {
 pub struct Blind {
     inner: Arc<dyn LlmRuntime>,
     matches: BTreeSet<i64>,
+    known: Vec<(String, &'static str)>,
 }
 impl Blind {
     pub fn new(inner: Arc<dyn LlmRuntime>, matches: BTreeSet<i64>) -> Self {
-        Self { inner, matches }
+        Self {
+            inner,
+            matches,
+            known: Vec::new(),
+        }
+    }
+    /// Every team and person of the archive, for `BlindAnonymizer::mask_knowing`.
+    pub fn knowing(mut self, known: Vec<(String, &'static str)>) -> Self {
+        self.known = known;
+        self
     }
 }
 #[async_trait::async_trait]
@@ -429,7 +466,7 @@ impl LlmRuntime for Blind {
         if !self.matches.contains(&dossier.game.id) {
             return self.inner.evaluate(bot, dossier, tier, prompt).await;
         }
-        let (masked, map) = BlindAnonymizer::mask(dossier);
+        let (masked, map) = BlindAnonymizer::mask_knowing(dossier, &self.known);
         let answer = self.inner.evaluate(bot, &masked, tier, prompt).await?;
         Ok(answer.map(|a| map.reveal(a)))
     }
