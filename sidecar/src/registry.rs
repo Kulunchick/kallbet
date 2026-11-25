@@ -22,6 +22,10 @@ impl Sidecar {
             policy: Arc::new(ConfiguredPolicy),
             pickem: adapters::pickem::build(),
         };
+        let ports = Ports {
+            pickem: adapters::pickem::new(ports.signal.clone(), ports.odds.clone()),
+            ..ports
+        };
         let sidecar = Sidecar {
             bots: config.bots,
             audit,
