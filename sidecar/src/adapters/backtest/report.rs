@@ -88,7 +88,10 @@ pub fn pickem_points(stage: &ReplayStage, payload: &Value) -> (usize, usize, usi
             let mut settled = 0;
             let mut picks = 0;
             for (bucket, ok) in [
-                ("three_nil", &(|r: (usize, usize)| r == (3, 0)) as &dyn Fn((usize, usize)) -> bool),
+                (
+                    "three_nil",
+                    &(|r: (usize, usize)| r == (3, 0)) as &dyn Fn((usize, usize)) -> bool,
+                ),
                 ("zero_three", &|r| r == (0, 3)),
                 ("advance", &|r: (usize, usize)| r.0 == 3 && r.1 > 0),
             ] {
@@ -245,6 +248,8 @@ pub struct LlmTrack {
     /// Matches without an LLM answer, by profile and error kind.
     pub failures: BTreeMap<String, usize>,
     pub stopped: Option<String>,
+    /// Providers whose breaker opened, and when (they are not asked again).
+    pub exhausted: BTreeMap<String, String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -300,7 +305,9 @@ impl Report {
                 s.with_vrs,
                 s.with_market,
                 s.with_rosters,
-                s.opening_view.as_deref().unwrap_or("Liquipedia revision before the Stage")
+                s.opening_view
+                    .as_deref()
+                    .unwrap_or("Liquipedia revision before the Stage")
             ));
         }
         for t in &self.tables {
@@ -372,6 +379,9 @@ impl Report {
         }
         if let Some(stop) = &self.llm.stopped {
             line(format!("- Stopped: {stop}"));
+        }
+        for (provider, when) in &self.llm.exhausted {
+            line(format!("- `{provider}`: {when} (its seats fell back to the rest of their chain)."));
         }
         for (f, n) in &self.llm.failures {
             line(format!("- {f}: {n} Matches without an answer"));

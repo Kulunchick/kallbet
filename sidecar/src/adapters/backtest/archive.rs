@@ -163,8 +163,8 @@ impl ReplayArchive {
                 }
                 continue;
             }
-            let value: Value = serde_json::from_slice(&bytes)
-                .map_err(|e| format!("{name}: not JSON ({e})"))?;
+            let value: Value =
+                serde_json::from_slice(&bytes).map_err(|e| format!("{name}: not JSON ({e})"))?;
             let first = &value[0];
             if first["slug"].is_string() && first["markets"].is_array() {
                 archive
@@ -181,7 +181,9 @@ impl ReplayArchive {
                     .kalshi_markets
                     .extend(value["markets"].as_array().cloned().unwrap_or_default());
             } else if value["candlesticks"].is_array() {
-                let ticker = value["ticker"].as_str().ok_or("candlesticks without ticker")?;
+                let ticker = value["ticker"]
+                    .as_str()
+                    .ok_or("candlesticks without ticker")?;
                 archive.kalshi_candles.insert(ticker.to_owned(), value);
             } else if first["fixtureId"].is_string() {
                 archive.fixture_lists.push(bytes);
@@ -256,7 +258,10 @@ fn stage_from_pandascore(
     page: Option<&WikiRevision>,
 ) -> Result<ReplayStage> {
     let first = rows.first().ok_or("empty PandaScore Match list")?;
-    let name = first["tournament"]["name"].as_str().unwrap_or("").to_owned();
+    let name = first["tournament"]["name"]
+        .as_str()
+        .unwrap_or("")
+        .to_owned();
     let event = format!(
         "{} {}",
         first["league"]["name"].as_str().unwrap_or(""),
@@ -276,7 +281,13 @@ fn stage_from_pandascore(
         for o in row["opponents"].as_array().into_iter().flatten() {
             let t = &o["opponent"];
             if let (Some(tid), Some(n)) = (t["id"].as_i64(), t["name"].as_str()) {
-                teams.insert(tid, Team { id: tid, name: n.to_owned() });
+                teams.insert(
+                    tid,
+                    Team {
+                        id: tid,
+                        name: n.to_owned(),
+                    },
+                );
                 if let Some(a) = t["acronym"].as_str() {
                     acronyms.insert(tid, a.to_owned());
                 }
@@ -328,7 +339,11 @@ fn stage_from_pandascore(
             format,
             scheduled_start: scheduled,
         };
-        opening_rows.push((round, row["name"].as_str().unwrap_or("").to_owned(), game.clone()));
+        opening_rows.push((
+            round,
+            row["name"].as_str().unwrap_or("").to_owned(),
+            game.clone(),
+        ));
         let winner = row["winner_id"].as_i64();
         if status == "finished"
             && let Some(w) = winner.filter(|w| *w == a.id || *w == b.id)
@@ -422,7 +437,11 @@ pub fn team_key(name: &str) -> String {
         .filter(|w| !["team", "esports", "gaming", "clan"].contains(w))
         .copied()
         .collect();
-    let key = if kept.is_empty() { words.concat() } else { kept };
+    let key = if kept.is_empty() {
+        words.concat()
+    } else {
+        kept
+    };
     ALIASES
         .iter()
         .find(|(k, _)| *k == key)
@@ -463,8 +482,14 @@ fn opening_view(
             .ok_or_else(|| format!("Liquipedia team key {key:?} matches no PandaScore team"))
     };
     let pair_of = |m: &Template| -> Result<(i64, i64)> {
-        let a = m.get("opponent1").and_then(opponent_key).ok_or("Match without opponent1")?;
-        let b = m.get("opponent2").and_then(opponent_key).ok_or("Match without opponent2")?;
+        let a = m
+            .get("opponent1")
+            .and_then(opponent_key)
+            .ok_or("Match without opponent1")?;
+        let b = m
+            .get("opponent2")
+            .and_then(opponent_key)
+            .ok_or("Match without opponent2")?;
         Ok((id_of(&a)?, id_of(&b)?))
     };
     // The PandaScore record of an opening pair gives its format and Scheduled Start.
@@ -495,10 +520,17 @@ fn opening_view(
                 .map(pair_of)
                 .collect::<Result<Vec<_>>>()?;
             let mut seen = BTreeSet::new();
-            if pairs.len() != 8 || !pairs.iter().all(|(a, b)| seen.insert(*a) && seen.insert(*b)) {
+            if pairs.len() != 8
+                || !pairs
+                    .iter()
+                    .all(|(a, b)| seen.insert(*a) && seen.insert(*b))
+            {
                 return Err(format!("Round 1 has {} distinct pairs, not 8", pairs.len()).into());
             }
-            let games = pairs.iter().map(|p| game_of(*p)).collect::<Result<Vec<_>>>()?;
+            let games = pairs
+                .iter()
+                .map(|p| game_of(*p))
+                .collect::<Result<Vec<_>>>()?;
             let format = |g: &Match| serde_json::to_value(g.format).unwrap_or(Value::Null);
             let mut view = json!({
                 "stage": {"kind": "swiss", "name": stage.name},
@@ -547,7 +579,10 @@ fn opening_view(
                     pair_of(&m)
                 })
                 .collect::<Result<Vec<_>>>()?;
-            let games = pairs.iter().map(|p| game_of(*p)).collect::<Result<Vec<_>>>()?;
+            let games = pairs
+                .iter()
+                .map(|p| game_of(*p))
+                .collect::<Result<Vec<_>>>()?;
             let final_format = rows
                 .iter()
                 .find(|r| r.1.to_lowercase().starts_with("grand final"))
@@ -562,8 +597,10 @@ fn opening_view(
                 })
                 .collect();
             for slot in 0..2 {
-                slots.push(json!({"rounds_before_final": 1, "slot": slot, "leaf": false,
-                    "team_a": null, "team_b": null, "format": "bo3"}));
+                slots.push(
+                    json!({"rounds_before_final": 1, "slot": slot, "leaf": false,
+                    "team_a": null, "team_b": null, "format": "bo3"}),
+                );
             }
             slots.push(json!({"rounds_before_final": 0, "slot": 0, "leaf": false,
                 "team_a": null, "team_b": null, "format": final_format}));

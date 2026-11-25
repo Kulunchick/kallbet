@@ -102,7 +102,11 @@ impl BlindAnonymizer {
                 .filter(|f| f["match_side"].as_str() == Some(side))
             {
                 if let Some(team) = fact["team"].as_str() {
-                    let alias = if side == "team_a" { TEAM_ALPHA } else { TEAM_BETA };
+                    let alias = if side == "team_a" {
+                        TEAM_ALPHA
+                    } else {
+                        TEAM_BETA
+                    };
                     if !map.names.contains_key(team) {
                         map.insert(team, alias);
                     }
@@ -135,8 +139,13 @@ impl BlindAnonymizer {
         let mut context = Vec::new();
         for fact in &original.context {
             let masked = map.rewrite("", fact);
-            if map.residue(&strings(&masked).join("
-")).is_none() {
+            if map
+                .residue(&strings(&masked).join(
+                    "
+",
+                ))
+                .is_none()
+            {
                 context.push(masked);
             }
         }
@@ -190,7 +199,9 @@ impl BlindAnonymizer {
                 }
                 Value::String(text)
             }
-            Value::Array(items) => Value::Array(items.into_iter().map(|v| self.reveal(v)).collect()),
+            Value::Array(items) => {
+                Value::Array(items.into_iter().map(|v| self.reveal(v)).collect())
+            }
             Value::Object(map) => Value::Object(
                 map.into_iter()
                     .map(|(k, v)| (k, self.reveal(v)))
@@ -271,7 +282,9 @@ impl BlindAnonymizer {
                     .map(|(k, v)| (k.clone(), self.rewrite(k, v)))
                     .collect(),
             ),
-            Value::Array(items) => Value::Array(items.iter().map(|v| self.rewrite(key, v)).collect()),
+            Value::Array(items) => {
+                Value::Array(items.iter().map(|v| self.rewrite(key, v)).collect())
+            }
             Value::Number(_) if IDS.contains(&key) => Value::from(0),
             Value::String(s) if KEEP.contains(&key) => Value::String(s.clone()),
             Value::String(s) if DATES.contains(&key) => Value::String(self.relative(s)),
@@ -279,9 +292,12 @@ impl BlindAnonymizer {
             Value::String(s) if s.starts_with("http://") || s.starts_with("https://") => {
                 Value::String(self.url(s))
             }
-            Value::String(s) if PEOPLE.contains(&key) || TEAMS.contains(&key) => {
-                Value::String(self.names.get(s.trim()).cloned().unwrap_or_else(|| self.text(s)))
-            }
+            Value::String(s) if PEOPLE.contains(&key) || TEAMS.contains(&key) => Value::String(
+                self.names
+                    .get(s.trim())
+                    .cloned()
+                    .unwrap_or_else(|| self.text(s)),
+            ),
             Value::String(s) => Value::String(self.text(s)),
             other => other.clone(),
         }

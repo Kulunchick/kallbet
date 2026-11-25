@@ -30,8 +30,14 @@ pub const PROFILES: [(&str, &str); 5] = [
     (VRS, "VrsOnly"),
     (MARKET, "MarketOnly"),
     (ANCHOR, "HybridAnchored without LLM (the anchor)"),
-    (SINGLE, "Single LLM agent (HybridAnchored, debate mode `never`)"),
-    (DEBATE, "3-agent AdversarialDebateLlm (HybridAnchored, debate mode `always`)"),
+    (
+        SINGLE,
+        "Single LLM agent (HybridAnchored, debate mode `never`)",
+    ),
+    (
+        DEBATE,
+        "3-agent AdversarialDebateLlm (HybridAnchored, debate mode `always`)",
+    ),
 ];
 const LLM_BOTS: [&str; 2] = [SINGLE, DEBATE];
 /// Ten years: in a backtest a provider's breaker never closes again.
@@ -200,7 +206,11 @@ impl Backtest {
             (bot(VRS, Policy::VrsOnly, vec![]), false, true),
             (bot(MARKET, Policy::MarketOnly, vec![]), false, false),
             (bot(ANCHOR, Policy::HybridAnchored, vec![]), false, false),
-            (bot(SINGLE, Policy::HybridAnchored, self.plan.single.clone()), true, false),
+            (
+                bot(SINGLE, Policy::HybridAnchored, self.plan.single.clone()),
+                true,
+                false,
+            ),
             (bot(DEBATE, Policy::HybridAnchored, seats), true, false),
         ];
         let mut sidecars: Vec<Sidecar> = lineup
@@ -216,7 +226,11 @@ impl Backtest {
                     signal: self.feeds.signal.clone(),
                     odds: self.feeds.odds.clone(),
                     context: self.feeds.context.clone(),
-                    llm: if uses_llm { llm.clone() } else { Arc::new(Noop) },
+                    llm: if uses_llm {
+                        llm.clone()
+                    } else {
+                        Arc::new(Noop)
+                    },
                     policy: Arc::new(crate::registry::ConfiguredPolicy),
                     pickem: if solves_pickem {
                         pickem_step.clone()
@@ -268,8 +282,10 @@ impl Backtest {
                 }
                 match e.downcast_ref::<LlmError>() {
                     Some(kind) if llm_bot => {
-                        *track.failures.entry(format!("`{key}`: {kind}")).or_default() +=
-                            games.len();
+                        *track
+                            .failures
+                            .entry(format!("`{key}`: {kind}"))
+                            .or_default() += games.len();
                         if matches!(kind, LlmError::QuotaExceeded | LlmError::Auth) && !halted {
                             halted = true;
                             track.stopped = Some(format!(
@@ -297,18 +313,15 @@ impl Backtest {
                     ));
                 }
             }
-            // One that a fallback provider absorbed is seen on the breaker.
+            // One that a fallback provider absorbed is seen on the breaker: that
+            // provider is not asked again (its cool-down outlasts the run) and the
+            // rest of its chain answers, as in a live run. Recorded, not stopped.
             for name in self.llm.providers.keys() {
-                if let Some(BreakerState::Open {
-                    cause: cause @ LlmError::QuotaExceeded,
-                    ..
-                }) = providers.breaker(name)
-                    && !halted
-                {
-                    halted = true;
-                    track.stopped = Some(format!(
-                        "first {cause} ({name}) at {at}, answered by the next provider of its chain; no further LLM call was made"
-                    ));
+                if let Some(BreakerState::Open { cause, .. }) = providers.breaker(name) {
+                    track
+                        .exhausted
+                        .entry(name.clone())
+                        .or_insert_with(|| format!("{cause} at {at}; not asked again"));
                 }
             }
         }
@@ -323,7 +336,9 @@ impl Backtest {
             let answered = predictions.iter().filter(|p| p.bot == b).count();
             track.answered.insert(b.into(), answered);
         }
-        let report = self.report(audit, &predictions, &platform.pickems(), track).await?;
+        let report = self
+            .report(audit, &predictions, &platform.pickems(), track)
+            .await?;
         Ok(Outcome {
             report,
             predictions,
@@ -392,7 +407,10 @@ impl Backtest {
                 "The same profiles, only on the Matches where every one of them predicted and the dossier held both a market line and a VRS rating.",
                 stages,
                 &all.iter()
-                    .filter(|id| held.get(id).is_some_and(|d| !d["market"].is_null() && !d["signal"].is_null()))
+                    .filter(|id| {
+                        held.get(id)
+                            .is_some_and(|d| !d["market"].is_null() && !d["signal"].is_null())
+                    })
                     .copied()
                     .collect(),
                 predictions,
@@ -428,8 +446,10 @@ impl Backtest {
                     }
                 }
             }
-            let sources: Vec<(&str, &str)> =
-                MarketSource::ALL.iter().map(|s| (s.name(), s.name())).collect();
+            let sources: Vec<(&str, &str)> = MarketSource::ALL
+                .iter()
+                .map(|s| (s.name(), s.name()))
+                .collect();
             tables.push(report::table(
                 "Market sources on the post-cutoff Matches",
                 "The favourite of each source's last pre-cutoff price (Pinnacle de-vigged; Polymarket's last trade price; Kalshi's two bid/ask mids normalised), on the Matches every source priced. Not a profile: no policy, no fallback.",
@@ -509,11 +529,11 @@ impl Backtest {
             "Valve's global standings start in August 2024, so PGL Major Copenhagen 2024 has no rating: its Matches are not predicted and its Pick'em is drawn from even odds.".into(),
             "Rosters: Liquipedia Event page revisions saved for some Matches only (see the Rosters column). No dated news archive exists, so no dossier holds news.".into(),
         ];
-        notes.extend(
-            stages
-                .iter()
-                .filter_map(|s| s.opening_problem.as_ref().map(|p| format!("{}: no Pick'em view ({p}).", s.title()))),
-        );
+        notes.extend(stages.iter().filter_map(|s| {
+            s.opening_problem
+                .as_ref()
+                .map(|p| format!("{}: no Pick'em view ({p}).", s.title()))
+        }));
         Ok(Report {
             archive_digest: self.archive.digest.clone(),
             archive_files: self.archive.files,
@@ -617,7 +637,14 @@ pub async fn export_answers(audit: &Audit) -> Result<Vec<Value>> {
     let mut seen = BTreeSet::new();
     let mut out = Vec::new();
     for t in audit.debate_turns().await? {
-        if t.status != "ok" || !seen.insert((t.bot.clone(), t.tier.clone(), t.reuse_key.clone(), t.role.clone())) {
+        if t.status != "ok"
+            || !seen.insert((
+                t.bot.clone(),
+                t.tier.clone(),
+                t.reuse_key.clone(),
+                t.role.clone(),
+            ))
+        {
             continue;
         }
         out.push(json!({

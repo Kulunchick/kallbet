@@ -75,7 +75,10 @@ fn saved_cli(name: &str) -> String {
 
 fn prompt_of(invocation: &Invocation) -> String {
     invocation.stdin.clone().unwrap_or_else(|| {
-        let print = invocation.args.iter().find_map(|a| a.strip_prefix("--print="));
+        let print = invocation
+            .args
+            .iter()
+            .find_map(|a| a.strip_prefix("--print="));
         print.unwrap_or_default().to_owned()
     })
 }
@@ -182,7 +185,10 @@ async fn completed_singapore_matches_are_replayed_through_the_pipeline_and_score
 
     // 24 Matches were finished when the PandaScore list was saved.
     let stage = &backtest.archive.stages[0];
-    assert_eq!((stage.id, stage.matches.len(), stage.complete), (SINGAPORE_STAGE_1, 24, false));
+    assert_eq!(
+        (stage.id, stage.matches.len(), stage.complete),
+        (SINGAPORE_STAGE_1, 24, false)
+    );
     assert_eq!(by_bot(&outcome.predictions, VRS).len(), 24);
     assert_eq!(by_bot(&outcome.predictions, MARKET).len(), 24);
     // No LLM Match was planned, so the LLM profiles stayed silent.
@@ -190,17 +196,32 @@ async fn completed_singapore_matches_are_replayed_through_the_pipeline_and_score
 
     let report = &outcome.report;
     let row = &report.stages[0];
-    assert_eq!((row.with_vrs, row.with_market, row.with_rosters), (24, 24, 24));
+    assert_eq!(
+        (row.with_vrs, row.with_market, row.with_rosters),
+        (24, 24, 24)
+    );
     let all = &report.tables[0];
-    let vrs = all.rows.iter().find(|r| r.profile == "VrsOnly" && r.format == "all").unwrap();
+    let vrs = all
+        .rows
+        .iter()
+        .find(|r| r.profile == "VrsOnly" && r.format == "all")
+        .unwrap();
     assert_eq!(vrs.scores.matches, 24);
-    let bo3 = all.rows.iter().find(|r| r.profile == "VrsOnly" && r.format == "bo3").unwrap();
+    let bo3 = all
+        .rows
+        .iter()
+        .find(|r| r.profile == "VrsOnly" && r.format == "bo3")
+        .unwrap();
     assert_eq!(bo3.scores.matches, 4);
     // The Stage is still being played: its Pick'em is submitted, its Points pending.
     let pickem = &report.pickem[0];
     assert_eq!((pickem.points, pickem.picks), (None, 10));
     assert!(pickem.status.starts_with("pending"), "{}", pickem.status);
-    assert!(report.markdown().contains("PGL Major Singapore 2026 / Stage 1"));
+    assert!(
+        report
+            .markdown()
+            .contains("PGL Major Singapore 2026 / Stage 1")
+    );
 }
 
 #[tokio::test]
@@ -217,9 +238,13 @@ async fn saved_market_histories_hold_in_play_prices_that_are_never_read() {
     let cutoff = game.cutoff();
     let after = |t: Instant| t >= cutoff;
     let polymarket = &archive.polymarket_histories["cs2-nip-m80-2026-11-24"];
-    assert!(polymarket["history"].as_array().unwrap().iter().any(|p| {
-        after(Instant::from_timestamp(p["t"].as_i64().unwrap(), 0).unwrap())
-    }));
+    assert!(
+        polymarket["history"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| { after(Instant::from_timestamp(p["t"].as_i64().unwrap(), 0).unwrap()) })
+    );
     for source in MarketSource::ALL {
         let quote = markets
             .quote_from(source, &game.game, cutoff)
@@ -321,10 +346,17 @@ async fn run_with_injected(kind: &'static str, offset: Duration) -> Result<(), S
 async fn any_datum_observed_at_or_after_the_match_cutoff_aborts_the_run() {
     for kind in ["odds", "vrs", "liquipedia", "news"] {
         for offset in [Duration::zero(), Duration::seconds(1), Duration::hours(2)] {
-            assert!(run_with_injected(kind, offset).await.is_err(), "{kind} at +{offset}");
+            assert!(
+                run_with_injected(kind, offset).await.is_err(),
+                "{kind} at +{offset}"
+            );
         }
         // The same datum two seconds before the cutoff is accepted.
-        assert_eq!(run_with_injected(kind, -Duration::seconds(2)).await, Ok(()), "{kind}");
+        assert_eq!(
+            run_with_injected(kind, -Duration::seconds(2)).await,
+            Ok(()),
+            "{kind}"
+        );
     }
 }
 
@@ -358,7 +390,11 @@ async fn mid_stage_results_in_a_pickem_view_abort_the_run() {
         backtest.simulations = 200;
         tamper(&mut backtest.archive.stages[0]);
         let (_a, audit) = fresh_audit().await;
-        let err = backtest.run(&audit).await.err().unwrap_or_else(|| panic!("{what}: ran"));
+        let err = backtest
+            .run(&audit)
+            .await
+            .err()
+            .unwrap_or_else(|| panic!("{what}: ran"));
         assert!(err.is::<TemporalLeakError>(), "{what}: {err}");
     }
 }
@@ -399,7 +435,10 @@ async fn backtest_cli_runs_have_no_tools_and_no_web_even_for_web_search_profiles
     let config: CliConfig = serde_json::from_value(json!({})).unwrap();
     for run in &started {
         let prompt = prompt_of(run);
-        assert!(prompt.contains("Use no tools and no web access."), "{prompt}");
+        assert!(
+            prompt.contains("Use no tools and no web access."),
+            "{prompt}"
+        );
         assert!(!prompt.contains("You may read web pages"));
         let cli = match program_of(run).as_str() {
             "claude" => Cli::Claude,
@@ -421,13 +460,18 @@ async fn backtest_cli_runs_have_no_tools_and_no_web_even_for_web_search_profiles
         assert_eq!(run.args, locked.args, "{cli:?} ran with the no-tools flags");
         assert_ne!(run.args, open.args);
         let args = run.args.join(" ");
-        assert!(!args.contains("WebFetch") && !args.contains("web_search=\"live\""), "{args}");
+        assert!(
+            !args.contains("WebFetch") && !args.contains("web_search=\"live\""),
+            "{args}"
+        );
     }
-    // Antigravity's saved run is its quota error: the Arbiter seat fell back to
-    // Claude for the debate in progress, and that quota error ended the LLM track.
+    // Antigravity's saved run is its quota error: it was asked once, and the
+    // Arbiter seat fell back to Claude for both Matches.
     assert_eq!(started.iter().filter(|r| program_of(r) == "agy").count(), 1);
-    assert!(by_bot(&outcome.predictions, DEBATE).len() <= 2);
-    assert!(outcome.report.llm.stopped.is_some());
+    assert_eq!(by_bot(&outcome.predictions, DEBATE).len(), 2);
+    assert_eq!(by_bot(&outcome.predictions, SINGLE).len(), 2);
+    assert!(outcome.report.llm.exhausted["antigravity"].contains("quota"));
+    assert_eq!(outcome.report.llm.stopped, None);
 }
 
 #[tokio::test]
@@ -443,14 +487,26 @@ async fn the_first_quota_error_stops_the_llm_track_and_the_benchmark_completes()
     let (_a, audit) = fresh_audit().await;
     let outcome = backtest.run(&audit).await.unwrap();
 
-    let agy_runs = clis.started().iter().filter(|r| program_of(r) == "agy").count();
+    let agy_runs = clis
+        .started()
+        .iter()
+        .filter(|r| program_of(r) == "agy")
+        .count();
     assert_eq!(agy_runs, 1, "no retry after the quota error");
     let track = &outcome.report.llm;
-    assert!(track.stopped.as_deref().unwrap().contains("quota"), "{:?}", track.stopped);
+    assert!(
+        track.stopped.as_deref().unwrap().contains("quota"),
+        "{:?}",
+        track.stopped
+    );
     // The first Matches' single agent answered before the debate failed; nothing after.
     assert!(by_bot(&outcome.predictions, SINGLE).len() <= 2);
     assert!(by_bot(&outcome.predictions, DEBATE).is_empty());
-    assert_eq!(by_bot(&outcome.predictions, VRS).len(), 24, "the rest went on");
+    assert_eq!(
+        by_bot(&outcome.predictions, VRS).len(),
+        24,
+        "the rest went on"
+    );
 }
 
 /// Real names a blind prompt must not carry: both teams as PandaScore and
@@ -467,7 +523,11 @@ fn real_names(archive: &ReplayArchive) -> Vec<String> {
     )
     .unwrap()
     .unwrap();
-    for team in &rosters.at(revision.timestamp + Duration::seconds(1)).unwrap().teams {
+    for team in &rosters
+        .at(revision.timestamp + Duration::seconds(1))
+        .unwrap()
+        .teams
+    {
         names.push(team.team.clone());
         names.extend(team.active_players.clone());
         names.extend(team.coaches.iter().map(|c| c.player.clone()));
@@ -483,8 +543,10 @@ fn has_year(text: &str) -> Option<String> {
         // Not part of a longer number such as a probability (0.1977).
         let alone = (i == 0 || !(b[i - 1].is_ascii_digit() || b[i - 1] == b'.'))
             && (i + 4 == b.len() || !b[i + 4].is_ascii_digit());
-        (alone && w.iter().all(u8::is_ascii_digit) && (w.starts_with(b"19") || w.starts_with(b"20")))
-            .then(|| text[i..i + 4].to_owned())
+        (alone
+            && w.iter().all(u8::is_ascii_digit)
+            && (w.starts_with(b"19") || w.starts_with(b"20")))
+        .then(|| text[i..i + 4].to_owned())
     })
 }
 
@@ -513,20 +575,39 @@ async fn blind_prompts_carry_no_real_team_player_event_or_year() {
     assert_eq!(by_bot(&outcome.predictions, DEBATE).len(), 24);
 
     let names = real_names(&backtest.archive);
-    assert!(names.iter().any(|n| n == "ZywOo" || n == "NiKo" || n == "s1mple" || n.len() > 3));
+    assert!(
+        names
+            .iter()
+            .any(|n| n == "ZywOo" || n == "NiKo" || n == "s1mple" || n.len() > 3)
+    );
     let started = clis.started();
-    assert_eq!(started.len(), 24 * 4, "one single agent and three seats per Match");
+    assert_eq!(
+        started.len(),
+        24 * 4,
+        "one single agent and three seats per Match"
+    );
     for run in &started {
         // What the pipeline wrote. The Arbiter's attached briefs are the seats'
         // answers, here the saved briefs of another (unmasked) debate.
         let prompt = prompt_of(run);
-        let prompt = prompt.split("
-Market Advocate brief (JSON):").next().unwrap();
+        let prompt = prompt
+            .split(
+                "
+Market Advocate brief (JSON):",
+            )
+            .next()
+            .unwrap();
         for name in &names {
-            assert!(!word(&prompt, name), "{name:?} in a blind prompt");
+            assert!(!word(prompt, name), "{name:?} in a blind prompt");
         }
-        assert_eq!(has_year(&prompt), None, "a year in a blind prompt");
-        for placeholder in ["TEAM_ALPHA", "TEAM_BETA", "PLAYER_01", "PLAYER_10", "https://evidence.invalid/1"] {
+        assert_eq!(has_year(prompt), None, "a year in a blind prompt");
+        for placeholder in [
+            "TEAM_ALPHA",
+            "TEAM_BETA",
+            "PLAYER_01",
+            "PLAYER_10",
+            "https://evidence.invalid/1",
+        ] {
             assert!(prompt.contains(placeholder), "{placeholder} missing");
         }
     }
@@ -566,11 +647,20 @@ async fn a_blind_answer_is_mapped_back_to_the_real_winner_and_its_evidence() {
     let anchors: Vec<&Submitted> = by_bot(&outcome.predictions, "anchor");
     let mut flipped = 0;
     for p in by_bot(&outcome.predictions, SINGLE) {
-        let game = &stage.matches.iter().find(|m| m.game.id == p.match_id).unwrap().game;
+        let game = &stage
+            .matches
+            .iter()
+            .find(|m| m.game.id == p.match_id)
+            .unwrap()
+            .game;
         let anchor = anchors.iter().find(|a| a.match_id == p.match_id).unwrap();
         let p_team_a = |s: &Submitted| {
             let p = s.prediction.rationale["p_win"].as_f64().unwrap();
-            if s.prediction.team_id == game.team_a.id { p } else { 1.0 - p }
+            if s.prediction.team_id == game.team_a.id {
+                p
+            } else {
+                1.0 - p
+            }
         };
         // Eight points toward the real team B, on the real dossier's anchor.
         assert!(
@@ -582,9 +672,17 @@ async fn a_blind_answer_is_mapped_back_to_the_real_winner_and_its_evidence() {
         );
         let factor = &p.prediction.rationale["factors"][0];
         let url = factor["evidence_url"].as_str().unwrap();
-        assert!(url.starts_with("https://liquipedia.net/counterstrike/index.php?title=PGL/2026/Singapore&oldid="), "{url}");
+        assert!(
+            url.starts_with(
+                "https://liquipedia.net/counterstrike/index.php?title=PGL/2026/Singapore&oldid="
+            ),
+            "{url}"
+        );
         let summary = p.prediction.rationale["summary"]["en"].as_str().unwrap();
-        assert!(summary.contains(&game.team_b.name) && !summary.contains("TEAM_"), "{summary}");
+        assert!(
+            summary.contains(&game.team_b.name) && !summary.contains("TEAM_"),
+            "{summary}"
+        );
         if anchor.prediction.team_id == game.team_a.id && p.prediction.team_id == game.team_b.id {
             flipped += 1;
         }
@@ -597,8 +695,14 @@ async fn a_blind_answer_is_mapped_back_to_the_real_winner_and_its_evidence() {
         market: None,
         context: vec![],
     });
-    assert_eq!(map.team(&masked.game.team_b.name), Some(stage.matches[0].game.team_b.id));
-    assert_eq!(map.team(&masked.game.team_a.name), Some(stage.matches[0].game.team_a.id));
+    assert_eq!(
+        map.team(&masked.game.team_b.name),
+        Some(stage.matches[0].game.team_b.id)
+    );
+    assert_eq!(
+        map.team(&masked.game.team_a.name),
+        Some(stage.matches[0].game.team_a.id)
+    );
 }
 
 #[tokio::test]
@@ -612,12 +716,16 @@ async fn recorded_answers_reproduce_the_llm_track_without_a_call() {
     plan_singapore(&mut backtest, false);
     let (_a, audit) = fresh_audit().await;
     let before = backtest.run(&audit).await.unwrap();
-    let answers = kallbet_ai::adapters::backtest::export_answers(&audit).await.unwrap();
+    let answers = kallbet_ai::adapters::backtest::export_answers(&audit)
+        .await
+        .unwrap();
 
     let again = Clis::saved();
     backtest.runner = again.clone();
     let (_b, fresh) = fresh_audit().await;
-    kallbet_ai::adapters::backtest::import_answers(&fresh, &answers).await.unwrap();
+    kallbet_ai::adapters::backtest::import_answers(&fresh, &answers)
+        .await
+        .unwrap();
     let after = backtest.run(&fresh).await.unwrap();
     assert!(again.started().is_empty(), "no provider was called");
     assert_eq!(
@@ -639,9 +747,16 @@ fn the_backtest_subcommand_writes_the_report() {
         .env_remove("SIDECAR_CONFIG")
         .output()
         .unwrap();
-    assert!(run.status.success(), "{}", String::from_utf8_lossy(&run.stderr));
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
     let report = std::fs::read_to_string(out.path().join("report.md")).unwrap();
-    assert!(report.contains("| PGL Major Singapore 2026 / Stage 1 | Swiss | no | 24 |"), "{report}");
+    assert!(
+        report.contains("| PGL Major Singapore 2026 / Stage 1 | Swiss | no | 24 |"),
+        "{report}"
+    );
     let json: Value =
         serde_json::from_str(&std::fs::read_to_string(out.path().join("report.json")).unwrap())
             .unwrap();
@@ -660,8 +775,17 @@ async fn every_saved_major_stage_replays_without_a_leak() {
     let archive = ReplayArchive::load(&fixtures()).unwrap();
     assert_eq!(archive.stages.len(), 19);
     for stage in &archive.stages {
-        assert!(stage.opening.is_some(), "{}: {:?}", stage.title(), stage.opening_problem);
-        assert!(stage.opening.as_ref().unwrap().observed_at < stage.cutoff, "{}", stage.title());
+        assert!(
+            stage.opening.is_some(),
+            "{}: {:?}",
+            stage.title(),
+            stage.opening_problem
+        );
+        assert!(
+            stage.opening.as_ref().unwrap().observed_at < stage.cutoff,
+            "{}",
+            stage.title()
+        );
     }
     let mut backtest = Backtest::new(archive, Clis::saved()).unwrap();
     backtest.simulations = 100;
@@ -669,5 +793,13 @@ async fn every_saved_major_stage_replays_without_a_leak() {
     let outcome = backtest.run(&audit).await.unwrap();
     // 488 scored Matches; Copenhagen 2024 (73) predates Valve's global standings.
     assert_eq!(by_bot(&outcome.predictions, VRS).len(), 488 - 73);
-    assert_eq!(outcome.report.pickem.iter().filter(|p| p.status == "final").count(), 18);
+    assert_eq!(
+        outcome
+            .report
+            .pickem
+            .iter()
+            .filter(|p| p.status == "final")
+            .count(),
+        18
+    );
 }

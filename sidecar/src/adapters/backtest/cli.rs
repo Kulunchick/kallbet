@@ -110,8 +110,10 @@ pub fn plan(archive: &ReplayArchive, o: &Options, file: &LlmFile) -> LlmPlan {
     };
     let direct: std::collections::BTreeSet<i64> =
         o.llm_stages.iter().flat_map(|s| ids(*s)).collect();
-    let mut blind: std::collections::BTreeSet<i64> =
-        ids(o.blind_stage).into_iter().take(o.blind_matches).collect();
+    let mut blind: std::collections::BTreeSet<i64> = ids(o.blind_stage)
+        .into_iter()
+        .take(o.blind_matches)
+        .collect();
     let direct = if o.blind_direct {
         blind.extend(direct);
         Default::default()

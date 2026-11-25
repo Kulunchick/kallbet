@@ -4,8 +4,8 @@
 use super::archive::{ReplayArchive, WikiRevision, team_key};
 use crate::adapters::{context::liquipedia, odds::oddspapi};
 use crate::*;
-use serde_json::Value;
 use chrono::Datelike;
+use serde_json::Value;
 use std::collections::BTreeMap;
 
 /// `SignalEstimator` over every saved Valve global standings snapshot. Team
