@@ -16,7 +16,7 @@ impl Sidecar {
             platform: Arc::new(HttpPlatform::new(&config.platform_url, secret)?),
             clock: Arc::new(SystemClock),
             signal: Arc::new(signal),
-            odds: adapters::odds::build(),
+            odds: adapters::odds::build(&audit)?,
             context: adapters::context::build(),
             llm: adapters::debate::build(adapters::llm::build()),
             policy: Arc::new(ConfiguredPolicy),
