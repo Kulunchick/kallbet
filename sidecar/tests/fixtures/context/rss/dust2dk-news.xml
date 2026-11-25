@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+   <channel>
+      <title>www.dust2.dk</title>
+      <description>Dust2 - CS2 Community og nyheder</description>
+      <link>https://www.dust2.dk/</link>
+      <language>da-dk</language>
+      <ttl>60</ttl>
+      <image>
+         <url>https://www.dust2.dk/dust2/img/static/dust2logo.png</url>
+         <title>www.dust2.dk</title>
+         <link>https://www.dust2.dk/</link>
+      </image>
+      <atom:link href="https://www.dust2.dk/rss"
+                 rel="self"
+                 type="application/rss+xml"/>
+      <item>
+         <title>Magisk efter exit: "Når vi praccer og spiller kampe som denne, plejer vi at dominere modstanderen"</title>
+         <description>Kort efter nederlaget til Chinggis Warriors og exitet fra majoren, fangede Banks en tydeligt skuffet Magisk fra BC. Game.</description>
+         <link>https://www.dust2.dk/nyheder/80282/magisk-efter-exit-naar-vi-praccer-og-spiller-kampe-som-denne-plejer-vi-at-dominere-modstanderen</link>
+         <guid isPermaLink="false">news80282</guid>
+         <pubDate>Wed, 25 Nov 2026 15:45:00 +0100</pubDate>
+      </item>
+      <item>
+         <title>Oh my GOSH: Magisk og s1mple ryger ud med 0-3 efter gyser</title>
+         <description>BC.Game er færdige ved majoren efter et 1-2-nederlag til mongolske Chinggis Warriors i onsdagens anden og sidste 0-2-kamp.</description>
+         <link>https://www.dust2.dk/nyheder/80274/oh-my-gosh-magisk-og-s1mple-ryger-ud-med-0-3-efter-gyser</link>
+         <guid isPermaLink="false">news80274</guid>
+         <pubDate>Wed, 25 Nov 2026 14:17:00 +0100</pubDate>
+      </item>
+      <item>
+         <title>NIP SKILLER LIQUID FRA HINANDEN OG SIKRER 3-0</title>
+         <description>NIP leverede en decideret magtdæmonstration mod Liquid og er nu det andet hold videre fra første stadie til andet.</description>
+         <link>https://www.dust2.dk/nyheder/80259/nip-skiller-liquid-fra-hinanden-og-sikrer-3-0</link>
+         <guid isPermaLink="false">news80259</guid>
+         <pubDate>Wed, 25 Nov 2026 13:32:00 +0100</pubDate>
+      </item>
+      <item>
+         <title>Vexite: "Jeg havde ikke forventet, at det ville ske på så overbevisende en måde"</title>
+         <description>FlyQuest gik ubesejret gennem første stadie ved majoren i Singapore, og efter sejren over Imperial tog vi en snak med Vexite om avancementet, tilgangen af aliStair og virakken omkring Sashi.</description>
+         <link>https://www.dust2.dk/nyheder/80273/vexite-jeg-havde-ikke-forventet-at-det-ville-ske-paa-saa-overbevisende-en-maade</link>
+         <guid isPermaLink="false">news80273</guid>
+         <pubDate>Wed, 25 Nov 2026 12:35:00 +0100</pubDate>
+      </item>
+      <item>
+         <title>FlyQuest stryger videre til andet stadie</title>
+         <description>Australske FlyQuest er klar til andet stadie ved PGL Major Singapore 2026 efter en 2-0-sejr over brasilianske Imperial.</description>
+         <link>https://www.dust2.dk/nyheder/80272/flyquest-stryger-videre-til-andet-stadie</link>
+         <guid isPermaLink="false">news80272</guid>
+         <pubDate>Wed, 25 Nov 2026 11:47:00 +0100</pubDate>
+      </item>
+      <item>
+         <title>Det første hold er elimineret ved majoren i Singapore</title>
+         <description>DENDELE fra Brasilien er de første, der kan vende hjemad.</description>
+         <link>https://www.dust2.dk/nyheder/80264/det-foerste-hold-er-elimineret-ved-majoren-i-singapore</link>
+         <guid isPermaLink="false">news80264</guid>
+         <pubDate>Wed, 25 Nov 2026 10:47:00 +0100</pubDate>
+      </item>
+      <item>
+         <title>JBOEN om at falde på målstregen: "Det er ekstremt irriterende"</title>
+         <description>JBOEN og FaZe skal vinde to kampe i streg for at blive i majoren.</description>
+         <link>https://www.dust2.dk/nyheder/80263/jboen-om-at-falde-paa-maalstregen-det-er-ekstremt-irriterende</link>
+         <guid isPermaLink="false">news80263</guid>
+         <pubDate>Wed, 25 Nov 2026 09:46:00 +0100</pubDate>
+      </item>
+      <item>
+         <title>FaZe taber på trods af vanvittigt comeback</title>
+         <description>JBOEN og FaZe endte med at smide den til sidst efter et vanvittigt comeback.</description>
+         <link>https://www.dust2.dk/nyheder/80256/faze-taber-paa-trods-af-vanvittigt-comeback</link>
+         <guid isPermaLink="false">news80256</guid>
+         <pubDate>Wed, 25 Nov 2026 09:16:00 +0100</pubDate>
+      </item>
+      <item>
+         <title>Lynn Vision spiller sig tæt på stage 2</title>
+         <description>Lynn Vision har sikret sig en god position her på andendagen af majoren i Singapore.</description>
+         <link>https://www.dust2.dk/nyheder/80257/lynn-vision-spiller-sig-taet-paa-stage-2</link>
+         <guid isPermaLink="false">news80257</guid>
+         <pubDate>Wed, 25 Nov 2026 08:55:00 +0100</pubDate>
+      </item>
+      <item>
+         <title>Chr1zN: "Jeg føler virkelig, at vi spiller bedre, men det betyder ikke, man fortjener det"</title>
+         <description>Dust2.dk fangede HEROIC-kaptajnen efter kampen mod M80.</description>
+         <link>https://www.dust2.dk/nyheder/80261/chr1zn-jeg-foeler-virkelig-at-vi-spiller-bedre-men-det-betyder-ikke-man-fortjener-det</link>
+         <guid isPermaLink="false">news80261</guid>
+         <pubDate>Wed, 25 Nov 2026 08:31:00 +0100</pubDate>
+      </item>
+   </channel>
+</rss>

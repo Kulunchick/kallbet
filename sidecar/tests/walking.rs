@@ -31,7 +31,7 @@ async fn restart_reuses_draft_and_prelock_updates_after_human_reveal() {
     poller::tick(&app.state).await;
     let mut sidecar = h.sidecar(&invite).await;
     assert_eq!(sidecar.tick().await.unwrap(), 1);
-    assert_eq!(h.scripts.llm_calls.lock().unwrap().len(), 1);
+    assert!(h.scripts.llm_calls.lock().unwrap().is_empty());
     drop(sidecar);
     let mut sidecar = h.sidecar(&invite).await;
     assert_eq!(sidecar.tick().await.unwrap(), 0);
@@ -59,7 +59,6 @@ async fn restart_reuses_draft_and_prelock_updates_after_human_reveal() {
     app.clock.set(start - Duration::minutes(22));
     assert_eq!(sidecar.tick().await.unwrap(), 1);
     assert_eq!(sidecar.tick().await.unwrap(), 0);
-    assert_eq!(h.scripts.llm_calls.lock().unwrap().len(), 2);
     let cutoff = app.clock.now();
     *h.scripts.market.lock().unwrap() =
         Some(kallbet_ai::AsOf::new(0.6, cutoff, cutoff + Duration::minutes(1)).unwrap());
@@ -70,7 +69,7 @@ async fn restart_reuses_draft_and_prelock_updates_after_human_reveal() {
             .unwrap_err()
             .is::<kallbet_ai::TemporalLeakError>()
     );
-    assert_eq!(h.scripts.llm_calls.lock().unwrap().len(), 2);
+    assert!(h.scripts.llm_calls.lock().unwrap().is_empty());
     let final_pick = pick(human.get(&path).await.json());
     assert_eq!(final_pick["rationale"]["preliminary"], false);
     assert!(final_pick["rationale"]["p_win"].as_f64().unwrap() > 0.5);

@@ -43,8 +43,13 @@ impl Audit {
         tier: Tier,
         cutoff: Instant,
     ) -> Result<(i64, Decision)> {
+        const MARKET_HASH_SCALE: f64 = 10_000.0;
+        let mut hash_input = dossier.clone();
+        hash_input.market = dossier
+            .market
+            .map(|p| (p * MARKET_HASH_SCALE).round() / MARKET_HASH_SCALE);
+        let hash = crate::digest(&serde_json::to_vec(&hash_input)?);
         let encoded = serde_json::to_string(dossier)?;
-        let hash = crate::digest(encoded.as_bytes());
         let game = dossier.game.id;
         let mut tx = self.db.begin().await?;
         sqlx::query(
