@@ -449,6 +449,16 @@ Paths below are relative to `sidecar/`. Each adapter family owns its factory and
 
 **Seam 2.** `tests/vrs.rs` covers two real dated snapshots and all three series formats. Store each feed's provenance beside its fixtures. `tests/temporal.rs` exercises the boundary and reuse at an earlier cutoff.
 
+### Pick'em Solver and Stage submission (ticket #28)
+
+The live scheduler registers `adapters::pickem::new` with the clock, odds source and signal estimator. The HTTP adapter reads Stage groups and the bot's own Pick'em view. A Swiss Stage needs 16 teams, and Playoffs needs `bracket.ready`. Published opening Matches use series market probabilities converted to map probabilities. Once a Match reaches its own Hard Lock, the adapter can still read pre-Stage quotes from cached Event batches. Hypothetical pairings and missing prices use dated VRS. Unrated matchups use an even probability, including a ready Stage with no feed coverage.
+
+`MonteCarloPickemSolver::solve` accepts a dated Stage and dated pairwise map probabilities for replay. It rejects observations at or after the cutoff and Stage views with results or later-round participants. Swiss runs 25,000 simulations by default. Use `seeded` for a repeatable stream or `solve_with_rng` to inject outcomes. The simulator uses published opening pairs when available and an explicit seed list when supplied. The live server supplies no initial seeds, so pre-Stage pairwise strength estimates the seed order. Same-record pools use Buchholz and initial seed, avoid rematches, and follow Valve's six-team priority table in rounds four and five. Advancement and elimination series use Bo3. An all-Bo3 opening round selects Bo3 throughout. The assignment maximises expected Points with separate probabilities for 3-0, 0-3 and advancement with a loss. Playoffs propagates unconditional slot win probabilities up the server's bracket tree and maximises total expected Points subject to advancing each picked winner through its feeders. [Valve Major Supplemental Rulebook](https://github.com/ValveSoftware/counter-strike_rules_and_regs/blob/main/major-supplemental-rulebook.md#swiss-bracket)
+
+The initial submission can occur throughout the writable window. In the final 30 minutes a changed input hash permits one refresh, including when the initial submission also occurred in that window. The adapter reads the bot-specific Lock and handles a concurrent Stage Lock on PUT. Successful payloads and input hashes are recorded in `submitted_pickems`. The human early Lock leaves the bot's window open.
+
+`sidecar/tests/pickem_e2e.rs` drives both Stage kinds through the shared Seam 1 harness and checks submissions, refreshes and Points on the server's Pick'em Leaderboard. `sidecar/tests/pickem_solver.rs` covers seeded pairing, scoring, bracket consistency and the pre-Stage cutoff. It reuses the saved Liquipedia responses and Valve standings under `sidecar/tests/fixtures/{context/liquipedia,vrs}`.
+
 ### Odds and MarketOnly (ticket #25)
 
 - Set `"policy": "MarketOnly"` in a bot profile. It picks the team with the higher fair series-win probability, choosing team A at 50/50. When the odds chain has no line, it delegates to `VrsOnly`. Both policies skip LLM calls. `DecisionPolicy::wants_adjustment(bot)` defaults to false. Policies that use an LLM opt in per profile.
