@@ -153,6 +153,15 @@ class Fixtures(unittest.TestCase):
             self.assertEqual(slept, [cm.FIXTURES_PACE] * 2)
             self.assertIn("429", " ".join(c.notes))
 
+    def test_a_404_is_remembered_as_an_empty_window(self):
+        with tempfile.TemporaryDirectory() as t:
+            odds = FakeOdds(fixtures={(46101, "2026-06-02", "2026-06-22"): "HTTP 404"})
+            make(t, odds).oddspapi_fixtures(self.PLAN)
+            again = FakeOdds()
+            make(t, again).oddspapi_fixtures(self.PLAN)
+            self.assertEqual(again.calls, [])
+            self.assertTrue((pathlib.Path(t) / "catalog/oddspapi-fixtures-cologne-2026-2026-06-02-2026-06-22.json.gz").exists())
+
     def test_empty_list_goes_to_catalog(self):
         with tempfile.TemporaryDirectory() as t:
             make(t, FakeOdds()).oddspapi_fixtures(self.PLAN)

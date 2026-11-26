@@ -174,8 +174,11 @@ class Collector:
                 try:
                     body, request = self.oddspapi("fixtures", params)
                 except RuntimeError as e:
-                    self.notes.append(f"fixtures {label} {cur}..{end}: {e}")
                     self.sleep(FIXTURES_PACE)
+                    if "404" in str(e):  # OddsPapi has nothing for this window: remember it
+                        self.save(base + ".json", b"[]", f"{params} answered HTTP 404", catalog=True)
+                        return False
+                    self.notes.append(f"fixtures {label} {cur}..{end}: {e}")
                     return "429" in str(e)  # rate limited: stop the run, resume later
                 self.sleep(FIXTURES_PACE)
             fixtures = json.loads(body)
