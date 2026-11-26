@@ -53,11 +53,11 @@ pub(crate) struct Event {
 }
 
 /// The training side and, apart, the Holdout.
-struct Split {
-    training: Vec<Event>,
-    holdout: Vec<Event>,
+pub(super) struct Split {
+    pub(super) training: Vec<Event>,
+    pub(super) holdout: Vec<Event>,
     /// The Holdout Stages of the archive, for the report.
-    holdout_stages: Vec<String>,
+    pub(super) holdout_stages: Vec<String>,
 }
 
 impl Lab {
@@ -99,7 +99,7 @@ impl Lab {
     }
 
     /// The archive's Events, the Holdout's Stages kept apart from the training side.
-    async fn events(&self) -> Result<Split> {
+    pub(super) async fn events(&self) -> Result<Split> {
         let mut last_result: BTreeMap<i64, Instant> = BTreeMap::new();
         for stage in &self.archive.stages {
             for m in &stage.matches {
@@ -235,7 +235,7 @@ impl Lab {
 
     /// The walk-forward boundary: the training Matches of `event` are those of
     /// the Events that ended before it began.
-    fn training(events: &[Event], event: &Event) -> Vec<Observed> {
+    pub(super) fn training(events: &[Event], event: &Event) -> Vec<Observed> {
         events
             .iter()
             .filter(|e| e.info.ends < event.info.begins)

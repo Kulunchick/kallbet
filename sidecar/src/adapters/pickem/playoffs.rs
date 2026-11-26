@@ -24,6 +24,7 @@ pub(crate) fn solve_playoffs(
     stage_val: &Value,
     ratings: &[AsOf<PairwiseProbability>],
     cutoff: Instant,
+    avoid: Option<super::Avoid<'_>>,
 ) -> Result<Option<Value>> {
     let bracket = &stage_val["bracket"];
     if bracket["ready"].as_bool() != Some(true) {
@@ -109,6 +110,27 @@ pub(crate) fn solve_playoffs(
         series_win_prob(fmt, p_map)
     };
 
+    // A pick the field shares is worth less (`Avoid`): the weight of picking
+    // `team` to win the slot with heap id `id`.
+    let shared: HashMap<u16, i64> = avoid
+        .map(|a| {
+            a.picks["picks"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|p| {
+                    let r = p["rounds_before_final"].as_u64()? as u16;
+                    let slot = p["slot"].as_u64()? as u16;
+                    Some(((1_u16 << r) + slot, p["team_id"].as_i64()?))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let keep = |id: u16, team: i64| match avoid {
+        Some(a) if shared.get(&id) == Some(&team) => 1.0 - a.discount,
+        _ => 1.0,
+    };
+
     // Process slots bottom-up (largest rounds_before_final / largest heap id first).
     let mut order: Vec<u16> = nodes.keys().copied().collect();
     order.sort_by_key(|&id| Reverse(id));
@@ -133,7 +155,10 @@ pub(crate) fn solve_playoffs(
             let pa = match_win_prob(node.format, a, b);
             let pb = 1.0 - pa;
             let w = vec![(a, pa), (b, pb)];
-            dp.insert(id, w.clone());
+            dp.insert(
+                id,
+                w.iter().map(|&(t, p)| (t, p * keep(id, t))).collect(),
+            );
             win_probs.insert(id, w);
         } else {
             let left_id = id * 2;
@@ -163,7 +188,7 @@ pub(crate) fn solve_playoffs(
                 let w_u_x = wx * win_vs_right;
                 let dp_l_x = left_dp.iter().find(|&&(t, _)| t == x).unwrap().1;
                 w_cur.push((x, w_u_x));
-                dp_cur.push((x, w_u_x + dp_l_x + best_right_ev));
+                dp_cur.push((x, w_u_x * keep(id, x) + dp_l_x + best_right_ev));
             }
 
             for &(y, wy) in &right_w {
@@ -174,7 +199,7 @@ pub(crate) fn solve_playoffs(
                 let w_u_y = wy * win_vs_left;
                 let dp_r_y = right_dp.iter().find(|&&(t, _)| t == y).unwrap().1;
                 w_cur.push((y, w_u_y));
-                dp_cur.push((y, w_u_y + best_left_ev + dp_r_y));
+                dp_cur.push((y, w_u_y * keep(id, y) + best_left_ev + dp_r_y));
             }
 
             win_probs.insert(id, w_cur);
