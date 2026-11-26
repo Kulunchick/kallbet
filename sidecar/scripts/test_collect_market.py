@@ -343,5 +343,27 @@ class Durability(unittest.TestCase):
             self.assertFalse(c.exists("a.json"))
             self.assertEqual([p.name for p in pathlib.Path(t).glob("a.json*")], [])
 
+    # Finding 13 (review of 6eea194): two collectors on one archive share its
+    # monthly budget: the read, check and update of the ledger are one step.
+    def test_two_collectors_never_spend_past_the_monthly_cap(self):
+        import threading, time as clock
+        with tempfile.TemporaryDirectory() as t:
+            collectors = [make(t, oddspapi_month_cap=3, oddspapi_run_cap=100) for _ in range(2)]
+            for c in collectors:
+                ledger = c.ledger
+                c.ledger = lambda ledger=ledger: (clock.sleep(0.01), ledger())[1]
+            granted = []
+            def spend(c):
+                for _ in range(4):
+                    granted.append(c.spend_billable())
+            threads = [threading.Thread(target=spend, args=(c,)) for c in collectors]
+            for th in threads:
+                th.start()
+            for th in threads:
+                th.join()
+            self.assertEqual(sum(granted), 3)
+            self.assertEqual(collectors[0].month_spent(), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -43,6 +43,7 @@ import json
 import os
 import pathlib
 import re
+import sqlite3
 import sys
 import time
 import urllib.parse
@@ -145,16 +146,27 @@ class Collector:
         return self.ledger()["oddspapi_billable"].get(self.month(), 0)
 
     def spend_billable(self):
-        """Take one billable request from the budgets, or return False (and say why)."""
+        """Take one billable request from the budgets, or return False (and say why). The monthly
+        ledger is read, checked and updated under an exclusive lock, so two collectors extending
+        the same archive never both take its last request."""
         if self.spent["oddspapi_billable"] >= self.run_cap:
             self.notes.append(f"OddsPapi run cap {self.run_cap} reached; stopped before the next billable request")
             return False
-        if self.month_spent() >= self.month_cap:
-            self.notes.append(f"OddsPapi monthly cap {self.month_cap} reached; stopped before the next billable request")
-            return False
-        ledger = self.ledger()
-        ledger["oddspapi_billable"][self.month()] = self.month_spent() + 1
-        (self.catalog / "market-ledger.json").write_text(json.dumps(ledger, indent=1))
+        lock = sqlite3.connect(self.catalog / "market-ledger.lock", timeout=120, isolation_level=None)
+        try:
+            lock.execute("BEGIN EXCLUSIVE")
+            ledger = self.ledger()
+            spent = ledger["oddspapi_billable"].get(self.month(), 0)
+            if spent >= self.month_cap:
+                self.notes.append(f"OddsPapi monthly cap {self.month_cap} reached; stopped before the next billable request")
+                return False
+            ledger["oddspapi_billable"][self.month()] = spent + 1
+            path = self.catalog / "market-ledger.json"
+            partial = path.with_suffix(".json.partial")
+            partial.write_text(json.dumps(ledger, indent=1))
+            os.replace(partial, path)
+        finally:
+            lock.close()
         self.spent["oddspapi_billable"] += 1
         return True
 
