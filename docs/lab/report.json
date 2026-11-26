@@ -1570,6 +1570,79 @@
       ]
     },
     {
+      "name": "bo3_veto_sim",
+      "description": "Bo3 veto simulation from past HLTV vetoes and per-map Elo ratings, blended with the market",
+      "verdict": "not testable",
+      "added_after_list_fixed": true,
+      "reason": "No complete HLTV Bo3 vetoes linked to finished PandaScore Matches in the archive",
+      "computed_on": 0,
+      "paired": 0,
+      "events": 0,
+      "baseline": null,
+      "variant": null,
+      "difference": null,
+      "interval": null,
+      "std_error": null,
+      "detectable": null,
+      "market": null,
+      "per_event": [
+        {
+          "event_id": 7278,
+          "title": "PGL Major Copenhagen 2024",
+          "training_matches": 0,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        },
+        {
+          "event_id": 8751,
+          "title": "Perfect World Major Shanghai Major 2024",
+          "training_matches": 73,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        },
+        {
+          "event_id": 9309,
+          "title": "BLAST.tv Major Austin 2025",
+          "training_matches": 146,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        },
+        {
+          "event_id": 9822,
+          "title": "StarLadder Major Budapest 2025",
+          "training_matches": 252,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        },
+        {
+          "event_id": 10488,
+          "title": "IEM Cologne Major 2026",
+          "training_matches": 358,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        },
+        {
+          "event_id": 11176,
+          "title": "PGL Major Singapore 2026",
+          "training_matches": 464,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        }
+      ]
+    },
+    {
       "name": "roster_stand_in",
       "description": "A stand-in in the active five, from the pre-cutoff Liquipedia revision.",
       "verdict": "no evidence",

@@ -95,6 +95,15 @@ fn expected_decider(
 /// Exact integration over one fixed role assignment of a 7-step Bo3 veto:
 /// Ban (`order[0]`), Ban (`order[1]`), Pick 1 (`order[2]`), Pick 2 (`order[3]`),
 /// Ban (`order[4]`), Ban (`order[5]`), LeftOver (decider).
+/// The sum of `weights` over the maps still in `mask`, in map order.
+fn masked_sum(weights: &[f64; 7], mask: u8) -> f64 {
+    weights
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| mask & (1 << i) != 0)
+        .fold(0.0, |total, (_, w)| total + w)
+}
+
 fn simulate_fixed(
     order: &[usize; 6],
     ban_weights: &[[f64; 7]; 2],
@@ -110,12 +119,7 @@ fn simulate_fixed(
         }
         let side2 = order[2];
         let side3 = order[3];
-        let mut total_p1 = 0.0;
-        for i in 0..7 {
-            if mask5 & (1 << i) != 0 {
-                total_p1 += pick_weights[side2][i];
-            }
-        }
+        let total_p1 = masked_sum(&pick_weights[side2], mask5);
         let mut sum_p1 = 0.0;
         for m1 in 0..7 {
             let bit1 = 1u8 << m1;
@@ -123,12 +127,7 @@ fn simulate_fixed(
                 continue;
             }
             let mask4 = mask5 ^ bit1;
-            let mut total_p2 = 0.0;
-            for j in 0..7 {
-                if mask4 & (1 << j) != 0 {
-                    total_p2 += pick_weights[side3][j];
-                }
-            }
+            let total_p2 = masked_sum(&pick_weights[side3], mask4);
             let mut sum_p2 = 0.0;
             for m2 in 0..7 {
                 let bit2 = 1u8 << m2;
@@ -155,19 +154,14 @@ fn simulate_fixed(
     let mut value = 0.0;
     for b1 in 0..7 {
         let mask6 = 127u8 ^ (1u8 << b1);
-        let mut total_b2 = 0.0;
-        for j in 0..7 {
-            if mask6 & (1 << j) != 0 {
-                total_b2 += ban_weights[side1][j];
-            }
-        }
+        let total_b2 = masked_sum(&ban_weights[side1], mask6);
         let mut sum_b2 = 0.0;
-        for b2 in 0..7 {
+        for (b2, &weight) in ban_weights[side1].iter().enumerate() {
             let bit2 = 1u8 << b2;
             if mask6 & bit2 == 0 {
                 continue;
             }
-            sum_b2 += (ban_weights[side1][b2] / total_b2) * eval_after_bans1(mask6 ^ bit2);
+            sum_b2 += (weight / total_b2) * eval_after_bans1(mask6 ^ bit2);
         }
         value += (ban_weights[side0][b1] / total_b1) * sum_b2;
     }
@@ -197,6 +191,9 @@ struct VetoCounts {
     bans: [u32; 2],
     picks: [u32; 2],
 }
+
+/// A finished Match's played maps: finish, team A, team B, (map, team A won).
+type PlayedGame<'a> = (Instant, &'a str, &'a str, &'a [(String, bool)]);
 
 fn sorted_pair<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
     if a <= b { (a, b) } else { (b, a) }
@@ -257,7 +254,7 @@ impl FittedSignal for Bo3VetoSim {
         // filling in linked HLTV played maps not already present in `map_history`
         // (deduplicated by finish instant and team pair, strictly before cutoff).
         let mut seen_matches = BTreeSet::new();
-        let mut all_maps: Vec<(Instant, &str, &str, &[(String, bool)])> = Vec::new();
+        let mut all_maps: Vec<PlayedGame<'_>> = Vec::new();
         for entry in view.map_history.at(view.cutoff) {
             let (game, finished_at) = entry?;
             observed = Some(observed.map_or(finished_at, |at| at.max(finished_at)));
