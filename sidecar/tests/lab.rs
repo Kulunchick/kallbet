@@ -340,11 +340,16 @@ async fn a_candidate_signal_without_its_data_is_reported_not_testable_with_the_r
         .iter()
         .map(|c| c.name.as_str())
         .collect();
-    assert_eq!(names, ["rating_calibration", "silent"], "none is left out");
+    let mut expected: Vec<_> = kallbet_ai::adapters::lab::signals::registry()
+        .iter()
+        .map(|s| s.name())
+        .collect();
+    expected.push("silent");
+    assert_eq!(names, expected, "none is left out");
     let c = calibration(&outcome);
     assert_eq!(c.verdict, Verdict::NotTestable);
     assert!(c.reason.contains("Valve standings"), "{}", c.reason);
-    let silent = &outcome.report.candidates[1];
+    let silent = outcome.report.candidates.last().unwrap();
     assert_eq!(silent.verdict, Verdict::NotTestable);
     assert!(
         silent.reason.contains("a datum no saved response carries"),
