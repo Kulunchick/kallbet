@@ -126,3 +126,10 @@ _Avoid_: Experiment, A/B test
 **Candidate Signal**:
 A named criterion the Signal Lab evaluates: a point-in-time estimate of a Match from data observed before its cutoff and parameters fitted on earlier Events. It reaches a live bot only if its verdict is `promote` and the operator selects it.
 _Avoid_: Feature (alone), factor (a Rationale's factor is something else)
+
+**Combiner**:
+The Signal Lab's regularised logistic model over the logits of the market line and the Valve rating plus the features of Candidate Signals, fitted walk-forward and pulled towards the anchor's weights (so with no training Match it is the anchor).
+
+**Holdout**:
+The Matches no fitting and no selection step of the Signal Lab may read: PGL Major Singapore 2026 Stage 2, Stage 3 and Playoffs, and every Event completed after spec #33 was published. The combination frozen by forward selection is evaluated on it once, last; until a Holdout Match is played the report says the Holdout is pending.
+_Avoid_: Test set, validation set

@@ -32,6 +32,8 @@ pub struct EventRow {
     pub computed: usize,
     pub paired: usize,
     pub log_loss_difference: Option<f64>,
+    /// What the Candidate Signal fitted for this Event (`FittedSignal::parameters`).
+    pub parameters: Option<serde_json::Value>,
 }
 
 /// Head-to-head comparison of a Candidate Signal's unblended rating against a
@@ -109,6 +111,105 @@ pub struct LabReport {
     pub baseline: String,
     pub events: Vec<EventInfo>,
     pub candidates: Vec<CandidateReport>,
+    /// Forward selection of the `promote`d Candidate Signals (ticket #37).
+    pub selection: SelectionReport,
+    /// The frozen combination on the Holdout, the final step (ticket #37).
+    pub holdout: HoldoutReport,
+}
+
+/// The combination's combiner as fitted for one Event.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct CombinationEvent {
+    pub event_id: i64,
+    pub title: String,
+    /// Training-side Matches the combiner could be fitted on for this Event.
+    pub training_matches: usize,
+    /// `Combiner::parameters` (`None`: nothing was promoted).
+    pub parameters: Option<serde_json::Value>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct SelectionStep {
+    pub entered: String,
+    /// Walk-forward log-loss of the combination after this step.
+    pub log_loss: f64,
+    /// After - before (the anchor before the first step): what it added.
+    pub added: f64,
+    /// The interval of that difference, from the Event bootstrap.
+    pub interval: Option<Interval>,
+    pub tried: Vec<super::selection::Tried>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct SelectionReport {
+    /// The Candidate Signals marked `promote`, in registry order.
+    pub considered: Vec<String>,
+    /// Training-side Matches the anchor predicted: where log-losses are taken.
+    pub matches: usize,
+    pub anchor_log_loss: Option<f64>,
+    pub final_log_loss: Option<f64>,
+    pub steps: Vec<SelectionStep>,
+    /// The frozen combination, in the order its members entered.
+    pub frozen: Vec<String>,
+    pub per_event: Vec<CombinationEvent>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum HoldoutStatus {
+    #[serde(rename = "pending")]
+    Pending,
+    #[serde(rename = "evaluated")]
+    Evaluated,
+}
+impl HoldoutStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Evaluated => "evaluated",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct HoldoutReport {
+    pub status: HoldoutStatus,
+    /// The boundary, in words.
+    pub rule: String,
+    /// The archive's Holdout Stages ("Event: Stage (n scored)").
+    pub stages: Vec<String>,
+    /// The frozen combination evaluated (empty: the anchor itself).
+    pub combination: Vec<String>,
+    /// When and on what the Holdout was evaluated, or that it is pending.
+    pub statement: String,
+    pub matches: usize,
+    pub events: usize,
+    pub played_from: Option<Instant>,
+    pub played_to: Option<Instant>,
+    pub baseline: Option<Metrics>,
+    pub variant: Option<Metrics>,
+    pub difference: Option<Metrics>,
+    pub interval: Option<Interval>,
+    pub std_error: Option<f64>,
+    pub market: Option<MarketSubset>,
+    /// The written rule applied to the Holdout's numbers, for reading only.
+    pub verdict: Option<Verdict>,
+    pub reason: String,
+    pub per_event: Vec<CombinationEvent>,
+}
+
+fn params(v: &Option<serde_json::Value>) -> String {
+    v.as_ref().map_or("—".into(), |v| format!("`{v}`"))
+}
+
+fn interval(i: Option<Interval>) -> String {
+    i.map_or("—".into(), |i| format!("[{:+.4}, {:+.4}]", i.low, i.high))
+}
+
+fn names(n: &[String], sep: &str) -> String {
+    n.iter()
+        .map(|n| format!("`{n}`"))
+        .collect::<Vec<_>>()
+        .join(sep)
 }
 
 fn num(v: Option<f64>) -> String {
@@ -231,20 +332,24 @@ impl LabReport {
             }
             let _ = writeln!(
                 md,
-                "| Event | Fitted on | Computed on | Paired | Δ log-loss |\n|---|---|---|---|---|"
+                "| Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |\n\
+                 |---|---|---|---|---|---|"
             );
             for e in &c.per_event {
                 let _ = writeln!(
                     md,
-                    "| {} | {} | {} | {} | {} |",
+                    "| {} | {} | {} | {} | {} | {} |",
                     e.title,
                     e.training_matches,
                     e.computed,
                     e.paired,
-                    num(e.log_loss_difference)
+                    num(e.log_loss_difference),
+                    params(&e.parameters)
                 );
             }
         }
+        self.selection_markdown(&mut md);
+        self.holdout_markdown(&mut md);
         let _ = writeln!(md, "\n## Events (walk-forward order)\n");
         let _ = writeln!(
             md,
@@ -261,5 +366,150 @@ impl LabReport {
             );
         }
         md
+    }
+
+    fn selection_markdown(&self, md: &mut String) {
+        let s = &self.selection;
+        let level = (self.level * 100.0).round();
+        let _ = writeln!(md, "\n## Forward selection\n");
+        let _ = writeln!(
+            md,
+            "The Candidate Signals marked `promote` enter one combination, one at a time: at \
+             each step the one that lowers the walk-forward log-loss most (on the {} \
+             training-side Matches the anchor predicted) enters, and selection stops when none \
+             lowers it. The combination is the combiner (a regularised logistic model without \
+             intercept, penalty {} towards the anchor's weights) over the logits of the market \
+             line and the rating plus each member's features, refitted for every Event on the \
+             Events that ended before it. \"Added\" is the log-loss after the step − before it \
+             (the anchor before the first).\n",
+            s.matches,
+            super::combiner::LAMBDA
+        );
+        if s.considered.is_empty() {
+            let _ = writeln!(
+                md,
+                "No Candidate Signal is marked `promote`: nothing enters, and the frozen \
+                 combination is the anchor."
+            );
+            return;
+        }
+        let _ = writeln!(
+            md,
+            "Considered: {}. Anchor log-loss {}.\n",
+            names(&s.considered, ", "),
+            s.anchor_log_loss.map_or("—".into(), |v| format!("{v:.4}"))
+        );
+        let _ = writeln!(
+            md,
+            "| Order | Entered | Log-loss after | Added | {level}% interval | Tried |\n\
+             |---|---|---|---|---|---|"
+        );
+        for (i, step) in s.steps.iter().enumerate() {
+            let tried: Vec<String> = step
+                .tried
+                .iter()
+                .map(|t| format!("`{}` {:.4}", t.name, t.log_loss))
+                .collect();
+            let _ = writeln!(
+                md,
+                "| {} | `{}` | {:.4} | {:+.4} | {} | {} |",
+                i + 1,
+                step.entered,
+                step.log_loss,
+                step.added,
+                interval(step.interval),
+                tried.join(", ")
+            );
+        }
+        if s.steps.is_empty() {
+            let _ = writeln!(md, "| — | none lowered the anchor's log-loss | | | | |");
+        }
+        let frozen = if s.frozen.is_empty() {
+            "the anchor".to_string()
+        } else {
+            names(&s.frozen, " + ")
+        };
+        let _ = writeln!(md, "\nFrozen combination: {frozen}.");
+        if !s.frozen.is_empty() {
+            let _ = writeln!(
+                md,
+                "\n| Event | Fitted on | Combiner weights |\n|---|---|---|"
+            );
+            for e in &s.per_event {
+                let _ = writeln!(
+                    md,
+                    "| {} | {} | {} |",
+                    e.title,
+                    e.training_matches,
+                    params(&e.parameters)
+                );
+            }
+        }
+    }
+
+    fn holdout_markdown(&self, md: &mut String) {
+        let h = &self.holdout;
+        let level = (self.level * 100.0).round();
+        let _ = writeln!(md, "\n## Holdout: {}\n", h.status.as_str());
+        let _ = writeln!(
+            md,
+            "The Holdout is {}. No fitting and no selection step reads it; the frozen \
+             combination is evaluated on it once, last.\n",
+            h.rule
+        );
+        let _ = writeln!(md, "{}", h.statement);
+        if !h.stages.is_empty() {
+            let _ = writeln!(
+                md,
+                "\nHoldout Stages in this archive: {}.",
+                h.stages.join("; ")
+            );
+        }
+        if let (Some(b), Some(v), Some(d)) = (h.baseline, h.variant, h.difference) {
+            let _ = writeln!(
+                md,
+                "\n| On the {} Holdout Matches | Log-loss | Brier | Accuracy |\n|---|---|---|---|",
+                h.matches
+            );
+            for (name, m) in [("anchor", b), ("frozen combination", v)] {
+                let _ = writeln!(
+                    md,
+                    "| {name} | {:.4} | {:.4} | {:.1}% |",
+                    m.log_loss,
+                    m.brier,
+                    m.accuracy * 100.0
+                );
+            }
+            let _ = writeln!(
+                md,
+                "\nΔ log-loss {} ({level}% interval {}), Δ Brier {}, Δ accuracy {}; market subset \
+                 {}. By the written rule: {} ({}).",
+                num(Some(d.log_loss)),
+                interval(h.interval),
+                num(Some(d.brier)),
+                num(Some(d.accuracy)),
+                h.market.as_ref().map_or("—".into(), |m| format!(
+                    "{}, {:+.4}",
+                    m.matches, m.log_loss_difference
+                )),
+                h.verdict.map_or("—", Verdict::as_str),
+                h.reason
+            );
+        }
+        if h.per_event.iter().any(|e| e.parameters.is_some()) {
+            let _ = writeln!(
+                md,
+                "\n| Holdout Event | Fitted on | Combiner weights |\n|---|---|---|"
+            );
+            for e in &h.per_event {
+                let _ = writeln!(
+                    md,
+                    "| {} | {} | {} |",
+                    e.title,
+                    e.training_matches,
+                    params(&e.parameters)
+                );
+            }
+        }
     }
 }
