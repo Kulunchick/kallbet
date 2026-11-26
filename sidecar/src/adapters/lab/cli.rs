@@ -88,9 +88,14 @@ pub async fn run(args: &[String]) -> Result<String> {
     // kept in the audit store, never in the report.
     let started_at = SystemClock.now();
     let outcome = lab.run().await?;
+    let leagues = super::leagues::report(&lab, lab.protocol.seed, 2000).await?;
     record_lab_run(&audit, started_at, SystemClock.now(), &outcome.report).await?;
     let report = &outcome.report;
-    std::fs::write(o.out.join("report.md"), report.markdown())?;
+    std::fs::write(o.out.join("catch-up.md"), leagues)?;
+    std::fs::write(
+        o.out.join("report.md"),
+        report.markdown() + "\n[Catch-up mode in simulated Leagues](catch-up.md)\n",
+    )?;
     std::fs::write(
         o.out.join("report.json"),
         serde_json::to_string_pretty(report)? + "\n",

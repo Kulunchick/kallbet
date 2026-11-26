@@ -51,7 +51,7 @@ impl Lab {
         })
     }
 
-    async fn view(&self, game: &Match, cutoff: Instant) -> Result<MatchView> {
+    pub(super) async fn view(&self, game: &Match, cutoff: Instant) -> Result<MatchView> {
         let view = MatchView {
             signal: self.feeds.signal.signal(game, cutoff).await?,
             market: self.feeds.odds.quote(game, cutoff).await?,

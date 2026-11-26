@@ -38,3 +38,5 @@ Verdict: the interval of the log-loss difference includes zero.
 | StarLadder Major Budapest 2025 | 2025-11-24 12:00 | 2025-12-14 21:14 | 106 |
 | IEM Cologne Major 2026 | 2026-06-02 10:30 | 2026-06-21 18:06 | 106 |
 | PGL Major Singapore 2026 | 2026-11-24 04:00 | 2026-11-25 13:10 | 24 |
+
+[Catch-up mode in simulated Leagues](catch-up.md)
