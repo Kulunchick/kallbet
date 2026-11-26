@@ -53,6 +53,7 @@ DEFAULT_ARCHIVE = ROOT / "target/research-archive"
 MANIFEST = "sources-market.tsv"
 REMOTE_NOTE = " (fetched with curl on a remote host: the API is blocked from the workstation)"
 REMOTE_HOSTS = ("gamma-api.polymarket.com", "clob.polymarket.com", "api.elections.kalshi.com")
+FIXTURES_PACE = 12.0  # seconds between billable calls; a burst was answered with 429
 FIXTURE_PAGE = 100  # a full page means the window may be truncated: split it
 SAFE = re.compile(r"[^A-Za-z0-9._-]")
 
@@ -174,7 +175,9 @@ class Collector:
                     body, request = self.oddspapi("fixtures", params)
                 except RuntimeError as e:
                     self.notes.append(f"fixtures {label} {cur}..{end}: {e}")
-                    return False
+                    self.sleep(FIXTURES_PACE)
+                    return "429" in str(e)  # rate limited: stop the run, resume later
+                self.sleep(FIXTURES_PACE)
             fixtures = json.loads(body)
             if len(fixtures) < FIXTURE_PAGE or cur >= end:
                 self.save(base + ".json", body, request, catalog=not fixtures)

@@ -141,6 +141,18 @@ class Fixtures(unittest.TestCase):
             make(t, again).oddspapi_fixtures(self.PLAN)
             self.assertEqual(again.calls, [])
 
+    def test_a_429_stops_the_fixtures_run_and_requests_are_paced(self):
+        with tempfile.TemporaryDirectory() as t:
+            plan = [{"tournament": i, "name": f"t{i}", "from": "2026-06-02", "to": "2026-06-03"} for i in range(4)]
+            slept = []
+            odds = FakeOdds(fixtures={(1, "2026-06-02", "2026-06-03"): "HTTP 429"})
+            c = make(t, odds)
+            c.sleep = slept.append
+            c.oddspapi_fixtures(plan)
+            self.assertEqual([x[1]["tournamentId"] for x in odds.calls], [0, 1])
+            self.assertEqual(slept, [cm.FIXTURES_PACE] * 2)
+            self.assertIn("429", " ".join(c.notes))
+
     def test_empty_list_goes_to_catalog(self):
         with tempfile.TemporaryDirectory() as t:
             make(t, FakeOdds()).oddspapi_fixtures(self.PLAN)
