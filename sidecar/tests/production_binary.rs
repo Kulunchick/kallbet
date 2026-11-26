@@ -181,6 +181,10 @@ fn commands_parse() {
         parse(&args(&["backtest", "--event", "8302"])).unwrap(),
         Command::Backtest(args(&["--event", "8302"]))
     );
+    assert_eq!(
+        parse(&args(&["lab", "--seed", "7"])).unwrap(),
+        Command::Lab(args(&["--seed", "7"]))
+    );
     assert!(parse(&args(&["run", "--twice"])).is_err());
     assert!(parse(&args(&["nope"])).is_err());
 }

@@ -1,0 +1,140 @@
+{
+  "protocol_version": "signal-lab/1",
+  "seed": 33,
+  "resamples": 2000,
+  "level": 0.9,
+  "min_matches": 100,
+  "archive_digest": "25459d150e1fac87409e38d17a73ab2110444401703a056b1c4d4c846c4df782",
+  "archive_files": 272,
+  "baseline": "the anchor: HybridAnchored without LLM, 0.80 market and 0.20 Valve rating logit (`debate::base`)",
+  "events": [
+    {
+      "id": 7278,
+      "title": "PGL Major Copenhagen 2024",
+      "begins": "2024-03-17T12:00:00Z",
+      "ends": "2024-03-31T20:37:11Z",
+      "matches": 73
+    },
+    {
+      "id": 8751,
+      "title": "Perfect World Major Shanghai Major 2024",
+      "begins": "2024-11-30T03:00:00Z",
+      "ends": "2024-12-15T12:23:47Z",
+      "matches": 73
+    },
+    {
+      "id": 9309,
+      "title": "BLAST.tv Major Austin 2025",
+      "begins": "2025-06-03T15:15:00Z",
+      "ends": "2025-06-22T22:15:44Z",
+      "matches": 106
+    },
+    {
+      "id": 9822,
+      "title": "StarLadder Major Budapest 2025",
+      "begins": "2025-11-24T12:00:00Z",
+      "ends": "2025-12-14T21:14:56Z",
+      "matches": 106
+    },
+    {
+      "id": 10488,
+      "title": "IEM Cologne Major 2026",
+      "begins": "2026-06-02T10:30:00Z",
+      "ends": "2026-06-21T18:06:13Z",
+      "matches": 106
+    },
+    {
+      "id": 11176,
+      "title": "PGL Major Singapore 2026",
+      "begins": "2026-11-24T04:00:00Z",
+      "ends": "2026-11-25T13:10:33Z",
+      "matches": 24
+    }
+  ],
+  "candidates": [
+    {
+      "name": "rating_calibration",
+      "description": "Valve rating's map probability rescaled in logit space by a factor fitted per series format, then blended with the market as the anchor does",
+      "verdict": "no evidence",
+      "reason": "the interval of the log-loss difference includes zero",
+      "computed_on": 342,
+      "paired": 342,
+      "events": 4,
+      "baseline": {
+        "log_loss": 0.7695545840403594,
+        "brier": 0.2549769528996922,
+        "accuracy": 0.6140350877192983
+      },
+      "variant": {
+        "log_loss": 0.6629433349322476,
+        "brier": 0.2319869565359719,
+        "accuracy": 0.6198830409356725
+      },
+      "difference": {
+        "log_loss": -0.10661124910811182,
+        "brier": -0.02298999636372029,
+        "accuracy": 0.005847953216374213
+      },
+      "interval": {
+        "low": -0.17786716382880108,
+        "high": 0.0036526657153311574
+      },
+      "std_error": 0.05123531900894256,
+      "detectable": 0.12739532958569666,
+      "market": {
+        "matches": 112,
+        "log_loss_difference": -0.0005370873811163471
+      },
+      "per_event": [
+        {
+          "event_id": 7278,
+          "title": "PGL Major Copenhagen 2024",
+          "training_matches": 0,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null
+        },
+        {
+          "event_id": 8751,
+          "title": "Perfect World Major Shanghai Major 2024",
+          "training_matches": 73,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null
+        },
+        {
+          "event_id": 9309,
+          "title": "BLAST.tv Major Austin 2025",
+          "training_matches": 146,
+          "computed": 106,
+          "paired": 106,
+          "log_loss_difference": -0.20517919795095813
+        },
+        {
+          "event_id": 9822,
+          "title": "StarLadder Major Budapest 2025",
+          "training_matches": 252,
+          "computed": 106,
+          "paired": 106,
+          "log_loss_difference": -0.150555129706644
+        },
+        {
+          "event_id": 10488,
+          "title": "IEM Cologne Major 2026",
+          "training_matches": 358,
+          "computed": 106,
+          "paired": 106,
+          "log_loss_difference": 0.014576415626723472
+        },
+        {
+          "event_id": 11176,
+          "title": "PGL Major Singapore 2026",
+          "training_matches": 464,
+          "computed": 24,
+          "paired": 24,
+          "log_loss_difference": -0.012429521654218638
+        }
+      ]
+    }
+  ]
+}

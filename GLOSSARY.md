@@ -116,3 +116,13 @@ _Avoid_: Provider, feed, API
 
 **Override**:
 A manual correction by a League Admin to a Match's time, result, teams or visibility, which takes precedence over every Data Source. An Override applies only within its own League.
+
+### Research
+
+**Signal Lab**:
+The sidecar's evaluation of Candidate Signals over completed Matches under one fixed protocol (walk-forward by Event, log-loss against the anchor, an Event-level bootstrap and a written verdict rule), with no network and no LLM provider.
+_Avoid_: Experiment, A/B test
+
+**Candidate Signal**:
+A named criterion the Signal Lab evaluates: a point-in-time estimate of a Match from data observed before its cutoff and parameters fitted on earlier Events. It reaches a live bot only if its verdict is `promote` and the operator selects it.
+_Avoid_: Feature (alone), factor (a Rationale's factor is something else)

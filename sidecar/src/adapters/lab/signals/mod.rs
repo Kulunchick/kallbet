@@ -1,0 +1,95 @@
+//! The Candidate Signal registry and the point-in-time view a Candidate Signal
+//! reads. A new Candidate Signal is one module here: implement
+//! `CandidateSignal` (fit on the training Matches the protocol hands it) and
+//! `FittedSignal` (predict one Match from its view), then add it to `registry`.
+use crate::adapters::debate;
+use crate::*;
+
+pub mod calibration;
+
+/// What a Candidate Signal may read of one Match: the Match as the pipeline
+/// sees it before its cutoff, and the anchor's inputs read through the replay
+/// ports at that cutoff (each already checked with `AsOf::at`). No outcome.
+#[derive(Clone)]
+pub struct MatchView {
+    pub game: Match,
+    /// The Match cutoff (`backtest::match_cutoff`): every datum must be
+    /// observed strictly before it.
+    pub cutoff: Instant,
+    /// Valve's rating as the Signal Estimator port gives it.
+    pub signal: Option<AsOf<Signal>>,
+    /// Team A's fair series probability as the Odds Source port gives it.
+    pub market: Option<AsOf<f64>>,
+}
+impl MatchView {
+    pub fn signal(&self) -> Result<Option<&Signal>, TemporalLeakError> {
+        self.signal.as_ref().map(|s| s.at(self.cutoff)).transpose()
+    }
+    pub fn market(&self) -> Result<Option<f64>, TemporalLeakError> {
+        self.market
+            .as_ref()
+            .map(|m| m.at(self.cutoff).copied())
+            .transpose()
+    }
+    /// The latest observation among the inputs, to date a prediction made from them.
+    pub fn observed_at(&self) -> Option<Instant> {
+        let s = self.signal.as_ref().map(AsOf::observed_at);
+        let m = self.market.as_ref().map(AsOf::observed_at);
+        s.max(m)
+    }
+    /// The anchor (`debate::base`) with `stat` in place of the Valve rating.
+    pub fn anchor_with(&self, stat: Option<Signal>) -> Result<Option<f64>> {
+        let dossier = Dossier {
+            game: self.game.clone(),
+            signal: stat,
+            market: self.market()?,
+            context: vec![],
+        };
+        Ok(debate::base(&dossier))
+    }
+    /// The current anchor: the baseline every Candidate Signal is compared with.
+    pub fn anchor(&self) -> Result<Option<f64>> {
+        self.anchor_with(self.signal()?.cloned())
+    }
+}
+
+/// A training Match: its view and how it ended.
+#[derive(Clone)]
+pub struct Observed {
+    pub view: MatchView,
+    pub team_a_won: bool,
+}
+
+/// A named criterion the lab evaluates. Pure: everything it learns comes from
+/// `fit`'s training Matches, everything it predicts from one `MatchView`.
+pub trait CandidateSignal: Send + Sync {
+    /// The registry name (snake case), used by `--signal` and in the report.
+    fn name(&self) -> &'static str;
+    fn description(&self) -> &'static str;
+    /// The data it needs, for the `not testable` reason when no Match had it.
+    fn needs(&self) -> &'static str;
+    /// Why the archive cannot test it at all, if it cannot (reported `not testable`).
+    fn missing_data(&self, _archive: &crate::adapters::backtest::ReplayArchive) -> Option<String> {
+        None
+    }
+    /// Fits on `training`: every Match of the Events that ended before the
+    /// evaluated Event began, and nothing else.
+    fn fit(&self, training: &[Observed]) -> Result<Box<dyn FittedSignal>>;
+}
+
+/// A fitted Candidate Signal.
+pub trait FittedSignal: Send + Sync {
+    /// Team A's series probability for `m`, dated by the latest datum it read
+    /// (the protocol checks it against the cutoff), or `None` when it has no
+    /// prediction for this Match.
+    fn predict(&self, m: &MatchView) -> Result<Option<AsOf<f64>>>;
+}
+
+/// Every registered Candidate Signal, in report order.
+pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
+    vec![std::sync::Arc::new(calibration::RatingCalibration)]
+}
+
+pub fn by_name(name: &str) -> Option<std::sync::Arc<dyn CandidateSignal>> {
+    registry().into_iter().find(|s| s.name() == name)
+}
