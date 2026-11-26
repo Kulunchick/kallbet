@@ -368,3 +368,46 @@ fn the_verdict_follows_the_written_rule() {
     assert_eq!(verdict(10, iv(-0.2, 2.0), 10).0, Verdict::NoEvidence);
     assert_eq!(verdict(10, iv(0.0, 2.0), 10).0, Verdict::NoEvidence);
 }
+
+// Finding 4 (review of 6eea194): a Holdout Stage of an Event whose Stage 1 is
+// on the training side is not scored: Singapore Stage 2, played and with an
+// opening view, is listed as in the Holdout, never compared.
+#[tokio::test]
+async fn a_holdout_stage_of_a_training_side_event_is_not_scored() {
+    let mut archive = ReplayArchive::load(&fixtures()).unwrap();
+    archive.stages.retain(|s| s.event.contains("2026"));
+    let stage1 = archive
+        .stages
+        .iter_mut()
+        .find(|s| s.id == kallbet_ai::adapters::lab::holdout::SINGAPORE_STAGE_1)
+        .unwrap();
+    stage1.complete = true;
+    let mut stage2 = stage1.clone();
+    stage2.id = 1;
+    stage2.name = "Stage 2".into();
+    let shift = chrono::Duration::days(3);
+    stage2.cutoff += shift;
+    for m in &mut stage2.matches {
+        m.actual_start += shift;
+        m.finished_at += shift;
+        m.reported_finish = m.reported_finish.map(|t| t + shift);
+        m.game.scheduled_start = m.game.scheduled_start.map(|t| t + shift);
+    }
+    if let Some(opening) = &mut stage2.opening {
+        opening.observed_at += shift;
+    }
+    archive.stages.push(stage2);
+    let lab = Lab::new(archive).unwrap();
+    assert!(lab.holdout_stages().contains(&1));
+    let out = pickem::run(&lab, &options()).await.unwrap();
+    assert!(out.report.stages.iter().all(|r| r.stage_id != 1));
+    assert!(out.submitted.iter().all(|s| s.stage_id != 1));
+    assert!(
+        out.report
+            .excluded
+            .iter()
+            .any(|e| e.contains("Stage 2") && e.contains("Holdout")),
+        "{:?}",
+        out.report.excluded
+    );
+}

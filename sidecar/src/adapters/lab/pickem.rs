@@ -402,8 +402,12 @@ struct Tally {
 pub async fn run(lab: &Lab, options: &PickemOptions) -> Result<PickemOutcome> {
     let seed = lab.protocol.seed;
     let split = lab.events().await?;
-    // The Holdout's results stay out of every view Pick'em reads.
-    let hidden = lab.holdout_matches(&lab.holdout_stages());
+    // The Holdout's Stages are not scored, and their results stay out of
+    // every view Pick'em reads; a Candidate Signal is told the archive holds
+    // the training side only.
+    let holdout_stages = lab.holdout_stages();
+    let hidden = lab.holdout_matches(&holdout_stages);
+    let training_archive = lab.archive.without_stages(&holdout_stages);
     let solver = MonteCarloPickemSolver::with_simulations(0, options.simulations);
     let candidates = [("calibrated", "rating_calibration"), ("learned", "learned_weights")];
     let by_event = event_order(lab);
@@ -432,7 +436,7 @@ pub async fn run(lab: &Lab, options: &PickemOptions) -> Result<PickemOutcome> {
             .iter()
             .map(|(_, name)| match lab.signals.iter().find(|s| s.name() == *name) {
                 None => Ok(Source::Absent(format!("Candidate Signal {name} is not in this run"))),
-                Some(signal) => match signal.missing_data(&lab.archive) {
+                Some(signal) => match signal.missing_data(&training_archive) {
                     Some(reason) => Ok(Source::Absent(reason)),
                     None => signal.fit(&training).map(Source::Fitted),
                 },
@@ -451,7 +455,11 @@ pub async fn run(lab: &Lab, options: &PickemOptions) -> Result<PickemOutcome> {
         let mut member_totals = vec![0_usize; options.members];
         for &i in order {
             let stage = &lab.archive.stages[i];
-            let reason = if !stage.complete {
+            let reason = if holdout_stages.contains(&stage.id) {
+                // A later Stage of an Event whose earlier Stage is on the
+                // training side (Singapore Stage 2 and on).
+                Some("in the Holdout, left unread until the selection is frozen".to_string())
+            } else if !stage.complete {
                 Some("the Stage is not complete".to_string())
             } else if let Some(problem) = &stage.opening_problem {
                 Some(format!("no opening view: {problem}"))
