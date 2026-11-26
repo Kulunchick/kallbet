@@ -731,17 +731,20 @@ pub struct TrackReport {
 }
 
 /// Evaluates every profile of `track` by the lab's protocol (its runner, with
-/// the profiles as the Candidate Signals) and compares each seating's debate
-/// with the single agent.
+/// the profiles as the Candidate Signals, each alone against the anchor) and
+/// compares each seating's debate with the single agent. Both are on the
+/// training side: the Holdout is evaluated once, by the lab's own run.
 pub async fn compare(lab: &mut Lab, track: &Track, command: String) -> Result<TrackReport> {
     let saved = std::mem::replace(&mut lab.signals, track.profiles());
-    let outcome = lab.run().await;
+    let profiles = lab.candidates().await;
     lab.signals = saved;
-    let profiles = outcome?.report.candidates;
+    let profiles = profiles?;
+    let holdout = lab.holdout_stages();
     let winners: BTreeMap<i64, bool> = lab
         .archive
         .stages
         .iter()
+        .filter(|s| !holdout.contains(&s.id))
         .flat_map(|s| &s.matches)
         .map(|m| (m.game.id, m.winner == m.game.team_a.id))
         .collect();

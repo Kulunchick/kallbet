@@ -759,3 +759,86 @@ async fn the_example_llm_file_loads_and_a_zero_budget_starts_no_cli() {
     assert!(track.budget.iter().any(|b| b.refused > 0), "{:?}", track.budget);
     assert!(track.seatings.iter().all(|s| s.answered == 0));
 }
+
+/// The replay's Valve rating, failing for the Matches in `broken`.
+struct BrokenFor {
+    inner: Arc<dyn SignalEstimator>,
+    broken: BTreeSet<i64>,
+}
+#[async_trait]
+impl SignalEstimator for BrokenFor {
+    async fn signal(&self, game: &Match, cutoff: Instant) -> Result<Option<AsOf<Signal>>> {
+        if self.broken.contains(&game.id) {
+            return Err("the rating port is down for this Match".into());
+        }
+        self.inner.signal(game, cutoff).await
+    }
+}
+
+// Finding 6 (review of 6eea194): the LLM comparison is a training-side
+// experiment. It does not evaluate the Holdout (a port failing for a
+// Holdout Match does not stop it), and a Holdout answer changes no seating
+// comparison.
+#[tokio::test]
+async fn the_llm_comparison_reads_no_holdout_match() {
+    let archive = whole();
+    let cologne = archive
+        .stages
+        .iter()
+        .filter(|s| s.event.contains("Cologne"))
+        .map(|s| s.cutoff)
+        .min()
+        .unwrap();
+    let pick = |needle: &str| {
+        let s = archive.stages.iter().find(|s| s.event.contains(needle)).unwrap();
+        (s.matches[0].game.id, s.event_id)
+    };
+    let (train, train_event) = pick("Copenhagen");
+    let (held, held_event) = pick("Cologne");
+    let seating = seating("s", "claude", "claude", "claude");
+    let track = |held_debate: f64| Track {
+        training_cutoff: "2026-11-01T00:00:00Z".parse().unwrap(),
+        flagged: vec![
+            llm::Flagged { match_id: train, event_id: train_event, blind: true },
+            llm::Flagged { match_id: held, event_id: held_event, blind: false },
+        ],
+        single_chain: vec!["claude".into()],
+        seatings: vec![llm::SeatingRun {
+            seating: seating.clone(),
+            ran: true,
+            answered: 2,
+            calls: 0,
+            stopped: None,
+        }],
+        single: [(train, 0.6), (held, 0.6)].into(),
+        debate: [("s".to_string(), [(train, 0.7), (held, held_debate)].into())].into(),
+        budget: vec![],
+        stopped: None,
+        recorded: Recorded::default(),
+    };
+    let lab = || {
+        let mut lab = Lab::new(whole()).unwrap();
+        lab.holdout = kallbet_ai::adapters::lab::Holdout {
+            from: cologne,
+            training_stages: vec![],
+        };
+        lab.protocol.resamples = 100;
+        let broken = lab.holdout_matches(&lab.holdout_stages());
+        let replay = kallbet_ai::adapters::backtest::Feeds::replay(&lab.archive).unwrap();
+        lab.feeds = kallbet_ai::adapters::backtest::Feeds {
+            signal: Arc::new(BrokenFor {
+                inner: replay.signal.clone(),
+                broken,
+            }),
+            ..replay
+        };
+        lab
+    };
+    let a = llm::compare(&mut lab(), &track(0.1), String::new()).await.unwrap();
+    let b = llm::compare(&mut lab(), &track(0.9), String::new()).await.unwrap();
+    assert_eq!(a.debate_vs_single[0].paired, 1);
+    assert_eq!(a.debate_vs_single, b.debate_vs_single);
+    for c in &a.profiles {
+        assert!(c.paired <= 1, "{}: {}", c.name, c.paired);
+    }
+}

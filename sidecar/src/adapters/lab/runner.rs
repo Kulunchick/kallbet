@@ -358,6 +358,20 @@ impl Lab {
         Ok(events)
     }
 
+    /// Every Candidate Signal alone against the anchor on the training side,
+    /// as the first step of `run`: no selection, and the Holdout not read.
+    pub async fn candidates(&self) -> Result<Vec<CandidateReport>> {
+        let events = self.events().await?.training;
+        let training_archive = self.archive.without_stages(&self.holdout_stages());
+        self.signals
+            .iter()
+            .map(|signal| {
+                self.evaluate(signal.as_ref(), &events, &training_archive)
+                    .map(|(report, _, _)| report)
+            })
+            .collect()
+    }
+
     /// Runs the protocol. Any datum observed at or after its Match's cutoff,
     /// read from a port or returned by a Candidate Signal, aborts the run with
     /// `TemporalLeakError`.
