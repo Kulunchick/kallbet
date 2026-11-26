@@ -1,5 +1,4 @@
-//! Complete HLTV vetoes (Bo1, Bo3 and Bo5), linked to strictly dated
-//! PandaScore results.
+//! HLTV vetoes and played map scores linked to strictly dated PandaScore results.
 use super::{
     ReplayStage,
     map_history::{MatchHistory, pair},
@@ -17,6 +16,7 @@ pub struct VetoHistory {
     bo3: MatchHistory<CompletedSeriesVeto>,
     bo5: MatchHistory<CompletedSeriesVeto>,
     all: MatchHistory<CompletedSeriesVeto>,
+    round_scores: MatchHistory<PlayedRoundScores>,
 }
 
 impl VetoHistory {
@@ -47,6 +47,7 @@ impl VetoHistory {
             bo3: self.bo3.before(cutoff),
             bo5: self.bo5.before(cutoff),
             all: self.all.before(cutoff),
+            round_scores: self.round_scores.before(cutoff),
         }
     }
 
@@ -56,7 +57,23 @@ impl VetoHistory {
             bo3: self.bo3.without_stages(excluded),
             bo5: self.bo5.without_stages(excluded),
             all: self.all.without_stages(excluded),
+            round_scores: self.round_scores.without_stages(excluded),
         }
+    }
+
+    pub(crate) fn exclude_round_scores(&mut self, stages: &BTreeSet<i64>) {
+        self.round_scores = self.round_scores.without_stages(stages);
+    }
+
+    pub(crate) fn has_round_scores(&self) -> bool {
+        !self.round_scores.is_empty()
+    }
+
+    pub(crate) fn round_scores_at(
+        &self,
+        cutoff: Instant,
+    ) -> impl Iterator<Item = Result<(&PlayedRoundScores, Instant), TemporalLeakError>> {
+        self.round_scores.at(cutoff)
     }
 
     /// Linked Bo1 vetoes, each rechecked against `cutoff`.
@@ -90,6 +107,49 @@ impl VetoHistory {
     ) -> impl Iterator<Item = Result<(&CompletedSeriesVeto, Instant), TemporalLeakError>> {
         self.all.at(cutoff)
     }
+}
+
+#[derive(Clone)]
+pub(crate) struct PlayedRoundScores {
+    pub teams: [String; 2],
+    pub scores: Vec<(u32, u32)>,
+}
+
+/// A complete series score, in HLTV team order, independently of its veto.
+fn round_scores(record: &HltvMatchRecord, game: &super::ReplayMatch) -> Option<PlayedRoundScores> {
+    let teams = [team_key(&record.team_a.name), team_key(&record.team_b.name)];
+    if teams[0] == teams[1] {
+        return None;
+    }
+    let mut wins = (0, 0);
+    let mut scores = Vec::new();
+    for map in record.maps.iter().filter(|map| map.played) {
+        let (a, b) = (map.team_a_score?, map.team_b_score?);
+        match map.winner? {
+            Side::A if a > b => wins.0 += 1,
+            Side::B if b > a => wins.1 += 1,
+            _ => return None,
+        }
+        scores.push((a, b));
+    }
+    let needed = u32::from(format_code(game.game.format)) / 2 + 1;
+    if wins.0.max(wins.1) != needed || wins.0.min(wins.1) >= needed {
+        return None;
+    }
+    let replay_a = team_key(&game.game.team_a.name);
+    let a_won = game.winner == game.game.team_a.id;
+    if (teams[usize::from(wins.1 > wins.0)] == replay_a) != a_won {
+        return None;
+    }
+    let replay_score = if teams[0] == replay_a {
+        wins
+    } else {
+        (wins.1, wins.0)
+    };
+    if game.maps_score.is_some_and(|score| score != replay_score) {
+        return None;
+    }
+    Some(PlayedRoundScores { teams, scores })
 }
 
 #[derive(Clone)]
@@ -178,13 +238,7 @@ fn complete_bo1(record: &HltvMatchRecord) -> Option<CompletedVeto> {
     })
 }
 
-fn complete_series(record: &HltvMatchRecord) -> Option<CompletedSeriesVeto> {
-    let format = match record.format.as_str() {
-        "bo1" => Format::Bo1,
-        "bo3" => Format::Bo3,
-        "bo5" => Format::Bo5,
-        _ => return None,
-    };
+fn complete_series(record: &HltvMatchRecord, format: Format) -> Option<CompletedSeriesVeto> {
     let [first, _, _, _, _, _, leftover] = record.veto.as_slice() else {
         return None;
     };
@@ -379,6 +433,7 @@ pub(super) fn link(
     let mut linked_bo3 = BTreeMap::new();
     let mut linked_bo5 = BTreeMap::new();
     let mut linked_all = BTreeMap::new();
+    let mut linked_round_scores = BTreeMap::new();
 
     for record in records {
         let key = pair(&record.team_a.name, &record.team_b.name);
@@ -415,10 +470,13 @@ pub(super) fn link(
             }
         }
 
-        let Some(series) = complete_series(&record) else {
-            continue;
+        let format = match record.format.as_str() {
+            "bo1" => Format::Bo1,
+            "bo3" => Format::Bo3,
+            "bo5" => Format::Bo5,
+            _ => continue,
         };
-        let Some(candidates) = by_format_pair.get(&(format_code(series.format), key)) else {
+        let Some(candidates) = by_format_pair.get(&(format_code(format), key)) else {
             continue;
         };
         let mut matches = candidates.iter().filter(|(_, game)| {
@@ -431,6 +489,24 @@ pub(super) fn link(
             continue;
         }
         let Some(end) = game.reported_finish.filter(|&end| end > game.actual_start) else {
+            continue;
+        };
+        let fetched = if record.fetched_at == chrono::DateTime::UNIX_EPOCH {
+            end + chrono::Duration::seconds(1)
+        } else {
+            record.fetched_at
+        };
+        // Historical scores become observable at the reported finish. The
+        // archive's fetch must postdate it, just as for the veto replay.
+        if let Some(scores) = round_scores(&record, game)
+            && let Ok(entry) = AsOf::new(scores, end, fetched)
+        {
+            linked_round_scores
+                .entry(game.game.id)
+                .and_modify(|v| *v = None)
+                .or_insert(Some((stage_id, entry)));
+        }
+        let Some(series) = complete_series(&record, format) else {
             continue;
         };
         let replay_winner = if game.winner == game.game.team_a.id {
@@ -452,11 +528,6 @@ pub(super) fn link(
                 continue;
             }
         }
-        let fetched = if record.fetched_at == chrono::DateTime::UNIX_EPOCH {
-            end + chrono::Duration::seconds(1)
-        } else {
-            record.fetched_at
-        };
         let Ok(entry) = AsOf::new(series, end, fetched) else {
             continue;
         };
@@ -482,5 +553,6 @@ pub(super) fn link(
         bo3: MatchHistory::new(linked_bo3.into_values().flatten().collect()),
         bo5: MatchHistory::new(linked_bo5.into_values().flatten().collect()),
         all: MatchHistory::new(linked_all.into_values().flatten().collect()),
+        round_scores: MatchHistory::new(linked_round_scores.into_values().flatten().collect()),
     }
 }

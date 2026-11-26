@@ -23,6 +23,7 @@ pub mod own_rating;
 pub mod per_map_rating;
 pub mod player_form;
 pub mod recent_form;
+pub mod round_diff_rating;
 pub mod veto_sim;
 
 /// What a Candidate Signal may read of one Match: the Match as the pipeline
@@ -257,6 +258,7 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(bo3_veto_sim::Bo3VetoSim),
         std::sync::Arc::new(bo5_veto_sim::Bo5VetoSim),
         std::sync::Arc::new(veto_sim::VetoSim),
+        std::sync::Arc::new(round_diff_rating::RoundDiffRating),
     ];
     signals.extend(roster::candidates());
     signals.extend(match_context::registry());

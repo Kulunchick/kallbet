@@ -5,12 +5,17 @@
 //! ```text
 //! kallbet-ai lab [--archive DIR] [--out DIR] [--seed N] [--resamples N] [--signal NAME]...
 //!               [--catch-up-trials N] [--pickem-simulations N]
+//!               [--tiers s,a] [--train-tiers s,a]
 //!               [--llm FILE --budget NAME=RUNS...] [--answers FILE] [--training-cutoff RFC3339]
 //! ```
 //!
 //! `--catch-up-trials` (default 2000) and `--pickem-simulations` (default
 //! 5000) size the catch-up and Pick'em experiments' own simulations; the
 //! protocol's verdicts do not depend on them.
+//!
+//! `--tiers` restricts the evaluated Events to those PandaScore tiers and
+//! `--train-tiers` the Events a fit may use (default: all); the report always
+//! adds the tier-S slice as a secondary view (ticket #55).
 //!
 //! The LLM track (`llm.rs`, ticket #43) runs only with `--llm` (providers,
 //! which need a `--budget` each) or `--answers` (recorded answers, no call).
@@ -22,7 +27,7 @@ use std::path::PathBuf;
 use tracing::info;
 
 pub const USAGE: &str = "usage: kallbet-ai lab [--archive DIR] [--out DIR] [--seed N] \
-[--resamples N] [--signal NAME]... [--catch-up-trials N] [--pickem-simulations N] \
+[--resamples N] [--signal NAME]... [--catch-up-trials N] [--pickem-simulations N] [--tiers s,a] [--train-tiers s,a] \
 [--llm FILE --budget NAME=RUNS...] [--answers FILE] [--training-cutoff RFC3339]";
 
 #[derive(Debug, PartialEq)]
@@ -38,6 +43,7 @@ pub struct Options {
     /// Swiss Monte-Carlo runs per Pick'em of the Pick'em comparison.
     pub pickem_simulations: usize,
     pub llm: super::llm::Options,
+    pub tiers: super::runner::TierFilter,
 }
 impl Default for Options {
     fn default() -> Self {
@@ -50,6 +56,7 @@ impl Default for Options {
             catch_up_trials: 2000,
             pickem_simulations: super::pickem::PickemOptions::default().simulations,
             llm: Default::default(),
+            tiers: Default::default(),
         }
     }
 }
@@ -75,6 +82,8 @@ pub fn parse(args: &[String]) -> Result<Options> {
                 o.resamples = Some(n);
             }
             "--signal" => o.signals.push(value()?),
+            "--tiers" => o.tiers.evaluate = Some(super::runner::TierFilter::parse(&value()?)?),
+            "--train-tiers" => o.tiers.train = Some(super::runner::TierFilter::parse(&value()?)?),
             "--catch-up-trials" => o.catch_up_trials = value()?.parse()?,
             "--pickem-simulations" => o.pickem_simulations = value()?.parse()?,
             flag if super::llm::FLAGS.contains(&flag) => o.llm.set(flag, value()?)?,
@@ -109,6 +118,7 @@ pub async fn run(args: &[String]) -> Result<String> {
     if !chosen.is_empty() {
         lab.signals = chosen;
     }
+    lab.tiers = o.tiers.clone();
     if let Some(seed) = o.seed {
         lab.protocol.seed = seed;
     }
