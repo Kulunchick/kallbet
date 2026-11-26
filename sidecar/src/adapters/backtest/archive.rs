@@ -168,6 +168,48 @@ pub struct ReplayArchive {
 }
 
 /// Reads a file, inflating it when its name ends in `.gz`.
+impl ReplayArchive {
+    /// The archive without the Stages in `stages`, their Matches' played maps
+    /// and vetoes, and the HLTV records linked to their Matches.
+    pub fn without_stages(&self, stages: &BTreeSet<i64>) -> ReplayArchive {
+        let linker = super::player_history::Linker::new(self);
+        let removed: BTreeSet<i64> = self
+            .stages
+            .iter()
+            .filter(|s| stages.contains(&s.id))
+            .flat_map(|s| s.matches.iter().map(|m| m.game.id))
+            .collect();
+        ReplayArchive {
+            stages: self
+                .stages
+                .iter()
+                .filter(|s| !stages.contains(&s.id))
+                .cloned()
+                .collect(),
+            match_context: self.match_context.clone(),
+            standings: self.standings.clone(),
+            fixture_lists: self.fixture_lists.clone(),
+            histories: self.histories.clone(),
+            polymarket_events: self.polymarket_events.clone(),
+            polymarket_histories: self.polymarket_histories.clone(),
+            kalshi_markets: self.kalshi_markets.clone(),
+            kalshi_candles: self.kalshi_candles.clone(),
+            event_pages: self.event_pages.clone(),
+            event_titles: self.event_titles.clone(),
+            hltv_matches: self
+                .hltv_matches
+                .iter()
+                .filter(|r| linker.link(r).is_none_or(|(id, _)| !removed.contains(&id)))
+                .cloned()
+                .collect(),
+            map_history: self.map_history.without_stages(stages),
+            veto_history: self.veto_history.without_stages(stages),
+            digest: self.digest.clone(),
+            files: self.files,
+        }
+    }
+}
+
 pub fn read_file(path: &Path) -> Result<Vec<u8>> {
     let raw = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
     if path.extension().is_some_and(|e| e == "gz") {

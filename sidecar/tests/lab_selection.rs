@@ -613,3 +613,58 @@ async fn holdout_results_reach_no_training_view_through_the_history() {
     assert!(!singapore.is_empty());
     assert_eq!(plain.predictions, reversed.predictions);
 }
+
+/// The replay's Valve rating, failing for the Matches in `broken`.
+struct BrokenFor {
+    inner: Arc<dyn SignalEstimator>,
+    broken: BTreeSet<i64>,
+}
+#[async_trait::async_trait]
+impl SignalEstimator for BrokenFor {
+    async fn signal(&self, game: &Match, cutoff: Instant) -> Result<Option<AsOf<Signal>>> {
+        if self.broken.contains(&game.id) {
+            return Err("the rating port is down for this Match".into());
+        }
+        self.inner.signal(game, cutoff).await
+    }
+}
+
+// Finding 20 (review of 6eea194): the final step is the first to read the
+// Holdout. A port failing only for a Holdout Match does not stop the
+// training side's evaluation and selection, and what a Candidate Signal is
+// told the archive holds (`missing_data`) is the training side only.
+#[tokio::test]
+async fn the_holdout_is_read_only_by_the_final_step() {
+    let archive = whole();
+    let mut lab = lab_with_holdout(archive);
+    let holdout = lab.holdout_matches(&lab.holdout_stages());
+    assert!(!holdout.is_empty());
+    let replay = kallbet_ai::adapters::backtest::Feeds::replay(&lab.archive).unwrap();
+    lab.feeds = kallbet_ai::adapters::backtest::Feeds {
+        signal: Arc::new(BrokenFor {
+            inner: replay.signal.clone(),
+            broken: holdout,
+        }),
+        ..replay
+    };
+    let fitted_on = recorded(&mut lab);
+    let err = lab.run().await.err().expect("the final step fails");
+    assert!(err.to_string().contains("port is down"), "{err}");
+    assert!(!fitted_on.lock().unwrap().is_empty(), "the training side ran first");
+
+    // One training Match: head-to-head has no history to read, whatever the
+    // Holdout holds.
+    let mut archive = whole();
+    let first = archive.stages.iter_mut().find(|s| s.id == 13056).unwrap();
+    first.matches.truncate(1);
+    let mut lab = Lab::new(archive).unwrap();
+    lab.holdout = Holdout {
+        from: "2000-01-01T00:00:00Z".parse().unwrap(),
+        training_stages: vec![13056],
+    };
+    lab.signals = vec![signals::by_name("head_to_head").unwrap()];
+    let outcome = lab.run().await.unwrap();
+    let c = candidate(&outcome, "head_to_head");
+    assert_eq!(c.verdict, Verdict::NotTestable);
+    assert!(c.reason.contains("fewer than two"), "{}", c.reason);
+}

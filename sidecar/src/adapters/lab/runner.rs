@@ -72,10 +72,9 @@ impl Event {
     }
 }
 
-/// The training side and, apart, the Holdout.
+/// The training side, and the Holdout's Stages (not read yet).
 pub(super) struct Split {
     pub(super) training: Vec<Event>,
-    pub(super) holdout: Vec<Event>,
     /// The Holdout Stages of the archive, for the report.
     pub(super) holdout_stages: Vec<String>,
 }
@@ -273,7 +272,7 @@ impl Lab {
     }
 
     /// The PandaScore ids of the Matches of `stages`.
-    pub(crate) fn holdout_matches(&self, stages: &BTreeSet<i64>) -> BTreeSet<i64> {
+    pub fn holdout_matches(&self, stages: &BTreeSet<i64>) -> BTreeSet<i64> {
         self.archive
             .stages
             .iter()
@@ -282,8 +281,31 @@ impl Lab {
             .collect()
     }
 
-    /// The archive's Events, the Holdout's Stages kept apart from the training side.
+    /// The training side's Events, and the Holdout's Stages by name; the
+    /// Holdout's Matches are not read here (`holdout_events`, the final step).
     pub(super) async fn events(&self) -> Result<Split> {
+        let holdout_ids = self.holdout_stages();
+        let holdout_stages = self
+            .archive
+            .stages
+            .iter()
+            .filter(|s| holdout_ids.contains(&s.id))
+            .map(|s| format!("{}: {} ({} scored)", s.event, s.name, s.matches.len()))
+            .collect();
+        Ok(Split {
+            training: self.side(false, &holdout_ids).await?,
+            holdout_stages,
+        })
+    }
+
+    /// The Holdout's Events, read once the selection is frozen.
+    pub(super) async fn holdout_events(&self) -> Result<Vec<Event>> {
+        self.side(true, &self.holdout_stages()).await
+    }
+
+    /// The Events of one side of the boundary, each Match read at its cutoff.
+    /// A training-side view holds no Holdout Match in any history.
+    async fn side(&self, holdout_side: bool, holdout_ids: &BTreeSet<i64>) -> Result<Vec<Event>> {
         let rosters = self
             .signals
             .iter()
@@ -291,24 +313,19 @@ impl Lab {
             .then(|| RosterHistory::new(&self.archive))
             .transpose()?;
         let ends = self.event_ends();
-        let holdout_ids = self.holdout_stages();
-        let hidden = self.holdout_matches(&holdout_ids);
-        let shown = BTreeSet::new();
-        let map_history = self.archive.map_history.without_stages(&holdout_ids);
-        let veto_history = self.archive.veto_history.without_stages(&holdout_ids);
-        let mut sides: [BTreeMap<i64, Event>; 2] = [BTreeMap::new(), BTreeMap::new()];
-        let mut holdout_stages = vec![];
+        let hidden = if holdout_side {
+            BTreeSet::new()
+        } else {
+            self.holdout_matches(holdout_ids)
+        };
+        let excluded = if holdout_side { BTreeSet::new() } else { holdout_ids.clone() };
+        let map_history = self.archive.map_history.without_stages(&excluded);
+        let veto_history = self.archive.veto_history.without_stages(&excluded);
+        let mut by_id: BTreeMap<i64, Event> = BTreeMap::new();
         for stage in &self.archive.stages {
-            let in_holdout = holdout_ids.contains(&stage.id);
-            if in_holdout {
-                holdout_stages.push(format!(
-                    "{}: {} ({} scored)",
-                    stage.event,
-                    stage.name,
-                    stage.matches.len()
-                ));
+            if holdout_ids.contains(&stage.id) != holdout_side {
+                continue;
             }
-            let by_id = &mut sides[usize::from(in_holdout)];
             let event = by_id.entry(stage.event_id).or_insert_with(|| Event {
                 info: EventInfo {
                     id: stage.event_id,
@@ -324,8 +341,7 @@ impl Lab {
             event.info.begins = event.info.begins.min(stage.cutoff);
             for m in &stage.matches {
                 event.info.ends = event.info.ends.max(m.known_finish().unwrap_or(m.finished_at));
-                let hide = if in_holdout { &shown } else { &hidden };
-                let mut view = self.view(stage, m, rosters.as_ref(), hide).await?;
+                let mut view = self.view(stage, m, rosters.as_ref(), &hidden).await?;
                 view.map_history = map_history.before(view.cutoff);
                 view.veto_history = veto_history.before(view.cutoff);
                 event.matches.push(Observed {
@@ -334,19 +350,12 @@ impl Lab {
                 });
             }
         }
-        let [training, holdout] = sides.map(|by_id| {
-            let mut events: Vec<Event> = by_id.into_values().collect();
-            for e in &mut events {
-                e.info.matches = e.matches.len();
-            }
-            events.sort_by_key(|e| (e.info.begins, e.info.id));
-            events
-        });
-        Ok(Split {
-            training,
-            holdout,
-            holdout_stages,
-        })
+        let mut events: Vec<Event> = by_id.into_values().collect();
+        for e in &mut events {
+            e.info.matches = e.matches.len();
+        }
+        events.sort_by_key(|e| (e.info.begins, e.info.id));
+        Ok(events)
     }
 
     /// Runs the protocol. Any datum observed at or after its Match's cutoff,
@@ -359,14 +368,16 @@ impl Lab {
     pub async fn run(&self) -> Result<LabOutcome> {
         let Split {
             training: events,
-            holdout,
             holdout_stages,
         } = self.events().await?;
+        // What a Candidate Signal is told the archive holds: the training side.
+        let training_archive = self.archive.without_stages(&self.holdout_stages());
         let mut predictions = Vec::new();
         let mut candidates = Vec::new();
         let mut fitted = Vec::new();
         for signal in &self.signals {
-            let (report, rows, fits) = self.evaluate(signal.as_ref(), &events)?;
+            let (report, rows, fits) =
+                self.evaluate(signal.as_ref(), &events, &training_archive)?;
             if report.verdict == Verdict::Promote {
                 fitted.push((signal.clone(), fits));
             }
@@ -408,6 +419,8 @@ impl Lab {
                 serde_json::to_value(selection::deployment_combiner(&events, &frozen)?)?,
             );
         }
+        // The selection is frozen: only now are the Holdout's Matches read.
+        let holdout = self.holdout_events().await?;
         let evaluated = selection::holdout(
             &self.holdout,
             &events,
@@ -454,12 +467,13 @@ impl Lab {
         &self,
         signal: &dyn CandidateSignal,
         events: &[Event],
+        archive: &ReplayArchive,
     ) -> Result<(
         CandidateReport,
         Vec<LabPrediction>,
         Vec<Box<dyn FittedSignal>>,
     )> {
-        let missing = signal.missing_data(&self.archive);
+        let missing = signal.missing_data(archive);
         let mut rows = Vec::new();
         let mut fits = Vec::new();
         // (event, a won, baseline, variant, has market) of every paired Match.

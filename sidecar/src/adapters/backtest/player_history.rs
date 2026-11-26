@@ -29,13 +29,13 @@ fn canonical_pair(a: &str, b: &str) -> (String, String) {
     if ka <= kb { (ka, kb) } else { (kb, ka) }
 }
 
-/// `PlayerStatsHistory` backed by the HLTV match records in a `ReplayArchive`.
-pub struct ReplayPlayerHistory {
-    by_player: BTreeMap<String, Arc<[AsOf<PlayerAppearance>]>>,
+/// Links HLTV records to the archive's PandaScore Matches: same team pair,
+/// nearest start within ±6 h.
+pub(super) struct Linker {
+    by_pair: BTreeMap<(String, String), Vec<(Instant, i64, Option<Instant>)>>,
 }
-
-impl ReplayPlayerHistory {
-    pub fn new(archive: &ReplayArchive) -> Self {
+impl Linker {
+    pub(super) fn new(archive: &ReplayArchive) -> Self {
         let mut by_pair: BTreeMap<(String, String), Vec<(Instant, i64, Option<Instant>)>> =
             BTreeMap::new();
         for stage in &archive.stages {
@@ -47,8 +47,30 @@ impl ReplayPlayerHistory {
                     .push((m.actual_start, m.game.id, m.known_finish()));
             }
         }
-
+        Self { by_pair }
+    }
+    /// The linked Match's id and its known finish.
+    pub(super) fn link(&self, rec: &HltvMatchRecord) -> Option<(i64, Option<Instant>)> {
         let window = Duration::hours(MATCH_WINDOW_HOURS);
+        let pair = canonical_pair(&rec.team_a.name, &rec.team_b.name);
+        self.by_pair.get(&pair).and_then(|candidates| {
+            candidates
+                .iter()
+                .filter(|(actual, _, _)| (*actual - rec.started_at).abs() <= window)
+                .min_by_key(|(actual, _, _)| (*actual - rec.started_at).abs())
+                .map(|(_, id, finished)| (*id, *finished))
+        })
+    }
+}
+
+/// `PlayerStatsHistory` backed by the HLTV match records in a `ReplayArchive`.
+pub struct ReplayPlayerHistory {
+    by_player: BTreeMap<String, Arc<[AsOf<PlayerAppearance>]>>,
+}
+
+impl ReplayPlayerHistory {
+    pub fn new(archive: &ReplayArchive) -> Self {
+        let linker = Linker::new(archive);
         let mut seen_match_ids = BTreeSet::new();
         let mut per_player: BTreeMap<String, Vec<AsOf<PlayerAppearance>>> = BTreeMap::new();
 
@@ -57,15 +79,7 @@ impl ReplayPlayerHistory {
                 continue;
             }
             let format = parse_format(&rec.format);
-            let pair = canonical_pair(&rec.team_a.name, &rec.team_b.name);
-            let matched_finish = by_pair.get(&pair).and_then(|candidates| {
-                candidates
-                    .iter()
-                    .filter(|(actual, _, _)| (*actual - rec.started_at).abs() <= window)
-                    .min_by_key(|(actual, _, _)| (*actual - rec.started_at).abs())
-                    .and_then(|(_, id, finished)| Some((*id, (*finished)?)))
-            });
-            let Some((match_id, finished_at)) = matched_finish else {
+            let Some((match_id, Some(finished_at))) = linker.link(rec) else {
                 continue;
             };
             let maps_played = rec.maps.iter().filter(|m| m.played).count().max(1) as u8;
