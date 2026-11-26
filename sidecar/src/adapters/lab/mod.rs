@@ -18,6 +18,7 @@
 //! - **Registry** (`signals`): a Candidate Signal is one module registered by
 //!   name. Adding one touches neither the protocol nor the scheduler.
 pub mod cli;
+pub mod leagues;
 pub mod report;
 pub mod runner;
 pub mod runs;
