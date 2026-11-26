@@ -105,6 +105,25 @@ pub struct EventInfo {
     pub matches: usize,
 }
 
+/// The tier view of the report (ticket #55): a secondary slice, chosen after
+/// results were seen, so it never decides a promotion.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct TierView {
+    /// Tiers whose Events were evaluated in the main columns (`all`: no filter).
+    pub evaluated: String,
+    /// Tiers whose Events may train a fit (`all`: no filter).
+    pub train: String,
+    /// The slice's tiers.
+    pub slice: String,
+    /// Scored Matches per archived tier, over the training side.
+    pub matches_by_tier: std::collections::BTreeMap<String, usize>,
+    /// Events whose archived payload names no tier: never in a tier slice,
+    /// listed here with their scored Matches ("title: n").
+    pub untiered: Vec<String>,
+    /// Every Candidate Signal on the slice, in report order.
+    pub candidates: Vec<CandidateReport>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct LabReport {
     pub protocol_version: String,
@@ -125,6 +144,8 @@ pub struct LabReport {
     pub selection: SelectionReport,
     /// The frozen combination on the Holdout, the final step (ticket #37).
     pub holdout: HoldoutReport,
+    /// The secondary tier view (ticket #55).
+    pub tier_view: TierView,
 }
 
 /// The combination's combiner as fitted for one Event.
@@ -232,6 +253,59 @@ fn num(v: Option<f64>) -> String {
 }
 
 impl LabReport {
+    /// The tier-S column next to the full verdicts.
+    fn tier_markdown(&self, md: &mut String) {
+        let v = &self.tier_view;
+        let level = (self.level * 100.0).round();
+        let _ = writeln!(md, "
+## Tier slice `{}` (secondary view)
+", v.slice);
+        let counts: Vec<String> = v
+            .matches_by_tier
+            .iter()
+            .map(|(t, n)| format!("tier {t}: {n}"))
+            .collect();
+        let _ = writeln!(
+            md,
+            "The slice was chosen after results were seen, so it is a secondary view: the              verdict that counts for promotion is the full-archive one above, and the Holdout              is unchanged. Main columns evaluate tiers `{}`; fits may use Events of tiers `{}`;              the slice evaluates `{}`, fitted walk-forward as before. Scored Matches: {}.",
+            v.evaluated,
+            v.train,
+            v.slice,
+            counts.join(", ")
+        );
+        if !v.untiered.is_empty() {
+            let _ = writeln!(
+                md,
+                "
+Events with no archived tier (never in a tier slice): {}.",
+                v.untiered.join("; ")
+            );
+        }
+        let _ = writeln!(
+            md,
+            "
+| Candidate Signal | Verdict (full) | Paired (full) | Verdict (`{}`) | Paired |              Events | Δ log-loss | {level}% interval |",
+            v.slice
+        );
+        let _ = writeln!(md, "|---|---|---|---|---|---|---|---|");
+        for c in &v.candidates {
+            let full = self.candidates.iter().find(|f| f.name == c.name);
+            let _ = writeln!(
+                md,
+                "| `{}` | {} | {} | {} | {} | {} | {} | {} |",
+                c.name,
+                full.map_or("—", |f| f.verdict.as_str()),
+                full.map_or(0, |f| f.paired),
+                c.verdict.as_str(),
+                c.paired,
+                c.events,
+                num(c.difference.map(|d| d.log_loss)),
+                c.interval
+                    .map_or("—".into(), |i| format!("[{:+.4}, {:+.4}]", i.low, i.high)),
+            );
+        }
+    }
+
     pub fn markdown(&self) -> String {
         let mut md = String::new();
         let level = (self.level * 100.0).round();
@@ -299,6 +373,7 @@ impl LabReport {
                 )),
             );
         }
+        self.tier_markdown(&mut md);
         for c in &self.candidates {
             let note = if c.added_after_list_fixed {
                 " (added after list fixed)"

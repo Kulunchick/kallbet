@@ -80,6 +80,9 @@ pub struct ReplayStage {
     pub event_id: i64,
     /// "IEM Cologne Major 2026".
     pub event: String,
+    /// PandaScore tier of the Stage's tournament ("s", "a", ...), lowercase;
+    /// `None`: the saved payload names none.
+    pub tier: Option<String>,
     /// "Stage 1", "Playoffs".
     pub name: String,
     pub kind: StageKind,
@@ -632,6 +635,10 @@ fn stage_from_pandascore(
         id,
         event_id,
         event,
+        tier: first["tournament"]["tier"]
+            .as_str()
+            .map(|t| t.trim().to_lowercase())
+            .filter(|t| !t.is_empty()),
         name,
         kind,
         teams,
