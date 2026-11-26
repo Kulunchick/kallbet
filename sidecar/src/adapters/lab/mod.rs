@@ -18,15 +18,20 @@
 //! - **Registry** (`signals`): a Candidate Signal is one module registered by
 //!   name. Adding one touches neither the protocol nor the scheduler.
 pub mod cli;
+pub mod combiner;
+pub mod holdout;
 pub mod leagues;
 pub mod report;
 pub mod runner;
 pub mod runs;
+pub mod selection;
 pub mod signals;
 pub mod stats;
 
+pub use holdout::Holdout;
 pub use report::{
-    CandidateReport, DirectComparison, EventInfo, EventRow, LabReport, MarketSubset, Metrics,
+    CandidateReport, DirectComparison, EventInfo, EventRow, HoldoutReport, HoldoutStatus,
+    LabReport, MarketSubset, Metrics, SelectionReport,
 };
 pub use runner::{Lab, LabOutcome, LabPrediction};
 pub use runs::{LabRun, record_lab_run};
@@ -35,7 +40,7 @@ pub use signals::{CandidateSignal, FittedSignal, MatchView, Observed};
 /// The protocol's version, named in every report and run record. Bump it when
 /// the metric, the resampling, the verdict rule or the walk-forward boundary
 /// changes; a new Candidate Signal does not change it.
-pub const PROTOCOL_VERSION: &str = "signal-lab/1";
+pub const PROTOCOL_VERSION: &str = "signal-lab/2";
 
 /// The fixed settings of the protocol (spec #33, "Protocol").
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
