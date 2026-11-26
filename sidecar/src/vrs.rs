@@ -66,15 +66,23 @@ impl Standings {
         let rd = 75.0 * 10f64.ln() / (400.0 * std::f64::consts::PI);
         let g = (1.0 + 3.0 * rd.powi(2)).sqrt().recip();
         let p = (1.0 + 10f64.powf(g * (f64::from(*b) - f64::from(*a)) / 400.0)).recip();
-        let series = match format {
-            Format::Bo1 => p,
-            Format::Bo3 => p * p * (3. - 2. * p),
-            Format::Bo5 => p.powi(3) * (10. - 15. * p + 6. * p * p),
-        };
         Ok(Some(AsOf::new(
-            Signal { map: p, series },
+            Signal {
+                map: p,
+                series: series_probability(p, format),
+            },
             s.observed,
             cutoff,
         )?))
+    }
+}
+
+/// Team A's series-win probability from its map-win probability `p`, maps
+/// taken as independent: Bo1 `p`, Bo3 first to two, Bo5 first to three.
+pub fn series_probability(p: f64, format: Format) -> f64 {
+    match format {
+        Format::Bo1 => p,
+        Format::Bo3 => p * p * (3. - 2. * p),
+        Format::Bo5 => p.powi(3) * (10. - 15. * p + 6. * p * p),
     }
 }

@@ -4,6 +4,8 @@
 //! kallbet-ai [run] [--once]   the periodic loop (the default); --once = one tick, then exit
 //! kallbet-ai health           exit 0 when the heartbeat file says the loop is alive
 //! kallbet-ai backtest ...     retrospective benchmark (ticket #31)
+//! kallbet-ai lab ...          Signal Lab: Candidate Signals under the fixed protocol (ticket #34)
+//! kallbet-ai hltv-collect ... offline historical HLTV match collector (ticket #36)
 //! ```
 use super::{
     logging,
@@ -15,7 +17,7 @@ use crate::{adapters::baseline::SystemClock, *};
 use std::process::ExitCode;
 use tracing::{info, warn};
 
-pub const USAGE: &str = "usage: kallbet-ai [run [--once] | health | backtest ... | hltv-collect ...]\n\
+pub const USAGE: &str = "usage: kallbet-ai [run [--once] | health | backtest ... | lab ... | hltv-collect ...]\n\
 configuration: SIDECAR_CONFIG (JSON file), KALLBET_BOT_SECRET and the SIDECAR_* variables;\n\
 see docs/sidecar.md";
 
@@ -24,6 +26,7 @@ pub enum Command {
     Run { once: bool },
     Health,
     Backtest(Vec<String>),
+    Lab(Vec<String>),
     HltvCollect(Vec<String>),
     Help,
 }
@@ -38,6 +41,7 @@ pub fn parse(args: &[String]) -> Result<Command> {
         },
         Some("health") => Ok(Command::Health),
         Some("backtest") => Ok(Command::Backtest(args.map(String::from).collect())),
+        Some("lab") => Ok(Command::Lab(args.map(String::from).collect())),
         Some("hltv-collect") => Ok(Command::HltvCollect(args.map(String::from).collect())),
         Some("help" | "--help" | "-h") => Ok(Command::Help),
         Some(other) => Err(format!("unknown command {other:?}").into()),
@@ -69,6 +73,7 @@ async fn execute(args: Vec<String>, redactor: &Redactor) -> Result<ExitCode> {
         }
         Command::Health => health(&Settings::from_env()?),
         Command::Backtest(args) => backtest(&args, redactor).await,
+        Command::Lab(args) => lab(&args, redactor).await,
         Command::HltvCollect(args) => hltv_collect(&args, redactor).await,
         Command::Run { once } => run(Settings::from_env()?, once, redactor).await,
     }
@@ -99,6 +104,20 @@ async fn backtest(args: &[String], redactor: &Redactor) -> Result<ExitCode> {
     )?;
     tracing::subscriber::set_global_default(subscriber)?;
     println!("{}", crate::adapters::backtest::cli::run(args).await?);
+    Ok(ExitCode::SUCCESS)
+}
+
+/// The Signal Lab (ticket #34); logs go to stderr through the redactor.
+async fn lab(args: &[String], redactor: &Redactor) -> Result<ExitCode> {
+    let filter = std::env::var("SIDECAR_LOG").unwrap_or_else(|_| "info".into());
+    let subscriber = logging::subscriber(
+        redactor.clone(),
+        stderr_sink(),
+        &filter,
+        super::settings::LogFormat::Text,
+    )?;
+    tracing::subscriber::set_global_default(subscriber)?;
+    println!("{}", crate::adapters::lab::cli::run(args).await?);
     Ok(ExitCode::SUCCESS)
 }
 
