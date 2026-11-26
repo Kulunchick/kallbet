@@ -176,3 +176,50 @@ pub(super) fn link_stage(
         .map(|entry| (stage.id, entry))
         .collect()
 }
+
+/// Links a serie's post-Match pages (ticket #48: the #36 collector keeps them
+/// per PandaScore serie, not per Stage) to the serie's Stages. Each Stage is
+/// linked against every page as `link_stage` does; a Match two pages describe
+/// differently, or the same played maps landing in two Stages (a rematch with
+/// the same score read off the other Stage's page), is ambiguous and dropped.
+pub(super) fn link_serie(
+    stages: &[&ReplayStage],
+    pages: &[LiquipediaStageMaps],
+) -> Vec<(i64, AsOf<PlayedMaps>)> {
+    type Key = (String, String, Vec<(String, bool)>);
+    let key = |entry: &AsOf<PlayedMaps>| -> Key {
+        let m = entry
+            .at(Instant::MAX_UTC)
+            .expect("a finished Match is observed before the end of time");
+        (m.team_a.clone(), m.team_b.clone(), m.results.clone())
+    };
+    // (stage, pair, finish) identifies a replay Match within its Stage.
+    let mut by_match: BTreeMap<(i64, String, String, Instant), Option<AsOf<PlayedMaps>>> =
+        BTreeMap::new();
+    for stage in stages {
+        for page in pages {
+            for (stage_id, entry) in link_stage(stage, page.clone()) {
+                let (a, b, _) = key(&entry);
+                let id = (stage_id, a, b, entry.observed_at());
+                match by_match.get_mut(&id) {
+                    None => {
+                        by_match.insert(id, Some(entry));
+                    }
+                    Some(Some(seen)) if key(seen) == key(&entry) => {}
+                    Some(slot) => *slot = None,
+                }
+            }
+        }
+    }
+    let mut stages_of: BTreeMap<Key, BTreeSet<i64>> = BTreeMap::new();
+    for ((stage, ..), entry) in &by_match {
+        if let Some(entry) = entry {
+            stages_of.entry(key(entry)).or_default().insert(*stage);
+        }
+    }
+    by_match
+        .into_iter()
+        .filter_map(|((stage, ..), entry)| Some((stage, entry?)))
+        .filter(|(_, entry)| stages_of[&key(entry)].len() == 1)
+        .collect()
+}

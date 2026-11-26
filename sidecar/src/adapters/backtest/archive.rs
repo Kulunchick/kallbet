@@ -337,6 +337,7 @@ impl ReplayArchive {
             }
         }
         load_hltv_dir(dir, &mut archive, &mut digest)?;
+        let serie_maps = load_liquipedia_bundles(dir, &mut archive, &mut digest)?;
         archive
             .hltv_matches
             .sort_by_key(|r| (r.started_at, r.match_id));
@@ -346,6 +347,7 @@ impl ReplayArchive {
         }
         archive.digest = hex::encode(digest.finalize());
         let mut map_matches = Vec::new();
+        let mut with_map_file = BTreeSet::new();
         for (id, rows) in matches {
             let stage = stage_from_pandascore(id, &rows, stage_pages.get(&id))?;
             for row in &rows {
@@ -365,8 +367,17 @@ impl ReplayArchive {
             }
             if let Some(page) = map_pages.remove(&id) {
                 map_matches.extend(super::map_history::link_stage(&stage, page));
+                with_map_file.insert(stage.id);
             }
             archive.stages.push(stage);
+        }
+        for (serie, pages) in serie_maps {
+            let stages: Vec<_> = archive
+                .stages
+                .iter()
+                .filter(|s| s.event_id == serie && !with_map_file.contains(&s.id))
+                .collect();
+            map_matches.extend(super::map_history::link_serie(&stages, &pages));
         }
         for (&event_id, title) in &archive.event_titles {
             for page in archive.event_pages.get(title).into_iter().flatten() {
@@ -742,6 +753,63 @@ fn hltv_id_from_name(name: &str) -> Option<i64> {
         .next()?
         .parse()
         .ok()
+}
+
+/// Loads the #36 map collector's post-Match Liquipedia revisions,
+/// `<archive>/hltv/liquipedia/event-<PandaScore serie>.json[.gz]` (one
+/// MediaWiki response with a page per Stage page), split into one parsed page
+/// each and keyed by serie. A page without a parsable Stage is skipped: it is
+/// coverage the report shows, not an error.
+fn load_liquipedia_bundles(
+    dir: &Path,
+    archive: &mut ReplayArchive,
+    digest: &mut Sha256,
+) -> Result<BTreeMap<i64, Vec<crate::adapters::hltv_research::archive::LiquipediaStageMaps>>> {
+    let folder = dir.join("hltv").join("liquipedia");
+    let mut out = BTreeMap::new();
+    if !folder.is_dir() {
+        return Ok(out);
+    }
+    let mut paths = Vec::new();
+    for entry in std::fs::read_dir(&folder)? {
+        let entry = entry?;
+        if entry.file_type()?.is_file() {
+            paths.push(entry.path());
+        }
+    }
+    paths.sort();
+    for path in paths {
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        let stem = name.trim_end_matches(".gz");
+        let Some(serie) = stem
+            .strip_prefix("event-")
+            .and_then(|s| s.strip_suffix(".json"))
+            .and_then(|s| s.parse::<i64>().ok())
+        else {
+            continue;
+        };
+        let bytes = read_file(&path)?;
+        digest.update(b"hltv/liquipedia/");
+        digest.update(stem.as_bytes());
+        digest.update(&bytes);
+        archive.files += 1;
+        let value: Value =
+            serde_json::from_slice(&bytes).map_err(|e| format!("{name}: not JSON ({e})"))?;
+        let pages = value["query"]["pages"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        let parsed: &mut Vec<_> = out.entry(serie).or_default();
+        for page in pages {
+            let single = serde_json::json!({ "query": { "pages": [page] } }).to_string();
+            if let Ok(maps) =
+                crate::adapters::hltv_research::liquipedia_maps::parse_stage_maps(&single)
+            {
+                parsed.push(maps);
+            }
+        }
+    }
+    Ok(out)
 }
 
 /// Loads saved `HltvMatchRecord` JSONs (or raw `.html.gz` match pages when no
