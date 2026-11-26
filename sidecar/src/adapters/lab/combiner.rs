@@ -182,6 +182,15 @@ fn dot(a: &[f64], b: &[f64]) -> f64 {
 
 /// Minimises `Σ log-loss(σ(w·x), y) + λ/2 · |w − prior|²`, starting at `prior`.
 pub fn ridge_logistic(rows: &[(Vec<f64>, bool)], prior: &[f64], lambda: f64) -> Vec<f64> {
+    let rows: Vec<_> = rows.iter().map(|(x, won)| (0.0, x.as_slice(), *won)).collect();
+    ridge_logistic_with_offset(&rows, prior, lambda)
+}
+
+pub(super) fn ridge_logistic_with_offset(
+    rows: &[(f64, &[f64], bool)],
+    prior: &[f64],
+    lambda: f64,
+) -> Vec<f64> {
     let k = prior.len();
     let mut w = prior.to_vec();
     if rows.is_empty() || k == 0 {
@@ -193,8 +202,8 @@ pub fn ridge_logistic(rows: &[(Vec<f64>, bool)], prior: &[f64], lambda: f64) -> 
         for (j, row) in h.iter_mut().enumerate() {
             row[j] = lambda;
         }
-        for (x, won) in rows {
-            let p = sigmoid(dot(&w, x));
+        for (offset, x, won) in rows {
+            let p = sigmoid(offset + dot(&w, x));
             let r = p - f64::from(u8::from(*won));
             let s = p * (1.0 - p);
             for a in 0..k {

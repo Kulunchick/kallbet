@@ -32,6 +32,8 @@ pub struct ReplayMatch {
     pub maps_score: Option<(u32, u32)>,
     /// The Swiss round from PandaScore's name ("Round 3: ..."), if any.
     pub round: Option<u32>,
+    /// Bracket round name, if provided by the source.
+    pub bracket_round: Option<super::match_context::BracketRound>,
 }
 impl ReplayMatch {
     pub fn cutoff(&self) -> Instant {
@@ -107,6 +109,7 @@ pub struct WikiRevision {
 #[derive(Default)]
 pub struct ReplayArchive {
     pub stages: Vec<ReplayStage>,
+    pub match_context: super::match_context::ArchiveContext,
     /// Valve global standings Markdown, in the form `vrs::Standings` reads.
     pub standings: Vec<String>,
     /// OddsPapi settled `/v4/fixtures` responses.
@@ -311,6 +314,12 @@ impl ReplayArchive {
         archive.digest = hex::encode(digest.finalize());
         for (id, rows) in matches {
             let stage = stage_from_pandascore(id, &rows, stage_pages.get(&id))?;
+            for row in &rows {
+                archive.match_context.pandascore(stage.id, row);
+            }
+            if let Some(page) = stage_pages.get(&id) {
+                archive.match_context.wiki(stage.event_id, page)?;
+            }
             if let Some(page) = stage_pages.get(&id) {
                 // `PGL/2026/Singapore/Stage 1` belongs to the Event page `PGL/2026/Singapore`;
                 // a Playoffs bracket may live on the Event page itself.
@@ -322,6 +331,12 @@ impl ReplayArchive {
             }
             archive.stages.push(stage);
         }
+        for (&event_id, title) in &archive.event_titles {
+            for page in archive.event_pages.get(title).into_iter().flatten() {
+                archive.match_context.wiki(event_id, page)?;
+            }
+        }
+        archive.match_context.sort();
         archive.stages.sort_by_key(|s| (s.cutoff, s.id));
         Ok(archive)
     }
@@ -454,6 +469,7 @@ fn stage_from_pandascore(
                     winner: w,
                     maps_score,
                     round,
+                    bracket_round: super::match_context::BracketRound::parse(row["name"].as_str()),
                 })
             }
             _ => unscored += 1,

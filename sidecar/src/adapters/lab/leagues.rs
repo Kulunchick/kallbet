@@ -131,7 +131,7 @@ pub async fn report(lab: &Lab, seed: u64, trials: usize) -> Result<String> {
     let mut events = BTreeMap::<i64, Vec<Game>>::new();
     for stage in &lab.archive.stages {
         for m in &stage.matches {
-            let v = lab.view(&m.game, m.cutoff()).await?;
+            let v = lab.view(stage, m).await?;
             events.entry(stage.event_id).or_default().push(Game {
                 cutoff: m.cutoff(),
                 known: (m.finished_at > m.actual_start).then_some(m.finished_at),
