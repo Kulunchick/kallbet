@@ -141,6 +141,7 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(own_rating::OwnRating),
         std::sync::Arc::new(recent_form::RecentForm),
         std::sync::Arc::new(head_to_head::HeadToHead),
+        std::sync::Arc::new(super::llm::LlmAnswers::unrun()),
         std::sync::Arc::new(per_map_rating::PerMapRating),
         std::sync::Arc::new(bo1_veto_sim::Bo1VetoSim),
     ]
