@@ -12,7 +12,7 @@ export function MyLeaguesPage() {
   return (
     <div className="flex flex-col gap-6 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold text-gold-gradient">{t("mine.title")}</h1>
+        <h1 className="font-display text-2xl font-extrabold text-fg">{t("mine.title")}</h1>
         <Link to="/leagues/new" className="btn-primary">
           {t("mine.create")}
         </Link>
@@ -29,18 +29,23 @@ export function MyLeaguesPage() {
             <li key={league.id}>
               <Link
                 to={`/leagues/${league.id}`}
-                className="card flex h-full flex-col gap-2 p-5 transition-shadow hover:glow-emerald"
+                className="card flex h-full flex-col gap-2 p-5 transition-colors duration-[140ms] ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:bg-raised"
               >
                 <span className="text-lg font-bold">{league.name}</span>
                 <span className="text-sm text-mute">{league.event.name}</span>
                 {league.my_place !== null && (
-                  <span className="text-sm font-semibold text-gold-a">
-                    {t("mine.place", { place: league.my_place })} ·{" "}
-                    {t("mine.points", { count: league.my_points })}
+                  <span className="text-sm font-semibold text-mute">
+                    <span className={league.my_place === 1 ? "text-gold-a" : "text-fg"}>
+                      {t("mine.place", { place: league.my_place })}
+                    </span>
+                    {" · "}
+                    <span className="text-gold-a">
+                      {t("mine.points", { count: league.my_points })}
+                    </span>
                   </span>
                 )}
                 {league.my_role === "admin" && (
-                  <span className="text-xs font-semibold uppercase tracking-wide text-gold-a">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-mute">
                     {t("role.admin")}
                   </span>
                 )}
