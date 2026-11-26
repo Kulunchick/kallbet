@@ -27,6 +27,31 @@ class ArchiveTest(unittest.TestCase):
                 valve.assert_called_once()
                 wiki.assert_called_once()
 
+    # Finding 19 (review of 6eea194): the archive command also collects the
+    # market history when given a plan, and reports its requests per source;
+    # without one it says that no market history was collected.
+    def test_the_archive_command_collects_the_market_history_from_its_plan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            plan = Path(tmp) / "plan.json"
+            plan.write_text(json.dumps({"kalshi": [{"min_close": 1, "max_close": 2}]}))
+            base = ["collector", "--archive", tmp, "--panda-cap", "0", "--until", "2024-08-01"]
+            quiet = dict(return_value=None)
+            for extra, market_called in ((["--market-plan", str(plan)], True), ([], False)):
+                with (patch.object(research.sys, "argv", base + extra),
+                      patch.object(research, "collect_panda", **quiet),
+                      patch.object(research, "collect_valve", **quiet),
+                      patch.object(research, "collect_rosters", return_value=[]),
+                      patch.object(research, "collect_market",
+                                   return_value=("kalshi requests: 3 this run", False)) as market,
+                      redirect_stdout(StringIO()) as out, redirect_stderr(StringIO())):
+                    self.assertEqual(research.main(), 0)
+                self.assertEqual(market.called, market_called)
+                if market_called:
+                    self.assertEqual(market.call_args.args[1], plan)
+                    self.assertIn("kalshi requests: 3 this run", out.getvalue())
+                else:
+                    self.assertIn("market: no --market-plan", out.getvalue())
+
     def test_postmatch_stage_collection_uses_one_resumable_liquipedia_request(self):
         body = (Path(__file__).resolve().parents[1] / "tests/fixtures/research"
                 / "liquipedia-cologne-playoffs-postmatch.json").read_bytes()

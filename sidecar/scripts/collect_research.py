@@ -246,6 +246,38 @@ def collect_maps(a, until, titles):
     return missing
 
 
+def collect_market(args, plan):
+    """Run collect_market.py's collection for `plan` into the same archive; return its report
+    (requests per market source) and whether it stopped short (a cap or an error)."""
+    import importlib.util
+    here = Path(__file__).resolve().parent
+    spec = importlib.util.spec_from_file_location("collect_market", here / "collect_market.py")
+    market = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(market)
+    backtest = market.load_backtest_collector()
+    if args.env.exists():
+        backtest.load_secrets(args.env)
+    backtest.REMOTE.update(host=args.ssh_host, key=args.ssh_key, known_hosts=args.known_hosts)
+    collector = market.Collector(
+        args.archive, oddspapi=lambda path, params: backtest.oddspapi(path, params),
+        remote=backtest.remote_get, secrets=backtest.SECRETS.values(),
+        oddspapi_run_cap=args.oddspapi_run_cap, oddspapi_month_cap=args.oddspapi_month_cap,
+        remote_run_cap=args.remote_run_cap)
+    steps = market.load_plan(plan, args.market_tournaments)
+    if steps.get("oddspapi") and backtest.SECRETS.get("ODDSPAPI_API_KEY"):
+        collector.oddspapi_fixtures(steps["oddspapi"])
+        collector.oddspapi_history()
+    elif steps.get("oddspapi"):
+        collector.notes.append("OddsPapi skipped: no ODDSPAPI_API_KEY in the environment file")
+    if steps.get("polymarket") or steps.get("kalshi"):
+        if args.ssh_host:
+            collector.polymarket(steps.get("polymarket", []))
+            collector.kalshi(steps.get("kalshi", []))
+        else:
+            collector.notes.append("Polymarket and Kalshi skipped: no --ssh-host for the approved remote")
+    return collector.report(), bool(collector.notes)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", type=Path, default=ROOT / "target/research-archive")
@@ -257,6 +289,15 @@ def main():
                         help="JSON object mapping PandaScore tournament IDs to verified Liquipedia Stage page titles")
     for source, cap in DEFAULT_CAPS.items():
         parser.add_argument("--" + source + "-cap", type=int, default=cap)
+    parser.add_argument("--market-plan", type=Path,
+                        help="collect_market.py plan: also collect OddsPapi, Polymarket and Kalshi history")
+    parser.add_argument("--market-tournaments", type=Path, help="OddsPapi tournament list added to the market plan")
+    parser.add_argument("--ssh-host", help="approved remote host for Polymarket and Kalshi (USER@HOST)")
+    parser.add_argument("--ssh-key")
+    parser.add_argument("--known-hosts")
+    parser.add_argument("--oddspapi-run-cap", type=int, default=40)
+    parser.add_argument("--oddspapi-month-cap", type=int, default=100)
+    parser.add_argument("--remote-run-cap", type=int, default=6000)
     args = parser.parse_args()
     if args.archive.resolve().is_relative_to((ROOT / "sidecar/tests/fixtures").resolve()):
         parser.error("research archives must be outside the test fixtures")
@@ -316,6 +357,14 @@ def main():
             partial = True
     for source, cap in caps.items():
         print(f"{source}: {archive.spent(source)}/{cap} requests today")
+    if args.maps_only:
+        pass
+    elif args.market_plan:
+        report, stopped = collect_market(args, args.market_plan)
+        print(report)
+        partial |= stopped
+    else:
+        print("market: no --market-plan given, so no market history was collected (docs/research-archive.md)")
     archive.db.close()
     lock.close()
     return 2 if partial else 0

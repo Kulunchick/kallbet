@@ -3,9 +3,13 @@
 From the repository root, collect completed tier-S and tier-A tournament stages and extend the archive through a completed UTC day.
 
 ```sh
-python sidecar/scripts/collect_research.py --until 2026-11-25
+python sidecar/scripts/collect_research.py --until 2026-11-25 \
+  --market-plan target/market-plans/plan.json --market-tournaments target/market-plans/tournaments.json \
+  --ssh-host USER@HOST --ssh-key PATH --known-hosts PATH
 cargo run -p kallbet-ai -- backtest --archive target/research-archive --out target/research-report
 ```
+
+With `--market-plan` the same command also runs the market collection of `sidecar/scripts/collect_market.py` into the archive (OddsPapi fixtures and Pinnacle history when the env file has `ODDSPAPI_API_KEY`; Polymarket and Kalshi through the approved remote given by `--ssh-host`, `--ssh-key` and `--known-hosts`) and prints its requests per market source under its own caps (`--oddspapi-run-cap`, `--oddspapi-month-cap`, `--remote-run-cap`); a skipped source or a reached cap makes the run partial. The plans used for the research snapshot are `target/market-plans/plan.json`, `plan_poly2.json` and `tournaments.json`. Without `--market-plan` it says that no market history was collected.
 
 Repeat the collection command with the same date to resume. An exit status of 2 indicates partial coverage. The daily UTC caps default to 100 PandaScore requests, 60 Valve requests (GitHub) and 100 Liquipedia requests. Use `--panda-cap`, `--valve-cap`, and `--liquipedia-cap` to change them. Each attempt counts before transport, including failures. Cached requests consume zero. The collector prints spending against each cap. Supply `PANDASCORE_TOKEN` in the environment or use `--env PATH` to read a local env file.
 
