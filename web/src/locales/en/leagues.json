@@ -37,7 +37,10 @@
     "onlyMember": "You're the only Member so far",
     "onlyMemberHint": "Send this link to your friends so they can join before the first Lock.",
     "share": "Share invite",
-    "reissueWorking": "Reissuing…"
+    "copyManually": "Copy it manually",
+    "reissueTitle": "Reissue the Invite Link?",
+    "reissueBody": "The current Invite Link will stop working for everyone who has it. Members already in the League stay. Send the new link to anyone who still wants to join.",
+    "reissueConfirm": "Reissue link"
   },
   "members": {
     "title_one": "{{count}} Member",
