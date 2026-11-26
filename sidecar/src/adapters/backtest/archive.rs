@@ -8,8 +8,10 @@
 //! standings, OddsPapi settled fixture lists and their historical odds.
 //! Only the Liquipedia file name carries meaning: `lp-<tournament>` is the Stage
 //! revision of that PandaScore tournament.
+use super::player_history::parse_hltv_record_json;
 use super::{Dated, match_cutoff};
 use crate::adapters::context::wikitext::{Template, find_templates, strip_comments};
+use crate::adapters::hltv_research::{archive::HltvMatchRecord, parse::parse_match_page};
 use crate::*;
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -125,6 +127,8 @@ pub struct ReplayArchive {
     pub event_pages: BTreeMap<String, Vec<WikiRevision>>,
     /// Liquipedia root title of each Event (PandaScore serie id).
     pub event_titles: BTreeMap<i64, String>,
+    /// Historical HLTV match pages (`HltvMatchRecord`) with player statistics.
+    pub hltv_matches: Vec<HltvMatchRecord>,
     /// SHA-256 over every file name and content, in name order.
     pub digest: String,
     pub files: usize,
@@ -301,10 +305,17 @@ impl ReplayArchive {
                         .or_default()
                         .push(revision),
                 }
+            } else if let Some(rec) = parse_hltv_record_json(&value) {
+                archive.hltv_matches.push(rec?);
             } else {
                 return Err(format!("{name}: unknown kind of saved response").into());
             }
         }
+        load_hltv_dir(dir, &mut archive, &mut digest)?;
+        archive
+            .hltv_matches
+            .sort_by_key(|r| (r.started_at, r.match_id));
+        archive.hltv_matches.dedup_by_key(|r| r.match_id);
         for revisions in archive.event_pages.values_mut() {
             revisions.sort_by_key(|r| r.timestamp);
         }
@@ -672,4 +683,81 @@ fn field(content: &str, name: &str) -> Option<String> {
     let rest = &content[start..];
     let end = rest.find(['|', '\n']).unwrap_or(rest.len());
     Some(rest[..end].trim().to_owned()).filter(|s| !s.is_empty())
+}
+
+fn hltv_id_from_name(name: &str) -> Option<i64> {
+    name.strip_prefix("hltv-match-")?
+        .split(['-', '.'])
+        .next()?
+        .parse()
+        .ok()
+}
+
+/// Loads saved `HltvMatchRecord` JSONs (or raw `.html.gz` match pages when no
+/// parsed `.json` is cached) from `<archive>/hltv` (and `hltv/matches` if present).
+fn load_hltv_dir(dir: &Path, archive: &mut ReplayArchive, digest: &mut Sha256) -> Result<()> {
+    let mut paths = Vec::new();
+    for subdir in [dir.join("hltv"), dir.join("hltv").join("matches")] {
+        if !subdir.is_dir() {
+            continue;
+        }
+        for entry in std::fs::read_dir(&subdir)? {
+            let entry = entry?;
+            if entry.file_type()?.is_file() {
+                paths.push(entry.path());
+            }
+        }
+    }
+    if paths.is_empty() {
+        return Ok(());
+    }
+    paths.sort();
+
+    let mut seen_ids: BTreeSet<i64> = archive.hltv_matches.iter().map(|r| r.match_id).collect();
+    let mut html_fallbacks = Vec::new();
+
+    for path in paths {
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        if name.contains("-blocked.") {
+            continue;
+        }
+        let stem = name.trim_end_matches(".gz");
+        if stem.ends_with(".json") {
+            let bytes = read_file(&path)?;
+            let value: Value =
+                serde_json::from_slice(&bytes).map_err(|e| format!("{name}: not JSON ({e})"))?;
+            let Some(rec) = parse_hltv_record_json(&value) else {
+                continue;
+            };
+            let rec = rec?;
+            digest.update(b"hltv/");
+            digest.update(stem.as_bytes());
+            digest.update(&bytes);
+            archive.files += 1;
+            seen_ids.insert(rec.match_id);
+            archive.hltv_matches.push(rec);
+        } else if stem.ends_with(".html")
+            && let Some(match_id) = hltv_id_from_name(stem)
+        {
+            html_fallbacks.push((match_id, stem.to_owned(), path));
+        }
+    }
+
+    for (match_id, stem, path) in html_fallbacks {
+        if !seen_ids.insert(match_id) {
+            continue;
+        }
+        let bytes = read_file(&path)?;
+        let html = String::from_utf8(bytes)?;
+        let url = format!("https://www.hltv.org/matches/{match_id}/match");
+        let rec = parse_match_page(match_id, &url, chrono::DateTime::UNIX_EPOCH, &html)
+            .map_err(|e| format!("{stem}: {e}"))?;
+        digest.update(b"hltv/");
+        digest.update(stem.as_bytes());
+        digest.update(html.as_bytes());
+        archive.files += 1;
+        archive.hltv_matches.push(rec);
+    }
+
+    Ok(())
 }

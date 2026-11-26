@@ -72,6 +72,41 @@ impl Lab {
     }
 
     pub(super) async fn view(&self, game: &Match, cutoff: Instant) -> Result<MatchView> {
+        let facts = self.feeds.context.facts(game, cutoff).await?;
+        let mut team_a_roster = None;
+        let mut team_b_roster = None;
+        for fact in facts {
+            let obs = fact.observed_at();
+            let val = fact.at(cutoff)?;
+            if let Ok(ContextFact::LiquipediaRoster(roster)) =
+                serde_json::from_value::<ContextFact>(val.clone())
+            {
+                let side = roster.match_side.clone();
+                let wrapped = AsOf::new(roster, obs, cutoff)?;
+                match side.as_str() {
+                    "team_a" => team_a_roster = Some(wrapped),
+                    "team_b" => team_b_roster = Some(wrapped),
+                    _ => {}
+                }
+            }
+        }
+        let mut player_stats = BTreeMap::new();
+        for roster in [&team_a_roster, &team_b_roster].into_iter().flatten() {
+            let r = roster.at(cutoff)?;
+            for nick in r
+                .active_players
+                .iter()
+                .chain(r.coaches.iter().filter(|c| c.emergency_sub && !c.former).map(|c| &c.player))
+            {
+                let key = player_key(nick);
+                if key.is_empty() || player_stats.contains_key(&key) {
+                    continue;
+                }
+                let slice = self.feeds.player_stats.player_matches(nick, cutoff).await?;
+                slice.at(cutoff)?;
+                player_stats.insert(key, slice);
+            }
+        }
         let view = MatchView {
             signal: self.feeds.signal.signal(game, cutoff).await?,
             market: self.feeds.odds.quote(game, cutoff).await?,
@@ -86,6 +121,9 @@ impl Lab {
                 .history
                 .team_matches(&game.team_b.name, cutoff)
                 .await?,
+            team_a_roster,
+            team_b_roster,
+            player_stats,
             game: game.clone(),
             cutoff,
         };
@@ -95,6 +133,8 @@ impl Lab {
         view.history_before()?;
         view.team_a_history()?;
         view.team_b_history()?;
+        view.team_a_roster()?;
+        view.team_b_roster()?;
         Ok(view)
     }
 

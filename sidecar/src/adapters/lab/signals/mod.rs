@@ -32,6 +32,12 @@ pub struct MatchView {
     pub team_a_history: HistorySlice,
     /// Team B's archive Matches finished strictly before `cutoff`, oldest first.
     pub team_b_history: HistorySlice,
+    /// Team A's Liquipedia roster revision strictly before `cutoff`, if known.
+    pub team_a_roster: Option<AsOf<TeamRosterFact>>,
+    /// Team B's Liquipedia roster revision strictly before `cutoff`, if known.
+    pub team_b_roster: Option<AsOf<TeamRosterFact>>,
+    /// HLTV appearances strictly before `cutoff`, keyed by `player_key(nickname)`.
+    pub player_stats: std::collections::BTreeMap<String, PlayerStatsSlice>,
 }
 impl MatchView {
     pub fn signal(&self) -> Result<Option<&Signal>, TemporalLeakError> {
@@ -51,6 +57,24 @@ impl MatchView {
     }
     pub fn team_b_history(&self) -> Result<Vec<&HistoricalMatch>, TemporalLeakError> {
         self.team_b_history.at(self.cutoff)
+    }
+    pub fn team_a_roster(&self) -> Result<Option<&TeamRosterFact>, TemporalLeakError> {
+        self.team_a_roster
+            .as_ref()
+            .map(|r| r.at(self.cutoff))
+            .transpose()
+    }
+    pub fn team_b_roster(&self) -> Result<Option<&TeamRosterFact>, TemporalLeakError> {
+        self.team_b_roster
+            .as_ref()
+            .map(|r| r.at(self.cutoff))
+            .transpose()
+    }
+    pub fn player_matches(&self, nickname: &str) -> Result<Vec<&PlayerAppearance>, TemporalLeakError> {
+        let Some(slice) = self.player_stats.get(&player_key(nickname)) else {
+            return Ok(vec![]);
+        };
+        slice.at(self.cutoff)
     }
     /// The latest observation among the inputs, to date a prediction made from them.
     pub fn observed_at(&self) -> Option<Instant> {
