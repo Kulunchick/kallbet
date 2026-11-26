@@ -2,6 +2,7 @@ pub mod backtest;
 pub mod baseline;
 pub mod context;
 pub mod debate;
+pub mod hltv_research;
 pub mod http;
 pub mod llm;
 pub mod odds;
