@@ -6,6 +6,7 @@ use crate::adapters::debate;
 use crate::*;
 
 pub mod calibration;
+pub mod learned_weights;
 
 /// What a Candidate Signal may read of one Match: the Match as the pipeline
 /// sees it before its cutoff, and the anchor's inputs read through the replay
@@ -75,6 +76,11 @@ pub trait CandidateSignal: Send + Sync {
     /// Fits on `training`: every Match of the Events that ended before the
     /// evaluated Event began, and nothing else.
     fn fit(&self, training: &[Observed]) -> Result<Box<dyn FittedSignal>>;
+    /// The names of the features it gives the combiner (`FittedSignal::features`),
+    /// by default one: `shift`.
+    fn feature_names(&self) -> Vec<&'static str> {
+        vec!["shift"]
+    }
 }
 
 /// A fitted Candidate Signal.
@@ -83,11 +89,29 @@ pub trait FittedSignal: Send + Sync {
     /// (the protocol checks it against the cutoff), or `None` when it has no
     /// prediction for this Match.
     fn predict(&self, m: &MatchView) -> Result<Option<AsOf<f64>>>;
+    /// What it fitted, for the report's row of the evaluated Event.
+    fn parameters(&self) -> Option<serde_json::Value> {
+        None
+    }
+    /// Its features for the combiner, one per `CandidateSignal::feature_names`
+    /// (`None`: not available for this Match), each dated by what it read. By
+    /// default the shift of its probability from the anchor's in logit space.
+    fn features(&self, m: &MatchView) -> Result<Vec<Option<AsOf<f64>>>> {
+        use crate::adapters::lab::combiner::logit;
+        let (Some(p), Some(anchor)) = (self.predict(m)?, m.anchor()?) else {
+            return Ok(vec![None]);
+        };
+        let shift = logit(*p.at(m.cutoff)?) - logit(anchor);
+        Ok(vec![Some(AsOf::new(shift, p.observed_at(), m.cutoff)?)])
+    }
 }
 
 /// Every registered Candidate Signal, in report order.
 pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
-    vec![std::sync::Arc::new(calibration::RatingCalibration)]
+    vec![
+        std::sync::Arc::new(calibration::RatingCalibration),
+        std::sync::Arc::new(learned_weights::LearnedWeights),
+    ]
 }
 
 pub fn by_name(name: &str) -> Option<std::sync::Arc<dyn CandidateSignal>> {
