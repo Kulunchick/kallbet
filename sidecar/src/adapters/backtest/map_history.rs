@@ -3,8 +3,12 @@ use super::archive::ReplayStage;
 use crate::adapters::hltv_research::archive::{LiquipediaStageMaps, Side};
 use crate::team_names::team_key;
 use crate::{AsOf, Instant, TemporalLeakError};
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
+#[derive(Clone)]
 pub struct PlayedMaps {
     pub team_a: String,
     pub team_b: String,
@@ -15,7 +19,7 @@ pub struct PlayedMaps {
 pub type MapHistory = MatchHistory<PlayedMaps>;
 
 pub struct MatchHistory<T> {
-    entries: Arc<[AsOf<T>]>,
+    entries: Arc<[(i64, AsOf<T>)]>,
     end: usize,
 }
 
@@ -38,8 +42,8 @@ impl<T> Clone for MatchHistory<T> {
 }
 
 impl<T> MatchHistory<T> {
-    pub(super) fn new(mut entries: Vec<AsOf<T>>) -> Self {
-        entries.sort_by_key(AsOf::observed_at);
+    pub(super) fn new(mut entries: Vec<(i64, AsOf<T>)>) -> Self {
+        entries.sort_by_key(|(_, entry)| entry.observed_at());
         let end = entries.len();
         Self {
             entries: entries.into(),
@@ -52,7 +56,8 @@ impl<T> MatchHistory<T> {
     }
 
     pub fn before(&self, cutoff: Instant) -> Self {
-        let end = self.entries[..self.end].partition_point(|entry| entry.observed_at() < cutoff);
+        let end =
+            self.entries[..self.end].partition_point(|(_, entry)| entry.observed_at() < cutoff);
         Self {
             entries: self.entries.clone(),
             end,
@@ -65,7 +70,22 @@ impl<T> MatchHistory<T> {
     ) -> impl Iterator<Item = Result<(&T, Instant), TemporalLeakError>> {
         self.entries[..self.end]
             .iter()
-            .map(move |entry| Ok((entry.at(cutoff)?, entry.observed_at())))
+            .map(move |(_, entry)| Ok((entry.at(cutoff)?, entry.observed_at())))
+    }
+}
+
+impl<T: Clone> MatchHistory<T> {
+    pub(crate) fn without_stages(&self, excluded: &BTreeSet<i64>) -> Self {
+        if excluded.is_empty() {
+            return self.clone();
+        }
+        Self::new(
+            self.entries[..self.end]
+                .iter()
+                .filter(|(stage, _)| !excluded.contains(stage))
+                .cloned()
+                .collect(),
+        )
     }
 }
 
@@ -76,7 +96,10 @@ pub(super) fn pair(a: &str, b: &str) -> (String, String) {
     (a, b)
 }
 
-pub(super) fn link_stage(stage: &ReplayStage, page: LiquipediaStageMaps) -> Vec<AsOf<PlayedMaps>> {
+pub(super) fn link_stage(
+    stage: &ReplayStage,
+    page: LiquipediaStageMaps,
+) -> Vec<(i64, AsOf<PlayedMaps>)> {
     let mut by_pair = BTreeMap::new();
     for game in &stage.matches {
         let key = pair(&game.game.team_a.name, &game.game.team_b.name);
@@ -147,5 +170,9 @@ pub(super) fn link_stage(stage: &ReplayStage, page: LiquipediaStageMaps) -> Vec<
             .and_modify(|v| *v = None)
             .or_insert(Some(entry));
     }
-    linked.into_values().flatten().collect()
+    linked
+        .into_values()
+        .flatten()
+        .map(|entry| (stage.id, entry))
+        .collect()
 }

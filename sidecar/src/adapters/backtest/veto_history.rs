@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub type VetoHistory = MatchHistory<CompletedVeto>;
 
+#[derive(Clone)]
 pub struct CompletedVeto {
     /// The first and second banning teams, in that order.
     pub teams: [String; 2],
@@ -74,12 +75,16 @@ pub(super) fn link(
     records: impl IntoIterator<Item = HltvMatchRecord>,
 ) -> VetoHistory {
     let mut by_pair = BTreeMap::<_, Vec<_>>::new();
-    for game in stages.iter().flat_map(|stage| &stage.matches) {
-        if game.game.format == Format::Bo1 {
+    for stage in stages {
+        for game in stage
+            .matches
+            .iter()
+            .filter(|g| g.game.format == Format::Bo1)
+        {
             by_pair
                 .entry(pair(&game.game.team_a.name, &game.game.team_b.name))
                 .or_default()
-                .push(game);
+                .push((stage.id, game));
         }
     }
     let mut linked = BTreeMap::new();
@@ -91,10 +96,10 @@ pub(super) fn link(
         let Some(candidates) = by_pair.get(&key) else {
             continue;
         };
-        let mut candidates = candidates.iter().filter(|game| {
+        let mut candidates = candidates.iter().filter(|(_, game)| {
             (game.actual_start - record.started_at).abs() <= chrono::Duration::minutes(30)
         });
-        let Some(game) = candidates.next() else {
+        let Some(&(stage_id, game)) = candidates.next() else {
             continue;
         };
         if candidates.next().is_some() {
@@ -117,7 +122,7 @@ pub(super) fn link(
         linked
             .entry(game.game.id)
             .and_modify(|v| *v = None)
-            .or_insert(Some(entry));
+            .or_insert(Some((stage_id, entry)));
     }
     VetoHistory::new(linked.into_values().flatten().collect())
 }

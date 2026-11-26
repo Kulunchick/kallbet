@@ -11,7 +11,10 @@ use super::stats::{self, Verdict};
 use super::{PROTOCOL_VERSION, Protocol};
 use crate::adapters::backtest::{Feeds, ReplayArchive};
 use crate::*;
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 pub struct Lab {
     pub archive: ReplayArchive,
@@ -109,14 +112,25 @@ impl Lab {
                 *e = (*e).max(m.finished_at);
             }
         }
+        let holdout_ids: BTreeSet<_> = self
+            .archive
+            .stages
+            .iter()
+            .filter(|stage| {
+                let last = last_result
+                    .get(&stage.event_id)
+                    .copied()
+                    .unwrap_or(stage.cutoff);
+                self.holdout.contains(stage, last)
+            })
+            .map(|stage| stage.id)
+            .collect();
+        let map_history = self.archive.map_history.without_stages(&holdout_ids);
+        let veto_history = self.archive.veto_history.without_stages(&holdout_ids);
         let mut sides: [BTreeMap<i64, Event>; 2] = [BTreeMap::new(), BTreeMap::new()];
         let mut holdout_stages = vec![];
         for stage in &self.archive.stages {
-            let last = last_result
-                .get(&stage.event_id)
-                .copied()
-                .unwrap_or(stage.cutoff);
-            let in_holdout = self.holdout.contains(stage, last);
+            let in_holdout = holdout_ids.contains(&stage.id);
             if in_holdout {
                 holdout_stages.push(format!(
                     "{}: {} ({} scored)",
@@ -139,7 +153,9 @@ impl Lab {
             event.info.begins = event.info.begins.min(stage.cutoff);
             for m in &stage.matches {
                 event.info.ends = event.info.ends.max(m.finished_at);
-                let view = self.view(&m.game, m.cutoff()).await?;
+                let mut view = self.view(&m.game, m.cutoff()).await?;
+                view.map_history = map_history.before(view.cutoff);
+                view.veto_history = veto_history.before(view.cutoff);
                 event.matches.push(Observed {
                     view,
                     team_a_won: m.winner == m.game.team_a.id,
@@ -362,11 +378,7 @@ impl Lab {
                 let v_metrics = |pick: fn(&(i64, bool, f64, f64)) -> f64| {
                     let n = vs_valve_paired.len() as f64;
                     let mean = |f: &dyn Fn(f64, bool) -> f64| {
-                        vs_valve_paired
-                            .iter()
-                            .map(|r| f(pick(r), r.1))
-                            .sum::<f64>()
-                            / n
+                        vs_valve_paired.iter().map(|r| f(pick(r), r.1)).sum::<f64>() / n
                     };
                     Metrics {
                         log_loss: mean(&stats::log_loss),

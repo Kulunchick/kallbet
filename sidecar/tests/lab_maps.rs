@@ -119,7 +119,7 @@ async fn bo1_veto_uses_an_earlier_saved_veto_and_never_its_own() {
     )
     .unwrap();
     let path = dir.path();
-    let run = |shift| async move {
+    let run = |shift, prior_is_holdout| async move {
         let mut archive = ReplayArchive::load(path).unwrap();
         let stage = archive.stages.iter_mut().find(|s| s.id == 20708).unwrap();
         let finish = stage
@@ -137,12 +137,34 @@ async fn bo1_veto_uses_an_earlier_saved_veto_and_never_its_own() {
             later.actual_start = finish + Duration::minutes(15) + shift;
             later.game.scheduled_start = Some(later.actual_start);
         }
+        let training_stage = if prior_is_holdout {
+            // Keep the later Match on the training side and the veto's source
+            // Stage on the Holdout, as can happen with a Stage exemption.
+            let mut training = stage.clone();
+            training.id = 88001;
+            let index = stage
+                .matches
+                .iter()
+                .position(|m| m.game.id == 1508621)
+                .unwrap();
+            training.matches = vec![stage.matches.remove(index)];
+            let id = training.id;
+            archive.stages.push(training);
+            Some(id)
+        } else {
+            None
+        };
         let mut lab = Lab::new(archive).unwrap();
+        if let Some(stage) = training_stage {
+            lab.holdout.from = finish;
+            lab.holdout.training_stages = vec![stage];
+        }
         lab.signals = vec![signals::by_name("bo1_veto_sim").unwrap()];
         lab.run().await.unwrap()
     };
-    let at_finish = run(Some(Duration::zero())).await;
-    let after_finish = run(Some(Duration::seconds(1))).await;
+    let at_finish = run(Some(Duration::zero()), false).await;
+    let after_finish = run(Some(Duration::seconds(1)), false).await;
+    let excluded = run(Some(Duration::seconds(1)), true).await;
     let prediction = |outcome: &kallbet_ai::adapters::lab::LabOutcome, id| {
         outcome
             .predictions
@@ -154,6 +176,7 @@ async fn bo1_veto_uses_an_earlier_saved_veto_and_never_its_own() {
     assert_eq!(prediction(&after_finish, 1494593), None);
     assert_eq!(prediction(&at_finish, 1508621), None);
     assert!(prediction(&after_finish, 1508621).is_some());
+    assert_eq!(prediction(&excluded, 1508621), None);
     assert!(after_finish.report.candidates[0].paired > 0);
     assert_eq!(
         after_finish.report.candidates[0].verdict,
