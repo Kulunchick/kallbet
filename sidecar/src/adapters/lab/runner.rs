@@ -64,10 +64,11 @@ pub(crate) struct Event {
     pub(crate) ended: Option<Instant>,
 }
 impl Event {
-    /// Whether this Event's Matches may train a fit for an Event that begins
-    /// at `begins`: it is complete and ended before.
-    pub(crate) fn ended_before(&self, begins: Instant) -> bool {
-        self.ended.is_some_and(|end| end < begins)
+    /// Whether this Event's Matches may train a fit for `evaluated`: it is
+    /// another Event (never a Stage of the evaluated one, on either side of
+    /// the boundary), complete, and it ended before `evaluated` began.
+    pub(crate) fn trains(&self, evaluated: &EventInfo) -> bool {
+        self.info.id != evaluated.id && self.ended.is_some_and(|end| end < evaluated.begins)
     }
 }
 
@@ -377,7 +378,7 @@ impl Lab {
     pub(super) fn training(events: &[Event], event: &Event) -> Vec<Observed> {
         events
             .iter()
-            .filter(|e| e.ended_before(event.info.begins))
+            .filter(|e| e.trains(&event.info))
             .flat_map(|e| e.matches.iter().cloned())
             .collect()
     }

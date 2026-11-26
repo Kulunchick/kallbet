@@ -5,7 +5,9 @@
 //! once on the Holdout as the final step.
 use super::combiner::{Combiner, Inputs, LAMBDA};
 use super::holdout::Holdout;
-use super::report::{CombinationEvent, HoldoutReport, HoldoutStatus, MarketSubset, Metrics};
+use super::report::{
+    CombinationEvent, EventInfo, HoldoutReport, HoldoutStatus, MarketSubset, Metrics,
+};
 use super::report::{SelectionReport, SelectionStep};
 use super::runner::{Event, LabPrediction};
 use super::signals::{CandidateSignal, FittedSignal, MatchView, Observed};
@@ -137,8 +139,8 @@ fn extra_names(signals: &[&Arc<dyn CandidateSignal>]) -> Vec<String> {
 }
 
 /// The training-side Events that ended before `begins`: the walk-forward boundary.
-fn before(events: &[Event], begins: Instant) -> impl Iterator<Item = usize> + '_ {
-    (0..events.len()).filter(move |&j| events[j].ended_before(begins))
+fn before<'a>(events: &'a [Event], evaluated: &'a EventInfo) -> impl Iterator<Item = usize> + 'a {
+    (0..events.len()).filter(move |&j| events[j].trains(evaluated))
 }
 
 /// Training rows of the combiner for an Event that begins at `begins`.
@@ -146,9 +148,9 @@ fn rows(
     events: &[Event],
     bases: &[Vec<Inputs>],
     feats: &[&Features],
-    begins: Instant,
+    evaluated: &EventInfo,
 ) -> Vec<(Inputs, bool)> {
-    before(events, begins)
+    before(events, evaluated)
         .flat_map(|j| {
             events[j].matches.iter().enumerate().map(move |(k, m)| {
                 let mut inputs = bases[j][k].clone();
@@ -170,7 +172,7 @@ fn walk_forward(
     let mut predictions = vec![];
     let mut fitted = vec![];
     for (i, e) in events.iter().enumerate() {
-        let training = rows(events, bases, feats, e.info.begins);
+        let training = rows(events, bases, feats, &e.info);
         let combiner = Combiner::fit(names, &training, LAMBDA);
         predictions.push(
             (0..e.matches.len())
@@ -323,7 +325,7 @@ pub(crate) fn select(
         .map(|(i, e)| CombinationEvent {
             event_id: e.info.id,
             title: e.info.title.clone(),
-            training_matches: before(events, e.info.begins)
+            training_matches: before(events, &e.info)
                 .map(|j| events[j].matches.len())
                 .sum(),
             parameters: fitted.get(i).map(Combiner::parameters),
@@ -402,7 +404,7 @@ pub(crate) fn holdout(
     let mut predictions = vec![];
     let mut pairs: Paired = vec![];
     for h in holdout {
-        let training: Vec<Observed> = before(events, h.info.begins)
+        let training: Vec<Observed> = before(events, &h.info)
             .flat_map(|j| events[j].matches.iter().cloned())
             .collect();
         let fits: Vec<Box<dyn FittedSignal>> = frozen
@@ -412,7 +414,7 @@ pub(crate) fn holdout(
         let combiner = (!frozen.is_empty()).then(|| {
             Combiner::fit(
                 &extras,
-                &rows(events, &bases_train, &feats, h.info.begins),
+                &rows(events, &bases_train, &feats, &h.info),
                 LAMBDA,
             )
         });
@@ -530,6 +532,14 @@ pub(crate) fn deployment_combiner(events: &[Event], members: &[Member]) -> Resul
         .collect::<Result<Vec<_>>>()?;
     let features = cached.iter().collect::<Vec<_>>();
     let signals = members.iter().map(|m| &m.signal).collect::<Vec<_>>();
-    let inputs = rows(events, &bases(events)?, &features, Instant::MAX_UTC);
+    // Every complete training-side Event, for the live fit.
+    let all = EventInfo {
+        id: i64::MIN,
+        title: String::new(),
+        begins: Instant::MAX_UTC,
+        ends: Instant::MAX_UTC,
+        matches: 0,
+    };
+    let inputs = rows(events, &bases(events)?, &features, &all);
     Ok(Combiner::fit(&extra_names(&signals), &inputs, LAMBDA))
 }

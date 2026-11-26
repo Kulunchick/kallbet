@@ -520,3 +520,55 @@ async fn an_event_without_a_known_end_trains_nothing() {
         );
     }
 }
+
+/// The saved archive with Singapore Stage 1 complete and a played Stage 2
+/// three days later (the Holdout), both with reported finishes.
+fn singapore_with_stage_2() -> (ReplayArchive, BTreeSet<i64>) {
+    let mut archive = whole();
+    let stage1 = archive
+        .stages
+        .iter_mut()
+        .find(|s| s.id == kallbet_ai::adapters::lab::holdout::SINGAPORE_STAGE_1)
+        .unwrap();
+    stage1.complete = true;
+    let mut stage2 = stage1.clone();
+    stage2.id = 1;
+    stage2.name = "Stage 2".into();
+    let shift = chrono::Duration::days(3);
+    stage2.cutoff += shift;
+    for m in &mut stage2.matches {
+        m.game.id += 1_000_000;
+        m.actual_start += shift;
+        m.finished_at += shift;
+        m.reported_finish = m.reported_finish.map(|t| t + shift);
+        m.game.scheduled_start = m.game.scheduled_start.map(|t| t + shift);
+    }
+    let singapore = stage1.event_id;
+    archive.stages.push(stage2);
+    let ids = event_matches(&archive, singapore);
+    (archive, ids)
+}
+
+// Finding 3 (review of 6eea194): the Holdout's later Stages of an Event are
+// fitted without any Match of that Event, though Stage 1 is on the training
+// side and ended before Stage 2 began.
+#[tokio::test]
+async fn no_stage_of_the_evaluated_event_trains_it() {
+    let (archive, singapore) = singapore_with_stage_2();
+    let training_side: usize = archive
+        .stages
+        .iter()
+        .filter(|s| s.id != 1)
+        .map(|s| s.matches.len())
+        .sum();
+    let in_singapore_1 = singapore.len() / 2;
+    let mut lab = Lab::new(archive).unwrap();
+    let fitted_on = recorded(&mut lab);
+    let outcome = lab.run().await.unwrap();
+    let h = &outcome.report.holdout;
+    assert_eq!(h.status, HoldoutStatus::Evaluated);
+    for e in &h.per_event {
+        assert_eq!(e.training_matches, training_side - in_singapore_1, "{}", e.title);
+    }
+    assert!(fitted_on.lock().unwrap().is_disjoint(&singapore));
+}
