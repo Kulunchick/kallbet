@@ -164,6 +164,7 @@ async fn the_tier_filter_cannot_let_a_later_or_holdout_match_into_fitting() {
     // A fit for a later Event holds the earlier Events and never its own.
     let copenhagen = matches_of(&lab, |e, _| e.contains("Copenhagen"));
     assert!(fits.iter().any(|f| copenhagen.is_subset(f)));
+    drop(fits);
 
     // Training on every tier admits the others but still not the Holdout.
     let all = Arc::new(Mutex::new(Vec::new()));
