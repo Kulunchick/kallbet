@@ -1,46 +1,130 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, errorMessage } from "../../api/client";
-import { Avatar } from "../../components/Avatar";
-import { TeamLogo } from "../../components/TeamLogo";
-import { StageStatus, useStagePickem } from "./StageStatus";
+import { useSession } from "../account/session";
 import { savePickem, type PickemView } from "./api";
-import { fromPicks, isComplete, participants, setWinner, slotKey, toPicks, type Slot, type Winners } from "./bracket";
+import { fromPicks, isComplete, placedPicks, setWinner, toPicks, type Slot, type Winners } from "./bracket";
+import { LeaderboardPanel, type BoardState } from "./LeaderboardPanel";
+import { MemberPickems } from "./MemberPickems";
+import { CompactBracket, PlayoffsBoard } from "./PlayoffsBoard";
+import { SaveBar } from "./SaveBar";
+import { BracketNotReady, LoadError, StageSkeleton } from "./StageStates";
+import { StageStatus, useStagePickem } from "./StageStatus";
+import { MD, useMedia } from "./useMedia";
 
-/** A Playoffs Stage's Pick'em: the bracket form until Lock, everyone's brackets after it. */
+/** A Playoffs Stage's Pick'em: the bracket until Lock, everyone's brackets after it. */
 export function PlayoffsStage({
   league,
   stage,
+  board,
   onSaved,
 }: {
   league: number;
   stage: number;
+  board: BoardState;
   onSaved: () => void;
 }) {
   const { t } = useTranslation("pickem");
   const { result, reload } = useStagePickem(league, stage, onSaved);
-  const [draft, setDraft] = useState<Winners>({});
-  const [error, setError] = useState<unknown>(null);
-  const [saving, setSaving] = useState(false);
+  const me = useSession().user?.id;
+  // A failed refresh keeps the last good view, so a draft is never thrown away.
+  const lastGood = useRef<PickemView | null>(null);
+  if (result.state === "ready") lastGood.current = result.data;
+  const view = result.state === "ready" ? result.data : lastGood.current;
 
-  const savedAt = result.state === "ready" ? result.data.my_pickem?.updated_at : undefined;
-
-  useEffect(() => {
-    if (result.state !== "ready") return;
-    const mine = result.data.my_pickem;
-    setDraft(mine?.shape === "playoffs" ? fromPicks(mine.picks) : {});
-  }, [league, stage, savedAt]);
-
-  if (result.state === "loading") return <p className="text-mute">{t("loading")}</p>;
-  if (result.state === "error") return <p className="text-danger">{errorMessage(t, result.error)}</p>;
-  const view = result.data;
+  if (!view) {
+    return result.state === "error" ? <LoadError error={result.error} onRetry={reload} /> : <StageSkeleton />;
+  }
   const slots = view.bracket?.slots ?? [];
   const nameOf = (id: number | null) =>
     id === null ? t("tbd") : (view.teams.find((x) => x.id === id)?.name ?? `#${id}`);
+  const leaderboard = <LeaderboardPanel board={board} open={view.lock.locked} />;
+
+  let body: ReactNode;
+  if (view.lock.locked) {
+    body = (
+      <>
+        {leaderboard}
+        <MemberPickems members={view.pickems} me={me}>
+          {(member) =>
+            member.shape === "playoffs" ? (
+              <CompactBracket slots={slots} winners={fromPicks(member.picks)} nameOf={nameOf} />
+            ) : null
+          }
+        </MemberPickems>
+      </>
+    );
+  } else if (view.lock.can_edit && view.bracket?.ready) {
+    body = (
+      <PlayoffsEditor view={view} slots={slots} nameOf={nameOf} league={league} stage={stage} reload={reload} onSaved={onSaved} leaderboard={leaderboard} />
+    );
+  } else {
+    body = (
+      <>
+        {view.my_pickem?.shape === "playoffs" && (
+          <section aria-labelledby="waiting" className="flex flex-col gap-3">
+            <h2 id="waiting" className="font-display text-lg text-fg">
+              {t("waitingToReveal")}
+            </h2>
+            <PlayoffsBoard slots={slots} winners={fromPicks(view.my_pickem.picks)} nameOf={nameOf} />
+          </section>
+        )}
+        {!view.bracket?.ready && <BracketNotReady />}
+        {leaderboard}
+      </>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {result.state === "error" && <LoadError error={result.error} onRetry={reload} />}
+      <StageStatus view={view} />
+      {body}
+    </div>
+  );
+}
+
+function PlayoffsEditor({
+  view,
+  slots,
+  nameOf,
+  league,
+  stage,
+  reload,
+  onSaved,
+  leaderboard,
+}: {
+  view: PickemView;
+  slots: Slot[];
+  nameOf: (id: number | null) => string;
+  league: number;
+  stage: number;
+  reload: () => void;
+  onSaved: () => void;
+  leaderboard: ReactNode;
+}) {
+  const { t } = useTranslation("pickem");
+  const desktop = useMedia(MD);
+  const mine = view.my_pickem?.shape === "playoffs" ? view.my_pickem : null;
+  const [draft, setDraft] = useState<Winners>(() => (mine ? fromPicks(mine.picks) : {}));
+  const [error, setError] = useState<unknown>(null);
+  const [saving, setSaving] = useState(false);
+  const savedAt = view.my_pickem?.updated_at;
+
+  // A saved Pick'em that arrives (after Save, or from another tab) replaces the draft.
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    setDraft(mine ? fromPicks(mine.picks) : {});
+  }, [league, stage, savedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const complete = isComplete(slots, draft);
 
   async function save() {
-    if (saving || !isComplete(slots, draft)) return;
+    if (saving || !complete) return;
     setSaving(true);
     setError(null);
     try {
@@ -49,139 +133,44 @@ export function PlayoffsStage({
       onSaved();
     } catch (e) {
       setError(e);
-      if (e instanceof ApiError && e.code === "pickem_locked") reload();
     } finally {
       setSaving(false);
     }
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      <StageStatus view={view} />
-      {!view.lock.locked && !view.lock.can_edit && view.my_pickem?.shape === "playoffs" && (
-        <div className="card flex flex-col gap-2 p-4">
-          <h3 className="font-semibold">{t("waitingToReveal")}</h3>
-          <Bracket slots={slots} winners={fromPicks(view.my_pickem.picks)} nameOf={nameOf} readOnly />
-        </div>
-      )}
-
-      {!view.lock.locked && !view.bracket?.ready && <p className="card p-5 text-mute">{t("bracketNotReady")}</p>}
-
-      {view.lock.can_edit && view.bracket?.ready && (
-        <div className="card flex flex-col gap-4 p-5">
-          <p className="text-sm text-mute">{t("bracketHelp")}</p>
-          <Bracket
-            slots={slots}
-            winners={draft}
-            nameOf={nameOf}
-            readOnly={saving}
-            onPick={(r, s, team) => {
-              setDraft((d) => setWinner(slots, d, r, s, team));
-            }}
-          />
-          {error != null && <p className="text-danger">{errorMessage(t, error)}</p>}
-          <button
-            type="button"
-            className="btn-primary self-start"
-            disabled={saving || !isComplete(slots, draft)}
-            onClick={save}
-          >
-            {saving ? t("common:saving") : t(view.my_pickem ? "saveChanges" : "save")}
-          </button>
-        </div>
-      )}
-
-      {view.lock.locked && <LockedView view={view} nameOf={nameOf} />}
-    </div>
+  const bar = (
+    <SaveBar
+      placed={placedPicks(slots, draft)}
+      total={slots.length}
+      complete={complete}
+      saving={saving}
+      hasSaved={view.my_pickem !== null}
+      moreKey="pickMore"
+      error={error}
+      inline={desktop}
+      onSave={save}
+      onShowEveryone={() => {
+        setError(null);
+        reload();
+      }}
+    />
   );
-}
 
-/** Heading of a round: its distance from the final decides the name. */
-function RoundName({ round }: { round: number }) {
-  const { t } = useTranslation("pickem");
-  if (round === 0) return <>{t("round.final")}</>;
-  if (round === 1) return <>{t("round.semifinal")}</>;
-  if (round === 2) return <>{t("round.quarterfinal")}</>;
-  return <>{t("round.roundOf", { teams: 2 ** (round + 1) })}</>;
-}
-
-function Bracket({
-  slots,
-  winners,
-  nameOf,
-  onPick,
-  readOnly = false,
-}: {
-  slots: Slot[];
-  winners: Winners;
-  nameOf: (id: number | null) => string;
-  onPick?: (round: number, slot: number, team: number) => void;
-  readOnly?: boolean;
-}) {
-  const rounds = [...new Set(slots.map((s) => s.rounds_before_final))].sort((a, b) => b - a);
   return (
-    <div className="flex gap-5 overflow-x-auto rounded-xl border border-line bg-ink p-3">
-      {rounds.map((round) => (
-        <div key={round} className="grid min-w-44 flex-1 grid-rows-[auto_1fr] gap-3">
-          <h3 className="text-center text-xs font-bold uppercase tracking-wide text-gold-a">
-            <RoundName round={round} />
-          </h3>
-          <div className="flex flex-col justify-around gap-3">
-            {slots
-              .filter((s) => s.rounds_before_final === round)
-              .sort((a, b) => a.slot - b.slot)
-              .map((slot) => {
-                const picked = winners[slotKey(round, slot.slot)];
-                return (
-                  <div key={slot.slot} className="flex flex-col gap-1 rounded-xl border border-line bg-raised p-1.5">
-                    {participants(slot, winners).map((team, i) => {
-                      const mine = team !== null && picked === team;
-                      const verdict = slot.winner !== null && mine ? (slot.winner === team ? "✓" : "✗") : null;
-                      return (
-                        <button
-                          key={i}
-                          type="button"
-                          disabled={readOnly || team === null}
-                          aria-pressed={mine}
-                          onClick={() => team !== null && onPick?.(round, slot.slot, team)}
-                          className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm ${
-                            mine ? "bg-emerald-gradient font-semibold text-ink glow-emerald" : "text-fg"
-                          } ${team === null ? "text-mute" : ""}`}
-                        >
-                          <span className="flex min-w-0 items-center gap-2">
-                            {team !== null && <TeamLogo id={team} className="size-5" />}
-                            <span className={team !== null && slot.winner === team ? "truncate font-bold text-gold-a" : "truncate"}>{nameOf(team)}</span>
-                          </span>
-                          {verdict && <span>{verdict}</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      ))}
+    <div className="flex flex-col gap-4" aria-busy={saving}>
+      <div className="flex flex-col gap-4 md:card md:p-6">
+        <p className="text-sm text-mute">{t("bracketHelp")}</p>
+        <PlayoffsBoard
+          slots={slots}
+          winners={draft}
+          nameOf={nameOf}
+          disabled={saving}
+          onPick={(round, slot, team) => setDraft((d) => setWinner(slots, d, round, slot, team))}
+        />
+        {desktop && bar}
+      </div>
+      {leaderboard}
+      {!desktop && bar}
     </div>
-  );
-}
-
-function LockedView({ view, nameOf }: { view: PickemView; nameOf: (id: number | null) => string }) {
-  const { t } = useTranslation("pickem");
-  if (!view.pickems || view.pickems.length === 0) return <p className="text-mute">{t("nobody")}</p>;
-  const slots = view.bracket?.slots ?? [];
-  return (
-    <ul className="flex flex-col gap-3">
-      {view.pickems.map((p) => (
-        <li key={p.user_id} className="card flex flex-col gap-3 p-4">
-          <div className="flex items-center gap-3">
-            <Avatar url={p.avatar_url} nickname={p.nickname} className="size-8" />
-            <span className="font-semibold">{p.nickname}</span>
-            <span className="ml-auto font-display text-gold-a">{t("points", { count: p.points })}</span>
-          </div>
-          {p.shape === "playoffs" && <Bracket slots={slots} winners={fromPicks(p.picks)} nameOf={nameOf} readOnly />}
-        </li>
-      ))}
-    </ul>
   );
 }
