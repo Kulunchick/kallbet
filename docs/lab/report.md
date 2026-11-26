@@ -22,6 +22,7 @@ Baseline: the anchor: HybridAnchored without LLM, 0.80 market and 0.20 Valve rat
 | `player_form` | not testable | 0 | 0 | 0 | — | — | — | — | — | — |
 | `per_map_rating` | not testable | 0 | 0 | 0 | — | — | — | — | — | — |
 | `bo1_veto_sim` | not testable | 0 | 0 | 0 | — | — | — | — | — | — |
+| `bo3_veto_sim` | not testable (added after list fixed) | 0 | 0 | 0 | — | — | — | — | — | — |
 | `roster_stand_in` | no evidence | 203 | 203 | 3 | -0.0008 | [-0.0040, +0.0068] | 0.0112 | -0.0005 | +0.0099 | 112, -0.0004 |
 | `roster_change_30d` | no evidence | 14 | 14 | 2 | -0.0711 | [-0.3319, +0.0000] | 0.3128 | -0.0345 | +0.0714 | 13, -0.0766 |
 | `roster_stability` | no evidence | 115 | 115 | 2 | +0.0066 | [+0.0000, +0.0362] | 0.0346 | +0.0031 | -0.0087 | 100, +0.0076 |
@@ -326,6 +327,21 @@ Verdict: No played Liquipedia maps linked to completed PandaScore Matches in the
 Bo1 ban simulation from past HLTV vetoes and map results, blended with the market.
 
 Verdict: No complete HLTV Bo1 vetoes linked to finished PandaScore Matches in the archive.
+
+| Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |
+|---|---|---|---|---|---|
+| PGL Major Copenhagen 2024 | 0 | 0 | 0 | — | — |
+| Perfect World Major Shanghai Major 2024 | 73 | 0 | 0 | — | — |
+| BLAST.tv Major Austin 2025 | 146 | 0 | 0 | — | — |
+| StarLadder Major Budapest 2025 | 252 | 0 | 0 | — | — |
+| IEM Cologne Major 2026 | 358 | 0 | 0 | — | — |
+| PGL Major Singapore 2026 | 464 | 0 | 0 | — | — |
+
+## `bo3_veto_sim`: not testable (added after list fixed)
+
+Bo3 veto simulation from past HLTV vetoes and per-map Elo ratings, blended with the market.
+
+Verdict: No complete HLTV Bo3 vetoes linked to finished PandaScore Matches in the archive (added after spec #33's candidate list was fixed).
 
 | Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |
 |---|---|---|---|---|---|
