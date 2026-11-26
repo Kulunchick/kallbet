@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
 import { useLoad } from "../../api/useLoad";
+import { LeagueHeader } from "../../components/LeagueHeader";
 import { getLeague } from "../leagues/api";
 import { MatchCard } from "./MatchCard";
 import { getMatches, predict, type MatchCard as Card, type MatchesView, type TeamRef } from "./api";
@@ -119,16 +120,7 @@ export function MatchesPage() {
     (element.querySelector<HTMLElement>("button[aria-pressed]") ?? element).focus({ preventScroll: true });
   }
 
-  const header = (
-    <header className="flex flex-col">
-      <Link to={`/leagues/${league}`} className="-ml-2 inline-flex min-h-11 items-center gap-1 self-start rounded-lg px-2 text-sm text-mute hover:text-fg">
-        <span aria-hidden="true">←</span>
-        {t("backToLeague")}
-      </Link>
-      <h1 className="font-display text-2xl font-extrabold text-fg md:text-3xl">{t("title")}</h1>
-      {view && <p className="mt-1 text-mute">{view.event.name}</p>}
-    </header>
-  );
+  const header = <LeagueHeader league={league} active="matches" loaded={leagueResult} />;
   const frame = "flex flex-col gap-6 py-4 md:py-8";
 
   if (view === null) {

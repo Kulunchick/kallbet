@@ -8,5 +8,12 @@
   "primaryNav": "Primary navigation",
   "accountMenu": "Account menu",
   "signedInWithTelegram": "Signed in with Telegram",
-  "language": "Language"
+  "language": "Language",
+  "leagueTabs": {
+    "label": "League pages",
+    "myLeagues": "My Leagues",
+    "matches": "Matches",
+    "pickem": "Pick'em",
+    "leaderboard": "Leaderboard"
+  }
 }

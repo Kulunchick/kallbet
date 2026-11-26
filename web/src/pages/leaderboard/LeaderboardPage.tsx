@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
 import { useSession } from "../account/session";
+import { LeagueHeader } from "../../components/LeagueHeader";
 import { Medal } from "../../components/Medal";
 import { getLeague } from "../leagues/api";
 import { Avatar } from "../../components/Avatar";
@@ -26,31 +27,28 @@ export function LeaderboardPage() {
     return () => window.clearInterval(id);
   }, [reload]);
 
-  const back = (
-    <Link
-      to={`/leagues/${league}`}
-      className="inline-flex min-h-11 items-center self-start text-sm text-mute [@media(hover:hover)_and_(pointer:fine)]:hover:text-fg"
-    >
-      ← {t("backToLeague")}
-    </Link>
-  );
+  const header = <LeagueHeader league={league} active="leaderboard" loaded={archived} />;
 
-  if (result.state === "loading") return <p className="py-10 text-mute">{t("loading")}</p>;
+  if (result.state === "loading") {
+    return (
+      <div className="flex flex-col gap-6 py-4 md:py-8">
+        {header}
+        <p className="text-mute">{t("loading")}</p>
+      </div>
+    );
+  }
   if (result.state === "error") {
     return (
-      <div className="flex flex-col gap-4 py-10">
-        {back}
+      <div className="flex flex-col gap-6 py-4 md:py-8">
+        {header}
         <p className="text-danger">{errorMessage(t, result.error)}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 py-10">
-      <header className="flex flex-col gap-1">
-        {back}
-        <h1 className="font-display text-2xl font-extrabold text-fg">{t("title")}</h1>
-      </header>
+    <div className="flex flex-col gap-6 py-4 md:py-8">
+      {header}
 
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
