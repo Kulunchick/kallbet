@@ -13,12 +13,14 @@ pub mod archive;
 pub mod cli;
 pub mod feeds;
 pub mod history;
+pub mod map_history;
 pub mod match_context;
 pub mod platform;
 pub mod player_history;
 pub mod report;
 pub mod runner;
 pub mod runs;
+pub mod veto_history;
 
 pub use anonymizer::{Blind, BlindAnonymizer};
 pub use archive::{ReplayArchive, ReplayMatch, ReplayStage, StageKind};

@@ -7,6 +7,7 @@ use crate::adapters::backtest::feeds::MarketSource;
 use crate::*;
 use std::collections::BTreeMap;
 
+pub mod bo1_veto_sim;
 pub mod calibration;
 pub mod favourite_longshot;
 pub mod match_context;
@@ -16,6 +17,7 @@ pub mod line_movement;
 pub mod market_sources;
 pub mod lineup_strength;
 pub mod own_rating;
+pub mod per_map_rating;
 pub mod player_form;
 pub mod recent_form;
 
@@ -39,6 +41,8 @@ pub struct MatchView {
     pub team_a_history: HistorySlice,
     /// Team B's archive Matches finished strictly before `cutoff`, oldest first.
     pub team_b_history: HistorySlice,
+    pub map_history: crate::adapters::backtest::map_history::MapHistory,
+    pub veto_history: crate::adapters::backtest::veto_history::VetoHistory,
     /// Every price point of each market source observed before the cutoff
     /// (team A's series win, oldest first), for the sources that have any.
     pub market_history: BTreeMap<MarketSource, Vec<AsOf<f64>>>,
@@ -201,6 +205,8 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(super::llm::LlmAnswers::unrun()),
         std::sync::Arc::new(lineup_strength::LineupStrength),
         std::sync::Arc::new(player_form::PlayerForm),
+        std::sync::Arc::new(per_map_rating::PerMapRating),
+        std::sync::Arc::new(bo1_veto_sim::Bo1VetoSim),
     ];
     signals.extend(match_context::registry());
     signals

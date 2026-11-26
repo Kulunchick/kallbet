@@ -340,6 +340,8 @@ fn make_view(
         team_a_history: HistorySlice::default(),
         team_b_history: HistorySlice::default(),
         market_history: BTreeMap::new(),
+        map_history: Default::default(),
+        veto_history: Default::default(),
         context: kallbet_ai::adapters::backtest::match_context::MatchContext::unknown(),
         team_a_roster: roster_a,
         team_b_roster: roster_b,

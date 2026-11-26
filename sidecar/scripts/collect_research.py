@@ -27,6 +27,10 @@ class Budget(Exception):
     pass
 
 
+class MissingStageRevision(Exception):
+    pass
+
+
 def url(base, **params):
     return base + "?" + urllib.parse.urlencode(params)
 
@@ -70,7 +74,7 @@ class Archive:
             self.db.execute("INSERT INTO spent VALUES(?,?,1) ON CONFLICT(day,source) DO UPDATE SET n=n+1",
                             (day, source))
 
-    def read(self, source, request, name):
+    def read(self, source, request, name, validate=None):
         if Path(name).is_absolute() or ".." in Path(name).parts:
             raise ValueError("invalid archive path")
         relative = name + ".gz"
@@ -82,13 +86,17 @@ class Archive:
             body = gzip.decompress(path.read_bytes())
             if hashlib.sha256(body).hexdigest() != row[1]:
                 raise ValueError(f"digest mismatch for {relative}")
+            if validate:
+                validate(json.loads(body))
         else:
             self.charge(source)
             body = self.fetch(source, request)
             if any(s in body or s in request.encode() for s in self.secrets):
                 raise ValueError("credential in source response or provenance")
             if name.endswith(".json"):
-                json.loads(body)
+                value = json.loads(body)
+                if validate:
+                    validate(value)
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(".partial")
             tmp.write_bytes(gzip.compress(body, mtime=0))
@@ -193,12 +201,60 @@ def collect_rosters(a, until, titles):
     return missing
 
 
+def known_stage_titles():
+    """Use the verified Stage-specific paths in the saved backtest."""
+    from collect_backtest import ARCHIVE, load
+    return {
+        int(path.name.split("-")[1].split(".")[0]): load(path)["query"]["pages"][0]["title"]
+        for path in ARCHIVE.glob("lp-*.json.gz")
+    }
+
+
+def collect_maps(a, until, titles):
+    """Cache the latest revision of each verified, completed Stage page."""
+    stages = {}
+    for path in sorted(a.root.glob("panda-*.json.gz")):
+        for row in json.loads(gzip.decompress(path.read_bytes())):
+            end = row["tournament"].get("end_at")
+            if end and parse_time(end).date() <= until:
+                stages[int(row["tournament_id"])] = parse_time(end)
+    missing = []
+    for tid, end in sorted(stages.items()):
+        title = titles.get(tid)
+        if not title:
+            print(f"No verified Liquipedia title for Stage {tid}", flush=True)
+            missing.append(tid)
+            continue
+
+        def validate(value):
+            try:
+                revision = value["query"]["pages"][0]["revisions"][0]
+                if (parse_time(revision["timestamp"]) > end and
+                        isinstance(revision["slots"]["main"]["content"], str)):
+                    return
+            except (KeyError, IndexError, TypeError, ValueError):
+                pass
+            raise MissingStageRevision(f"Stage {tid} has no readable Liquipedia revision after its end")
+
+        query = url(LIQUIPEDIA, action="query", prop="revisions", rvprop="ids|timestamp|content",
+                    rvslots="main", rvlimit=1, formatversion=2, format="json", titles=title)
+        try:
+            a.read("liquipedia", query, f"maps-{tid}.json", validate)
+        except MissingStageRevision as exc:
+            print(exc, file=sys.stderr)
+            missing.append(tid)
+    return missing
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", type=Path, default=ROOT / "target/research-archive")
     parser.add_argument("--until", type=date.fromisoformat, default=datetime.now(UTC).date() - timedelta(days=1))
     parser.add_argument("--env", type=Path, default=ROOT / ".env")
     parser.add_argument("--titles", type=Path, help="JSON object mapping PandaScore serie IDs to verified wiki titles")
+    parser.add_argument("--maps-only", action="store_true", help="collect played maps for already archived Stages")
+    parser.add_argument("--stage-titles", type=Path,
+                        help="JSON object mapping PandaScore tournament IDs to verified Liquipedia Stage page titles")
     for source, cap in DEFAULT_CAPS.items():
         parser.add_argument("--" + source + "-cap", type=int, default=cap)
     args = parser.parse_args()
@@ -212,7 +268,7 @@ def main():
         load_secrets(args.env)
     token = os.environ.get("PANDASCORE_TOKEN") or SECRETS.get("PANDASCORE_TOKEN")
     caps = {source: getattr(args, source + "_cap") for source in DEFAULT_CAPS}
-    if caps["panda"] and not token:
+    if not args.maps_only and caps["panda"] and not token:
         parser.error("PANDASCORE_TOKEN is required for PandaScore")
     last_request = {}
     def fetch(source, request):
@@ -235,10 +291,17 @@ def main():
     titles = known_titles()
     if args.titles:
         titles.update(json.loads(args.titles.read_text(encoding="utf8")))
+    steps = (("panda", lambda: collect_panda(archive, args.until)),
+             ("valve", lambda: collect_valve(archive, args.until)),
+             ("liquipedia", lambda: collect_rosters(archive, args.until, titles)))
+    if args.maps_only:
+        stage_titles = known_stage_titles()
+        if args.stage_titles:
+            stage_titles.update({int(tid): title for tid, title in
+                                 json.loads(args.stage_titles.read_text(encoding="utf8")).items()})
+        steps = (("liquipedia", lambda: collect_maps(archive, args.until, stage_titles)),)
     partial = False
-    for source, step in (("panda", lambda: collect_panda(archive, args.until)),
-                         ("valve", lambda: collect_valve(archive, args.until)),
-                         ("liquipedia", lambda: collect_rosters(archive, args.until, titles))):
+    for source, step in steps:
         try:
             if step():
                 partial = True
