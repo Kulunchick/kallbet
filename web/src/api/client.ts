@@ -20,7 +20,11 @@ type Options = {
   body?: unknown;
   signal?: AbortSignal;
   success?: string;
-  /** No automatic success notice after a write; the caller shows its own. Errors still notify. */
+  /**
+   * No automatic notice after a write, neither the success nor the error one:
+   * the caller shows its own confirmation and its own error (it still gets the
+   * thrown `ApiError`).
+   */
   quiet?: boolean;
 };
 
@@ -28,7 +32,7 @@ type Options = {
 export async function api<T>(path: string, options: Options = {}): Promise<T> {
   const mutation = options.method !== undefined && options.method !== "GET";
   const fail = (error: ApiError) => {
-    if (mutation) notify({ error: error.code });
+    if (mutation && !options.quiet) notify({ error: error.code });
     throw error;
   };
   let response: Response;

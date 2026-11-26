@@ -15,6 +15,7 @@
   "locksIn": "Locks in {{time}}",
   "predictedCount": "{{n}} of {{m}} predicted",
   "revealed": "Predictions revealed",
+  "revealedFor": "Predictions revealed: {{a}} vs {{b}}",
   "nobodyPicked": "Nobody",
   "addedByHand": "Added by a League Admin",
   "overridden": "Override: {{fields}}",

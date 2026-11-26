@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  bracketColumns, cardState, collapsedStage, currentStage, earliestStart, estimateCardHeight,
-  hasPreliminaryPick, isOpenToPick, masonryColumns, nextLockAt, nextUnpicked, orderMatchGroups,
+  bracketColumns, cardState, collapsedStage, currentStage, earliestStart,
+  hasPreliminaryPick, isOpenToPick, MASONRY_GAP, MASONRY_ROW, masonrySpan, nextLockAt, nextUnpicked, orderMatchGroups,
   pickMark, splitFinished, stripModel, undoTarget, unpickedOpen,
 } from "../src/pages/matches/layout.ts";
 
@@ -258,46 +258,26 @@ test("a Stage starts at its earliest Scheduled Start", () => {
 
 // -- Masonry ----------------------------------------------------------------------
 
-test("masonry puts each card into the shorter column, the left one on a tie", () => {
-  const heights = { a: 100, b: 100, c: 300, d: 100, e: 100 };
-  const cols = masonryColumns(Object.keys(heights), (k) => heights[k], 2);
-  // a -> L(112), b -> R(112), c -> L(424), d -> R(224), e -> R(336)
-  assert.deepEqual(cols, [["a", "c"], ["b", "d", "e"]]);
+test("a card's span covers its measured height plus the gap, so cards never overlap", () => {
+  for (let tenths = 0; tenths <= 6000; tenths += 7) {
+    const height = tenths / 10;
+    const span = masonrySpan(height);
+    assert.ok(span * MASONRY_ROW >= height + MASONRY_GAP, `${height}px fits in ${span} rows`);
+    assert.ok((span - 1) * MASONRY_ROW < height + MASONRY_GAP, `${height}px: no spare row`);
+  }
 });
 
-test("masonry keeps the order inside a column and loses nothing", () => {
-  const items = Array.from({ length: 11 }, (_, i) => i);
-  const cols = masonryColumns(items, (i) => 100 + (i % 3) * 50, 2);
-  assert.deepEqual(cols.flat().sort((x, y) => x - y), items);
-  for (const col of cols) assert.deepEqual(col, [...col].sort((x, y) => x - y));
+test("the span rounds up to whole rows", () => {
+  assert.equal(masonrySpan(100), 28, "100 + 12 = 112 = 28 rows of 4");
+  assert.equal(masonrySpan(100.5), 29);
+  assert.equal(masonrySpan(101), 29);
+  assert.equal(masonrySpan(150, 12, 4), 41);
+  assert.equal(masonrySpan(20, 0, 10), 2, "custom gap and row");
 });
 
-test("one column keeps the order, an empty list gives empty columns", () => {
-  assert.deepEqual(masonryColumns([3, 1, 2], () => 100, 1), [[3, 1, 2]]);
-  assert.deepEqual(masonryColumns([], () => 100, 2), [[], []]);
-  assert.deepEqual(masonryColumns([1], () => 100, 0), [[1]], "never fewer than one column");
-});
-
-test("the height estimate grows with what a card shows, and is the same for the same card", () => {
-  const plain = pick(1);
-  const revealedLive = pick(2, {
-    status: "live",
-    predictions: { revealed: [
-      { is_bot: true, preliminary: true, rationale: {} },
-      { is_bot: false, preliminary: false, rationale: null },
-    ] },
-  });
-  assert.equal(estimateCardHeight(plain), estimateCardHeight(plain));
-  assert.ok(estimateCardHeight(revealedLive) > estimateCardHeight(plain) + 100);
-  assert.ok(estimateCardHeight(done(3)) > estimateCardHeight(plain), "result line");
-});
-
-test("a tall card sends the next ones to the other column until it is level", () => {
-  const tall = pick(3, { status: "live", predictions: { revealed: [
-    { is_bot: true, preliminary: true, rationale: {} }, { is_bot: true, preliminary: false, rationale: {} },
-  ] } });
-  const cards = [pick(1), pick(2), tall, pick(4), pick(5)];
-  const cols = masonryColumns(cards, estimateCardHeight, 2).map((c) => c.map((x) => x.id));
-  // 1 -> L, 2 -> R, 3 -> L (tie), 4 -> R, 5 -> R (R is still shorter than L)
-  assert.deepEqual(cols, [[1, 3], [2, 4, 5]]);
+test("an unmeasured or broken height still spans at least the gap", () => {
+  assert.equal(masonrySpan(0), 3);
+  assert.equal(masonrySpan(-5), 3);
+  assert.equal(masonrySpan(Number.NaN), 3);
+  assert.equal(masonrySpan(0, 0), 1, "never fewer than one row");
 });

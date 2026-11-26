@@ -253,44 +253,18 @@ export function earliestStart(cards: { scheduled_start: string | null }[]): stri
 
 // -- Masonry --------------------------------------------------------------------
 
-type SizedCard = PickableCard & {
-  predictions: { revealed: { rationale: unknown | null }[] | null };
-};
-
 /** Space between cards, in px (Tailwind `gap-3`). */
 export const MASONRY_GAP = 12;
+/** The height of one implicit grid row, in px (`grid-auto-rows`). */
+export const MASONRY_ROW = 4;
 
 /**
- * A card's height in px, estimated from its state, not measured: stable between
- * renders and needs no DOM. It only has to be close enough to balance two columns.
+ * How many `MASONRY_ROW` rows a card of `height` px (measured, never estimated)
+ * spans in the masonry grid, the gap below it included. The grid has no row gap
+ * of its own, so a card's area is always at least its height plus `gap`: cards
+ * never overlap, and the space under each is `gap` to `gap + row - 1` px.
  */
-export function estimateCardHeight(card: SizedCard): number {
-  const state = cardState(card);
-  let height = state === "upcoming" ? 150 : state === "live" ? 140 : 150;
-  const revealed = card.predictions.revealed;
-  if (revealed !== null) {
-    height += 30; // the avatars under each team
-    height += 64 * revealed.filter((pick) => pick.rationale !== null).length;
-    if (revealed.some((pick) => pickMark(pick as MarkedPick) === "bot_preliminary")) height += 20;
-  }
-  if (state === "finished" || state === "void") height += 20; // the result line
-  return height;
-}
-
-/**
- * Deals items into `columns` independent columns, each to the one that is
- * shortest so far (the leftmost on a tie), so the order reads roughly top to
- * bottom, left to right. One column returns the items in order.
- */
-export function masonryColumns<T>(items: T[], heightOf: (item: T) => number, columns: number): T[][] {
-  const count = Math.max(1, Math.floor(columns));
-  const result: T[][] = Array.from({ length: count }, () => []);
-  const heights: number[] = Array.from({ length: count }, () => 0);
-  for (const item of items) {
-    let shortest = 0;
-    for (let c = 1; c < count; c++) if (heights[c]! < heights[shortest]!) shortest = c;
-    result[shortest]!.push(item);
-    heights[shortest]! += heightOf(item) + MASONRY_GAP;
-  }
-  return result;
+export function masonrySpan(height: number, gap = MASONRY_GAP, row = MASONRY_ROW): number {
+  const h = Number.isFinite(height) ? Math.max(0, height) : 0;
+  return Math.max(1, Math.ceil((h + Math.max(0, gap)) / row));
 }
