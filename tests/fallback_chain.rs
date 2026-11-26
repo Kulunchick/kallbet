@@ -963,3 +963,285 @@ async fn a_local_match_is_adopted_when_hltv_publishes_it_with_a_time_far_off() {
     assert_eq!(ids.len(), 3, "no local duplicate left: {ids:?}");
     assert_eq!(find_match(&view, 201)["my_prediction"], 3, "the Prediction followed");
 }
+
+#[tokio::test]
+async fn a_tbd_hltv_slot_adopts_the_local_match_fallback_created_for_it() {
+    let c = chain().await;
+    let now = c.app.clock.now();
+    let mut hltv_snap = hltv_major(now)
+        .swiss_match(201, (2, 1, 0), "NAVI", "Vitality", now + Duration::hours(26))
+        .build(now);
+    let slot = hltv_snap.matches.iter_mut().find(|m| m.id == MatchId(201)).unwrap();
+    slot.team_a = None;
+    slot.team_b = None;
+    c.hltv.put_event(hltv_snap);
+    c.panda.put_event(panda_major(now).build(now));
+    let alice = c.app.user("alice").await;
+    let league = create_league(&alice).await;
+    poller::tick(&c.app.state).await;
+
+    c.hltv.fail_with(SourceError::Unavailable("cloudflare".into()));
+    c.panda.put_event(
+        panda_major(now)
+            .swiss_match(9201, (2, 1, 0), "Natus Vincere", "Team Vitality", now + Duration::hours(26))
+            .build(now),
+    );
+    poll_again(&c.app).await;
+
+    let local = all_matches(&matches(&alice, league).await)
+        .into_iter()
+        .find(|m| m["id"].as_i64().unwrap() < 0)
+        .expect("a local Match");
+    let res = alice
+        .put(
+            &format!("/api/leagues/{league}/matches/{}/prediction", local["id"]),
+            &json!({ "team_id": local["team_b"]["id"] }),
+        )
+        .await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.text());
+
+    c.hltv.recover();
+    c.hltv.update_event(EventId(EVENT), |s| {
+        let filled = hltv_major(now)
+            .swiss_match(201, (2, 1, 0), "Vitality", "NAVI", now + Duration::hours(26))
+            .build(now);
+        s.matches = filled.matches;
+        s.teams = filled.teams;
+    });
+    poll_again(&c.app).await;
+
+    let view = matches(&alice, league).await;
+    assert_eq!(all_matches(&view).len(), 3, "the TBD slot absorbed the local Match: {view}");
+    let game = find_match(&view, 201);
+    assert_eq!(game["source"], "hltv");
+    assert_eq!(game["my_prediction"], 3, "the Prediction followed into 201: {game}");
+
+    // A later fallback to PandaScore updates 201 in place instead of creating a duplicate.
+    c.hltv.fail_with(SourceError::Unavailable("cloudflare".into()));
+    c.panda.finish(EventId(PS_EVENT), MatchId(9201), "Team Vitality", (0, 2));
+    poll_again(&c.app).await;
+
+    let view = matches(&alice, league).await;
+    assert_eq!(all_matches(&view).len(), 3, "still no duplicate after fallback: {view}");
+    let game = find_match(&view, 201);
+    assert_eq!(game["source"], "pandascore");
+    assert_eq!(game["winner"], 3);
+}
+
+#[tokio::test]
+async fn tbd_slot_adoption_preserves_early_reveal_and_multiple_predictions() {
+    let c = chain().await;
+    let now = c.app.clock.now();
+    let mut hltv_snap = hltv_major(now)
+        .swiss_match(201, (2, 1, 0), "NAVI", "Vitality", now + Duration::hours(26))
+        .build(now);
+    let slot = hltv_snap.matches.iter_mut().find(|m| m.id == MatchId(201)).unwrap();
+    slot.team_a = None;
+    slot.team_b = None;
+    c.hltv.put_event(hltv_snap);
+    c.panda.put_event(panda_major(now).build(now));
+
+    let alice = c.app.user("alice").await;
+    let res = alice
+        .post("/api/leagues", &json!({ "event_id": EVENT, "name": "Friends" }))
+        .await;
+    let league = res.json()["id"].as_i64().unwrap();
+    let invite = res.json()["invite_token"].as_str().unwrap().to_string();
+    let bob = c.app.user("bob").await;
+    bob.post_empty(&format!("/api/invites/{invite}/join")).await;
+    poller::tick(&c.app.state).await;
+
+    c.hltv.fail_with(SourceError::Unavailable("cloudflare".into()));
+    c.panda.put_event(
+        panda_major(now)
+            .swiss_match(9201, (2, 1, 0), "Natus Vincere", "Team Vitality", now + Duration::hours(26))
+            .build(now),
+    );
+    poll_again(&c.app).await;
+
+    let local = all_matches(&matches(&alice, league).await)
+        .into_iter()
+        .find(|m| m["id"].as_i64().unwrap() < 0)
+        .expect("a local Match");
+    let local_id = local["id"].as_i64().unwrap();
+    alice
+        .put(&format!("/api/leagues/{league}/matches/{local_id}/prediction"), &json!({ "team_id": 1 }))
+        .await;
+    bob.put(&format!("/api/leagues/{league}/matches/{local_id}/prediction"), &json!({ "team_id": 3 }))
+        .await;
+    c.app.clock.advance(Duration::minutes(6));
+    poller::tick(&c.app.state).await;
+    assert_eq!(find_match(&matches(&alice, league).await, local_id)["lock"]["locked"], true);
+
+    c.hltv.recover();
+    c.hltv.update_event(EventId(EVENT), |s| {
+        let filled = hltv_major(now)
+            .swiss_match(201, (2, 1, 0), "Vitality", "NAVI", now + Duration::hours(26))
+            .build(now);
+        s.matches = filled.matches;
+        s.teams = filled.teams;
+    });
+    poll_again(&c.app).await;
+
+    let view = matches(&alice, league).await;
+    assert_eq!(all_matches(&view).len(), 3, "{view}");
+    let game = find_match(&view, 201);
+    assert_eq!(game["lock"]["locked"], true, "lock survived adoption: {game}");
+    assert_ne!(game["predictions"]["revealed"], Value::Null, "reveal survived: {game}");
+    assert_eq!(game["predictions"]["count"], 2, "{game}");
+}
+
+#[tokio::test]
+async fn a_winner_conflict_is_recorded_when_hltv_fills_a_tbd_slot_after_a_fallback_settled_it() {
+    let c = chain().await;
+    let now = c.app.clock.now();
+    let mut hltv_snap = hltv_major(now)
+        .swiss_match(201, (2, 1, 0), "NAVI", "Vitality", now + Duration::hours(4))
+        .build(now);
+    let slot = hltv_snap.matches.iter_mut().find(|m| m.id == MatchId(201)).unwrap();
+    slot.team_a = None;
+    slot.team_b = None;
+    c.hltv.put_event(hltv_snap);
+    c.panda.put_event(panda_major(now).build(now));
+    let alice = c.app.user("alice").await;
+    let league = create_league(&alice).await;
+    poller::tick(&c.app.state).await;
+
+    c.hltv.fail_with(SourceError::Unavailable("cloudflare".into()));
+    c.panda.put_event(
+        panda_major(now)
+            .swiss_match(9201, (2, 1, 0), "Natus Vincere", "Team Vitality", now + Duration::hours(4))
+            .build(now),
+    );
+    c.panda.finish(EventId(PS_EVENT), MatchId(9201), "Team Vitality", (0, 2));
+    poll_again(&c.app).await;
+
+    c.hltv.recover();
+    c.hltv.update_event(EventId(EVENT), |s| {
+        let filled = hltv_major(now)
+            .swiss_match(201, (2, 1, 0), "Vitality", "NAVI", now + Duration::hours(4))
+            .build(now);
+        s.matches = filled.matches;
+        s.teams = filled.teams;
+    });
+    c.hltv.finish(EventId(EVENT), MatchId(201), "NAVI", (2, 1));
+    poll_again(&c.app).await;
+
+    let view = matches(&alice, league).await;
+    assert_eq!(all_matches(&view).len(), 3, "{view}");
+    assert_eq!(find_match(&view, 201)["winner"], NAVI);
+    assert_eq!(
+        conflicts(&alice, league).await,
+        vec![(201, "hltv".into(), Some(NAVI), "pandascore".into(), Some(3))]
+    );
+}
+
+#[tokio::test]
+async fn a_one_sided_tbd_local_match_is_adopted_when_hltv_pairs_the_stage() {
+    let c = chain().await;
+    let now = c.app.clock.now();
+    c.hltv.put_event(hltv_major(now).build(now));
+    c.panda.fail_with(SourceError::NotConfigured);
+    let alice = c.app.user("alice").await;
+    let league = create_league(&alice).await;
+    poller::tick(&c.app.state).await;
+
+    c.hltv.fail_with(SourceError::Unavailable("cloudflare".into()));
+    let mut lp_snap = EventSnapshotBuilder::new(LP_EVENT, "Test Major")
+        .stage(StageKind::Swiss, "Stage 1")
+        .swiss_match(1, (1, 0, 0), "NAVI", "FaZe", now + Duration::hours(2))
+        .swiss_match(2, (1, 0, 0), "Vitality", "G2", now + Duration::hours(3))
+        .stage(StageKind::Swiss, "Stage 2")
+        .swiss_match(3, (1, 0, 0), "NAVI", "G2", now + Duration::days(2))
+        .build(now);
+    lp_snap.matches.iter_mut().find(|m| m.id == MatchId(3)).unwrap().team_b = None;
+    c.liquipedia.put_event(lp_snap);
+    poll_again(&c.app).await;
+
+    let stage_two_local: Vec<Value> = matches(&alice, league).await["stages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["ordinal"] == 2)
+        .unwrap()["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|g| g["matches"].as_array().unwrap().clone())
+        .collect();
+    assert_eq!(stage_two_local.len(), 1);
+    assert!(stage_two_local[0]["id"].as_i64().unwrap() < 0);
+    assert_eq!(stage_two_local[0]["team_b"], Value::Null);
+
+    c.hltv.recover();
+    c.hltv.update_event(EventId(EVENT), |s| {
+        let with_stage_two = hltv_major(now)
+            .stage(StageKind::Swiss, "Stage 2")
+            .swiss_match(201, (1, 0, 0), "NAVI", "G2", now + Duration::days(2))
+            .build(now);
+        s.stages = with_stage_two.stages;
+        s.matches = with_stage_two.matches;
+        s.teams = with_stage_two.teams;
+    });
+    poll_again(&c.app).await;
+
+    let stage_two: Vec<Value> = matches(&alice, league).await["stages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["ordinal"] == 2)
+        .unwrap()["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|g| g["matches"].as_array().unwrap().clone())
+        .collect();
+    assert_eq!(stage_two.len(), 1, "one-sided placeholder merged into 201: {stage_two:?}");
+    assert_eq!(stage_two[0]["id"], 201);
+    assert_eq!(stage_two[0]["source"], "hltv");
+}
+
+#[tokio::test]
+async fn a_local_match_of_another_stage_is_not_merged_into_stage_one() {
+    let c = chain().await;
+    let now = c.app.clock.now();
+    c.hltv.put_event(
+        hltv_major(now)
+            .stage(StageKind::Swiss, "Stage 2")
+            .swiss_match(202, (1, 0, 0), "Vitality", "G2", now + Duration::days(3))
+            .build(now),
+    );
+    c.hltv.finish(EventId(EVENT), MatchId(101), "NAVI", (2, 1));
+    let alice = c.app.user("alice").await;
+    let league = create_league(&alice).await;
+    poller::tick(&c.app.state).await;
+
+    c.hltv.fail_with(SourceError::Unavailable("cloudflare".into()));
+    c.panda.put_event(
+        panda_major(now)
+            .stage(StageKind::Swiss, "Swiss Stage 2")
+            .swiss_match(9201, (1, 0, 0), "FaZe Clan", "NAVI", now + Duration::days(3))
+            .build(now),
+    );
+    c.panda.update_match(EventId(PS_EVENT), MatchId(9201), |m| m.scheduled_start = None);
+    poll_again(&c.app).await;
+
+    c.hltv.recover();
+    poll_again(&c.app).await;
+
+    let view = matches(&alice, league).await;
+    assert_eq!(find_match(&view, 101)["winner"], NAVI);
+    let stage_two: Vec<Value> = view["stages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["ordinal"] == 2)
+        .unwrap()["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|g| g["matches"].as_array().unwrap().clone())
+        .collect();
+    assert_eq!(stage_two.len(), 2, "Stage 2 local Match must not merge into Stage 1's 101: {stage_two:?}");
+    assert!(stage_two.iter().any(|m| m["id"].as_i64().unwrap() < 0));
+}

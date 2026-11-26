@@ -792,7 +792,8 @@ pub fn adoptions(stored: &EventView, snapshot: &EventSnapshot, window: Duration)
             out.teams.push((team.id, hit.id));
         }
     }
-    let known: HashSet<MatchId> = stored.matches.iter().map(|m| m.data.id).collect();
+    let stored_by_id: HashMap<MatchId, &SourcedMatch> =
+        stored.matches.iter().map(|m| (m.data.id, m)).collect();
     let mut used: HashSet<MatchId> = HashSet::new();
     // Both teams known (by name) first, then one known team plus the time:
     // the other local team is then that snapshot team.
@@ -809,21 +810,12 @@ pub fn adoptions(stored: &EventView, snapshot: &EventSnapshot, window: Duration)
             let hit = snapshot
                 .matches
                 .iter()
-                .filter(|g| !known.contains(&g.id) && !used.contains(&g.id))
+                .filter(|g| !used.contains(&g.id))
                 .filter_map(|g| {
                     let teams = g.teams();
                     let agree = [a, b].iter().filter(|t| teams.contains(&Some(**t))).count();
                     if agree < needed {
                         return None;
-                    }
-                    // A still-local team pairs with the snapshot's other team.
-                    let mut pairs = Vec::new();
-                    for local_team in [a, b].into_iter().filter(|t| t.0 < 0) {
-                        let other = teams
-                            .into_iter()
-                            .flatten()
-                            .find(|t| *t != a && *t != b && !adopted.contains(t))?;
-                        pairs.push((local_team, other));
                     }
                     // Two teams meet once per Swiss or Playoffs Stage: with
                     // both teams agreeing there, a start time outside the
@@ -835,6 +827,29 @@ pub fn adoptions(stored: &EventView, snapshot: &EventSnapshot, window: Duration)
                             s.ordinal == g.stage
                                 && matches!(s.kind, StageKind::Swiss | StageKind::Playoffs)
                         });
+                    if let Some(existing) = stored_by_id.get(&g.id) {
+                        if existing.data.id.0 <= 0 || existing.data.stage != local.data.stage {
+                            return None;
+                        }
+                        let has_tbd =
+                            existing.data.team_a.is_none() || existing.data.team_b.is_none();
+                        let same_pair_dupe = needed == 2
+                            && (once_per_stage
+                                || (g.scheduled_start.is_some()
+                                    && local.data.scheduled_start.is_some()));
+                        if !has_tbd && !same_pair_dupe {
+                            return None;
+                        }
+                    }
+                    // A still-local team pairs with the snapshot's other team.
+                    let mut pairs = Vec::new();
+                    for local_team in [a, b].into_iter().filter(|t| t.0 < 0) {
+                        let other = teams
+                            .into_iter()
+                            .flatten()
+                            .find(|t| *t != a && *t != b && !adopted.contains(t))?;
+                        pairs.push((local_team, other));
+                    }
                     let diff = match within(g.scheduled_start, local.data.scheduled_start, window) {
                         Some(diff) => diff,
                         None if once_per_stage => i64::MAX,
@@ -853,7 +868,86 @@ pub fn adoptions(stored: &EventView, snapshot: &EventSnapshot, window: Duration)
             }
         }
     }
+    // Third pass: one-sided TBD placeholders (e.g. Liquipedia Stage 2/3
+    // invited teams paired against TBD) adopted once HLTV lists an unambiguous
+    // Match with that canonical team in the same Stage and placement bucket.
+    for local in stored.matches.iter().filter(|m| m.data.id.0 < 0) {
+        if out.matches.iter().any(|(from, _)| *from == local.data.id) {
+            continue;
+        }
+        let canon = |t: Option<TeamId>| t.map(|t| team_of.get(&t).copied().unwrap_or(t));
+        let team = match (canon(local.data.team_a), canon(local.data.team_b)) {
+            (Some(t), None) | (None, Some(t)) if t.0 > 0 => t,
+            _ => continue,
+        };
+        if matches!(local.data.placement, MatchPlacement::Unplaced) {
+            continue;
+        }
+        let local_stage = stage_kind_pos(&stored.stages, local.data.stage);
+        let mut hits = snapshot.matches.iter().filter(|g| {
+            if used.contains(&g.id)
+                || !same_bucket(local.data.placement, g.placement)
+                || !g.teams().contains(&Some(team))
+            {
+                return false;
+            }
+            match stored_by_id.get(&g.id) {
+                Some(existing) => {
+                    existing.data.id.0 > 0
+                        && existing.data.stage == local.data.stage
+                        && (existing.data.team_a.is_none()
+                            || existing.data.team_b.is_none()
+                            || existing.data.teams().contains(&Some(team)))
+                }
+                None => {
+                    local_stage.is_some()
+                        && stage_kind_pos(&snapshot.stages, g.stage) == local_stage
+                }
+            }
+        });
+        if let (Some(hit), None) = (hits.next(), hits.next()) {
+            used.insert(hit.id);
+            out.matches.push((local.data.id, hit.id));
+        }
+    }
     out
+}
+
+fn same_bucket(a: MatchPlacement, b: MatchPlacement) -> bool {
+    match (a, b) {
+        (
+            MatchPlacement::Swiss {
+                wins: wa,
+                losses: la,
+                ..
+            },
+            MatchPlacement::Swiss {
+                wins: wb,
+                losses: lb,
+                ..
+            },
+        ) => wa == wb && la == lb,
+        (
+            MatchPlacement::Playoffs {
+                rounds_before_final: ra,
+                slot: sa,
+            },
+            MatchPlacement::Playoffs {
+                rounds_before_final: rb,
+                slot: sb,
+            },
+        ) => ra == rb && sa == sb,
+        _ => false,
+    }
+}
+
+fn stage_kind_pos(stages: &[Stage], ordinal: StageOrdinal) -> Option<(StageKind, usize)> {
+    let stage = stages.iter().find(|s| s.ordinal == ordinal)?;
+    let pos = stages
+        .iter()
+        .filter(|s| s.kind == stage.kind && s.ordinal <= ordinal)
+        .count();
+    Some((stage.kind, pos))
 }
 
 /// Picks the external Event that is the canonical one `hint` describes:
