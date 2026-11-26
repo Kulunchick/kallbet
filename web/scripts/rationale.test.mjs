@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  externalLink, factorLabelKey, rationalePicks, summaryFor, winPercent,
+  externalLink, factorLabelKey, initialOf, rationalePicks, summaryFor, winPercent, winSplit,
 } from "../src/pages/matches/rationale.ts";
 
 const all = { en: "In English.", ru: "По-русски.", uk: "Українською." };
@@ -68,4 +68,21 @@ test("the panel lists revealed picks that carry a Rationale, Bot Users first", (
   ];
   assert.deepEqual(rationalePicks(picks).map((p) => p.nickname), ["Oracle", "alice"]);
   assert.deepEqual(rationalePicks(null), [], "nothing revealed yet");
+});
+
+test("the bar's two shares add up to 100 and follow the winPercent rounding", () => {
+  assert.deepEqual(winSplit(0.634), { pick: 63, opponent: 37 });
+  assert.deepEqual(winSplit(0.635), { pick: 64, opponent: 36 });
+  assert.deepEqual(winSplit(0), { pick: 0, opponent: 100 });
+  assert.deepEqual(winSplit(1), { pick: 100, opponent: 0 });
+  assert.equal(winSplit(1.2), null, "out of range");
+  assert.equal(winSplit(Number.NaN), null);
+});
+
+test("a nickname's initial is its first whole character, upper-cased", () => {
+  assert.equal(initialOf("oracle"), "O");
+  assert.equal(initialOf("  alice"), "A");
+  assert.equal(initialOf("Ярослав"), "Я");
+  assert.equal(initialOf("😀fan"), "😀");
+  assert.equal(initialOf(""), "");
 });
