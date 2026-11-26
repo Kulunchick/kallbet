@@ -3,5 +3,10 @@
   "cancel": "Cancel",
   "confirm": "Confirm",
   "dragHandle": "Drag down to close",
-  "typeToConfirm": "Type “{{text}}” to confirm"
+  "typeToConfirm": "Type “{{text}}” to confirm",
+  "skipToContent": "Skip to content",
+  "primaryNav": "Primary navigation",
+  "accountMenu": "Account menu",
+  "signedInWithTelegram": "Signed in with Telegram",
+  "language": "Language"
 }

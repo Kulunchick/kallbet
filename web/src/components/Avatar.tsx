@@ -25,7 +25,7 @@ export function Avatar({
   return (
     <span
       aria-hidden
-      className={`${className} flex shrink-0 items-center justify-center rounded-full border border-line bg-raised font-display text-xs font-bold text-gold-a`}
+      className={`${className} flex shrink-0 items-center justify-center rounded-full border border-line bg-raised font-display text-xs font-bold text-fg`}
     >
       {Array.from(nickname)[0]?.toUpperCase()}
     </span>
