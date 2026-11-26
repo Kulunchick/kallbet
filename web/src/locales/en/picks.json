@@ -1,0 +1,47 @@
+{
+  "strip": {
+    "unpicked_one": "{{count}} unpicked",
+    "unpicked_other": "{{count}} unpicked",
+    "allPicked": "All picked",
+    "nothing": "Nothing to pick right now",
+    "nextLock": "Next Lock in {{time}}",
+    "pickNext": "Pick next Match",
+    "howLockWorks": "How Lock works"
+  },
+  "lockHelp": {
+    "title": "How Lock works",
+    "line1": "Picks close 15 minutes before a Match starts.",
+    "line2": "If everyone has picked earlier, it locks right then.",
+    "line3": "At Lock, everyone's picks are revealed. A Lock is never undone.",
+    "gotIt": "Got it"
+  },
+  "disclosure": {
+    "finished": "Finished",
+    "matchCount_one": "{{count}} Match",
+    "matchCount_other": "{{count}} Matches",
+    "noMatchesYet": "No Matches yet",
+    "startsOn": "starts {{day}}"
+  },
+  "toast": {
+    "saved": "Pick saved · {{team}}",
+    "restored": "Pick restored · {{team}}",
+    "undo": "Undo"
+  },
+  "states": {
+    "loadFailed": {
+      "title": "Couldn't load Matches",
+      "body": "Check your connection and try again. Picks you already made are not affected.",
+      "retry": "Retry",
+      "back": "Back to League"
+    },
+    "refreshFailed": {
+      "text": "Couldn't refresh",
+      "retry": "Retry"
+    },
+    "empty": {
+      "title": "No Matches yet",
+      "body": "Matches appear once the data source publishes this Event's schedule.",
+      "checkAgain": "Check again"
+    }
+  }
+}
