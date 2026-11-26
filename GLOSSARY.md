@@ -120,7 +120,7 @@ A manual correction by a League Admin to a Match's time, result, teams or visibi
 ### Research
 
 **Signal Lab**:
-The sidecar's evaluation of Candidate Signals over completed Matches under one fixed protocol (walk-forward by Event, log-loss against the anchor, an Event-level bootstrap and a written verdict rule), with no network and no LLM provider.
+The sidecar's evaluation of Candidate Signals over completed Matches under one fixed protocol (walk-forward by Event, log-loss against the anchor, an Event-level bootstrap and a written verdict rule), with no network. Only its LLM track calls an LLM provider, and only under a Run Budget; a rerun from recorded answers calls none.
 _Avoid_: Experiment, A/B test
 
 **Candidate Signal**:
@@ -133,3 +133,11 @@ The Signal Lab's regularised logistic model over the logits of the market line a
 **Holdout**:
 The Matches no fitting and no selection step of the Signal Lab may read: PGL Major Singapore 2026 Stage 2, Stage 3 and Playoffs, and every Event completed after spec #33 was published. The combination frozen by forward selection is evaluated on it once, last; until a Holdout Match is played the report says the Holdout is pending.
 _Avoid_: Test set, validation set
+
+**Run Budget**:
+The number of CLI runs per subscription that a Signal Lab run may spend, given by the operator; without one the lab calls no provider. A subscription whose budget is spent is not called again in that run.
+_Avoid_: Quota (that is the subscription's own limit)
+
+**Seating**:
+Which subscription sits as Market Advocate, Devil's Advocate and Chief Arbiter in the debate. The Signal Lab compares seatings on the Matches with a roster flag (a pre-cutoff roster fact with a stand-in).
+_Avoid_: Lineup (that is a team's five)
