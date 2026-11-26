@@ -37,6 +37,24 @@ impl Audit {
         .fetch_all(&self.db)
         .await?)
     }
+    /// Dated RSS articles both published and first fetched before the replay instant.
+    pub async fn news_before(&self, cutoff: Instant) -> Result<Vec<AsOf<NewsItem>>> {
+        let rows = sqlx::query_as::<_, (Instant, Vec<u8>)>(
+            "SELECT observed_at, payload FROM raw_feed_snapshots
+             WHERE source = 'rss:item' AND observed_at < ? ORDER BY observed_at, id",
+        )
+        .bind(cutoff)
+        .fetch_all(&self.db)
+        .await?;
+        let mut items = Vec::new();
+        for (seen, payload) in rows {
+            let item: NewsItem = serde_json::from_slice(&payload)?;
+            if item.published_at < cutoff {
+                items.push(AsOf::new(item, seen, cutoff)?);
+            }
+        }
+        Ok(items)
+    }
     pub async fn record_vrs(&self, markdown: &str, observed_at: Instant) -> Result<()> {
         sqlx::query("INSERT INTO vrs_snapshots(observed_at,content_hash,markdown) VALUES(?,?,?) ON CONFLICT DO NOTHING").bind(observed_at).bind(crate::digest(markdown.as_bytes())).bind(markdown).execute(&self.db).await?;
         Ok(())

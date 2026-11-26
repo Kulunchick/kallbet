@@ -502,5 +502,21 @@ async fn an_unchanged_page_or_feed_fetched_again_is_kept_once() {
         .await
         .unwrap();
     assert_eq!(feeds.len(), 1);
+    let reopened = Audit::open(&dir.path().join("audit.db")).await.unwrap();
+    assert!(reopened.news_before(now).await.unwrap().is_empty());
+    let archived = reopened.news_before(clock.now()).await.unwrap();
+    let expected = kallbet_ai::adapters::context::rss::parse_rss_items(
+        HLTV_RSS,
+        &format!("{base}/rss/hltv"),
+        clock.now(),
+    )
+    .unwrap();
+    assert!(!expected.is_empty());
+    assert_eq!(archived.len(), expected.len());
+    assert!(
+        archived
+            .iter()
+            .all(|item| item.observed_at() < now + Duration::minutes(20))
+    );
     server.abort();
 }

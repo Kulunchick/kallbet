@@ -299,13 +299,18 @@ impl CompositeContextEnricher {
         if !response.status().is_success() {
             return Err(format!("RSS HTTP {}", response.status()).into());
         }
-        let xml = response
-            .text()
-            .await
-            .map_err(reqwest::Error::without_url)?;
-        let items = rss::parse_rss_items(&xml, feed_url, cutoff)?;
-        let _ = cache::put_rss_feed(&self.db, feed_url, self.clock.now(), &xml).await;
-        Ok(items)
+        let xml = response.text().await.map_err(reqwest::Error::without_url)?;
+        let fetched_at = self.clock.now();
+        let all = rss::parse_rss_items(&xml, feed_url, Instant::MAX_UTC)?;
+        for article in &all {
+            let payload = serde_json::to_vec(article.at(Instant::MAX_UTC)?)?;
+            crate::audit::store_raw(&self.db, "rss:item", fetched_at, &payload).await?;
+        }
+        let _ = cache::put_rss_feed(&self.db, feed_url, fetched_at, &xml).await;
+        Ok(all
+            .into_iter()
+            .filter(|a| a.observed_at() < cutoff)
+            .collect())
     }
 }
 

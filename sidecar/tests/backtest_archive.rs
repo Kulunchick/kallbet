@@ -19,6 +19,22 @@ fn archive_of(prefixes: &[&str]) -> ReplayArchive {
     ReplayArchive::load(dir.path()).unwrap()
 }
 
+#[test]
+fn research_daily_roster_is_linked_without_a_pickem_page() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("panda-7-2.json"), "[]").unwrap();
+    std::fs::write(
+        dir.path().join("roster-99-2026-10-01.json"),
+        r#"{"query":{"pages":[{"title":"Example","revisions":[]}]}}"#,
+    )
+    .unwrap();
+    std::fs::write(dir.path().join("roster-99-2026-10-02.json"),
+        r#"{"query":{"pages":[{"title":"Example","revisions":[{"timestamp":"2026-10-01T12:00:00Z"}]}]}}"#).unwrap();
+    let archive = ReplayArchive::load(dir.path()).unwrap();
+    assert_eq!(archive.event_titles[&99], "Example");
+    assert_eq!(archive.event_pages["Example"].len(), 1);
+}
+
 fn name_of(stage: &kallbet_ai::adapters::backtest::ReplayStage, id: i64) -> String {
     stage
         .teams

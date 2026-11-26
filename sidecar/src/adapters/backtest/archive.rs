@@ -13,6 +13,7 @@ use crate::adapters::context::wikitext::{Template, find_templates, strip_comment
 use crate::*;
 use serde::Serialize;
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     io::Read,
@@ -49,6 +50,8 @@ impl ReplayMatch {
 pub enum StageKind {
     Swiss,
     Playoffs,
+    Groups,
+    Other,
 }
 
 #[derive(Clone)]
@@ -181,9 +184,18 @@ impl ReplayArchive {
             .map(|f| f.map(|f| f.path()))
             .collect::<std::io::Result<_>>()?;
         names.retain(|p| p.is_file());
+        let catalog = dir.join("catalog");
+        if catalog.is_dir() {
+            for entry in std::fs::read_dir(&catalog)? {
+                let entry = entry?;
+                if entry.file_type()?.is_file() {
+                    names.push(entry.path());
+                }
+            }
+        }
         names.sort();
         let mut archive = Self::default();
-        let mut digest = Vec::new();
+        let mut digest = Sha256::new();
         let mut matches: BTreeMap<i64, Vec<Value>> = BTreeMap::new();
         let mut stage_pages: BTreeMap<i64, WikiRevision> = BTreeMap::new();
         for path in names {
@@ -193,9 +205,16 @@ impl ReplayArchive {
                 continue;
             }
             let bytes = read_file(&path)?;
-            digest.extend_from_slice(stem.as_bytes());
-            digest.extend_from_slice(&bytes);
+            let is_catalog = path.parent() == Some(catalog.as_path());
+            if is_catalog {
+                digest.update(b"catalog/");
+            }
+            digest.update(stem.as_bytes());
+            digest.update(&bytes);
             archive.files += 1;
+            if is_catalog {
+                continue;
+            }
             if stem.ends_with(".md") {
                 if stem.starts_with("standings_global_") {
                     archive.standings.push(String::from_utf8(bytes)?);
@@ -205,6 +224,9 @@ impl ReplayArchive {
             let value: Value =
                 serde_json::from_slice(&bytes).map_err(|e| format!("{name}: not JSON ({e})"))?;
             let first = &value[0];
+            if stem.starts_with("panda-") && value.as_array().is_some_and(Vec::is_empty) {
+                continue;
+            }
             if first["slug"].is_string() && first["markets"].is_array() {
                 archive
                     .polymarket_events
@@ -236,6 +258,17 @@ impl ReplayArchive {
                     .or_default()
                     .extend(value.as_array().cloned().unwrap_or_default());
             } else if let Some(page) = value["query"]["pages"][0].as_object() {
+                let roster_event = stem
+                    .strip_prefix("roster-")
+                    .and_then(|s| s.split_once('-'))
+                    .and_then(|(id, _)| id.parse::<i64>().ok());
+                if roster_event.is_some()
+                    && page
+                        .get("revisions")
+                        .is_none_or(|r| r.as_array().is_some_and(Vec::is_empty))
+                {
+                    continue;
+                }
                 let revision = &page["revisions"][0];
                 let (Some(title), Some(timestamp)) = (
                     page["title"].as_str(),
@@ -248,6 +281,9 @@ impl ReplayArchive {
                     timestamp,
                     body: String::from_utf8(bytes)?,
                 };
+                if let Some(event) = roster_event {
+                    archive.event_titles.insert(event, title.to_owned());
+                }
                 match stem
                     .strip_prefix("lp-")
                     .and_then(|s| s.trim_end_matches(".json").parse::<i64>().ok())
@@ -268,7 +304,7 @@ impl ReplayArchive {
         for revisions in archive.event_pages.values_mut() {
             revisions.sort_by_key(|r| r.timestamp);
         }
-        archive.digest = crate::digest(&digest);
+        archive.digest = hex::encode(digest.finalize());
         for (id, rows) in matches {
             let stage = stage_from_pandascore(id, &rows, stage_pages.get(&id))?;
             if let Some(page) = stage_pages.get(&id) {
@@ -311,8 +347,15 @@ fn stage_from_pandascore(
     let event_id = first["serie_id"].as_i64().ok_or("missing serie_id")?;
     let kind = if name.to_lowercase().contains("playoff") {
         StageKind::Playoffs
-    } else {
+    } else if name.to_lowercase().contains("group") {
+        StageKind::Groups
+    } else if name.to_lowercase().contains("swiss")
+        || (event.to_lowercase().contains("major")
+            && matches!(name.as_str(), "Elimination Stage" | "Opening Stage" | "Stage 1" | "Stage 2" | "Stage 3"))
+    {
         StageKind::Swiss
+    } else {
+        StageKind::Other
     };
     let mut teams: BTreeMap<i64, Team> = BTreeMap::new();
     let mut acronyms: BTreeMap<i64, String> = BTreeMap::new();
@@ -499,6 +542,7 @@ fn opening_view(
         json!({"id": id, "name": t.map(|t| t.name.as_str()).unwrap_or("")})
     };
     match stage.kind {
+        StageKind::Groups | StageKind::Other => Err("no Pick'em model for this Stage format".into()),
         StageKind::Swiss => {
             let section = content
                 .split("====Round 1====")
