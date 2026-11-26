@@ -301,6 +301,34 @@ class Audit(unittest.TestCase):
             (pathlib.Path(t) / "sources-market.tsv").write_text("f\thttps://x?apiKey=1\t2026\tab\n")
             self.assertEqual(sorted(c.audit()), ["bad.json.gz", "sources-market.tsv"])
 
+    # Finding 11 (review of 6eea194): the audit reads gzip payloads for the key
+    # pattern too, and with no credential to look for it fails, never "clean".
+    def test_the_key_pattern_is_found_in_gzip_and_no_secret_is_not_clean(self):
+        with tempfile.TemporaryDirectory() as t:
+            c = make(t)
+            (pathlib.Path(t) / "url.json.gz").write_bytes(gzip.compress(b'{"u":"https://x?apiKey=abc"}'))
+            self.assertEqual(c.audit(), ["url.json.gz"])
+            blind = cm.Collector(pathlib.Path(t), secrets=[])
+            with self.assertRaises(RuntimeError):
+                blind.audit()
+
+    def test_the_audit_command_loads_the_env_file_and_finds_its_key(self):
+        import subprocess, sys
+        with tempfile.TemporaryDirectory() as t:
+            archive, env = pathlib.Path(t) / "a", pathlib.Path(t) / ".env"
+            archive.mkdir()
+            env.write_text("ODDSPAPI_API_KEY=k-123456\n")
+            (archive / "x.json.gz").write_bytes(gzip.compress(b'{"echo":"k-123456"}'))
+            run = lambda: subprocess.run([sys.executable, "-I", str(HERE / "collect_market.py"),
+                                          "--archive", str(archive), "--env", str(env), "audit"],
+                                         capture_output=True, text=True)
+            got = run()
+            self.assertEqual(got.returncode, 1, got.stdout + got.stderr)
+            self.assertIn("x.json.gz", got.stdout)
+            env.write_text("")
+            got = run()
+            self.assertNotEqual(got.returncode, 0, got.stdout + got.stderr)
+            self.assertNotIn("no credential found", got.stdout)
 
 if __name__ == "__main__":
     unittest.main()

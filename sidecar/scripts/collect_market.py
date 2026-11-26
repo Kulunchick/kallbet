@@ -338,15 +338,19 @@ class Collector:
     # ---- audit and report ------------------------------------------------------------------
 
     def audit(self):
-        """Relative names of files that hold a credential."""
+        """Relative names of files that hold a credential, or the apiKey pattern, in their
+        payload (decompressed) or as written. With no credential loaded it refuses: a scan for
+        nothing would read as clean."""
+        if not self.secrets:
+            raise RuntimeError("no credential loaded to scan for (check --env): the audit cannot pass")
         bad = []
         for path in sorted(p for p in self.archive.rglob("*") if p.is_file()):
+            if path.name == "market-ledger.lock":
+                continue
             data = path.read_bytes()
             if path.suffix == ".gz":
                 data = gzip.decompress(data)
-            hit = any(s.encode() in data for s in self.secrets)
-            if path.suffix != ".gz":
-                hit = hit or b"apiKey=" in data
+            hit = any(s.encode() in data for s in self.secrets) or b"apiKey=" in data
             if hit:
                 bad.append(path.relative_to(self.archive).as_posix())
         return bad
@@ -401,7 +405,11 @@ def main():
         oddspapi_run_cap=args.oddspapi_run_cap, oddspapi_month_cap=args.oddspapi_month_cap,
         remote_run_cap=args.remote_run_cap)
     if args.command == "audit":
-        bad = collector.audit()
+        try:
+            bad = collector.audit()
+        except RuntimeError as e:
+            print(e, file=sys.stderr)
+            sys.exit(2)
         print("\n".join(bad) if bad else "no credential found")
         sys.exit(1 if bad else 0)
     if args.command == "tournaments":
