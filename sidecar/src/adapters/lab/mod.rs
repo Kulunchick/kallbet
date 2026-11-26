@@ -21,6 +21,7 @@ pub mod cli;
 pub mod combiner;
 pub mod holdout;
 pub mod leagues;
+pub mod llm;
 pub mod pickem;
 pub mod report;
 pub mod runner;

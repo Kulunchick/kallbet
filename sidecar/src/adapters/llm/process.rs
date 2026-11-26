@@ -37,6 +37,8 @@ pub enum RunError {
     /// Killed after `Invocation::timeout`.
     TimedOut,
     Io(String),
+    /// Refused before starting: the run's budget for this subscription is spent.
+    OverBudget,
 }
 
 #[async_trait]
