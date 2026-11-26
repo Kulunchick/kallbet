@@ -72,9 +72,14 @@ export type MatchesView = { event: EventInfo; stages: StageView[] };
 export type Prediction = { match_id: number; team_id: number; updated_at: string };
 
 export const getMatches = (league: number) => api<MatchesView>(`/leagues/${league}/matches`);
-export const predict = (league: number, match: number, team_id: number) =>
+/**
+ * `quiet`: the page shows its own confirmation and its own inline error instead
+ * of the shared notices, so each outcome is announced once.
+ */
+export const predict = (league: number, match: number, team_id: number, quiet = false) =>
   api<Prediction>(`/leagues/${league}/matches/${match}/prediction`, {
     method: "PUT",
     success: "predictionSaved",
+    quiet,
     body: { team_id },
   });

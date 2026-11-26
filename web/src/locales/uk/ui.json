@@ -1,0 +1,19 @@
+{
+  "close": "Закрити",
+  "cancel": "Скасувати",
+  "confirm": "Підтвердити",
+  "dragHandle": "Потягніть вниз, щоб закрити",
+  "typeToConfirm": "Введіть «{{text}}» для підтвердження",
+  "skipToContent": "Перейти до вмісту",
+  "primaryNav": "Основна навігація",
+  "accountMenu": "Меню акаунта",
+  "signedInWithTelegram": "Вхід через Telegram",
+  "language": "Мова",
+  "leagueTabs": {
+    "label": "Розділи ліги",
+    "myLeagues": "Мої ліги",
+    "matches": "Матчі",
+    "pickem": "Pick'em",
+    "leaderboard": "Таблиця"
+  }
+}

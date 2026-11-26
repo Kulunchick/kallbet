@@ -1,34 +1,44 @@
-import type { TFunction } from "i18next";
-import { type ReactNode, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
 import { useLoad } from "../../api/useLoad";
+import { LeagueHeader } from "../../components/LeagueHeader";
+import { getLeague } from "../leagues/api";
 import { MatchCard } from "./MatchCard";
-import {
-  getMatches,
-  predict,
-  type MatchCard as Card,
-  type MatchGroup,
-  type MatchesView,
-  type StageView,
-  type TeamRef,
-} from "./api";
-import { bracketColumns, compareMatchOrder, orderMatchGroups } from "./layout";
+import { getMatches, predict, type MatchCard as Card, type MatchesView, type TeamRef } from "./api";
+import { currentStage, nextLockAt, nextUnpicked, orderMatchGroups, stripModel, undoTarget } from "./layout";
+import { LoadFailed, MatchesSkeleton, NoMatches, RefreshFailed } from "./MatchesStates";
+import { NextUpStrip } from "./NextUpStrip";
+import { PickToast, type PickToastData } from "./PickToast";
+import { StageSection } from "./StageSection";
 import { useNow } from "./time";
 
 /** How often the page refetches, so new Swiss rounds and Locks show up. */
 const REFRESH_MS = 60_000;
+/** The longest delay `setTimeout` keeps (2^31 - 1 ms). */
+const MAX_TIMER_MS = 2 ** 31 - 1;
 
 export function MatchesPage() {
   const { t } = useTranslation("matches");
+  const { t: tPicks } = useTranslation("picks");
   const league = Number(useParams().id);
   const { result, reload } = useLoad(() => getMatches(league), [league]);
-  const now = useNow();
+  // One extra request: it says whether this is an admin (the source line on each
+  // card) and whether the League is archived (no picking, so no strip). Nothing
+  // waits on it: until it says "archived", the strip shows.
+  const { result: leagueResult } = useLoad(() => getLeague(league), [league]);
+  const tick = useNow();
+  // The moment of the last Lock the page saw pass: the clock jumps to it, so a
+  // card stops offering its teams exactly at its Lock, not at the next tick.
+  const [lockedAt, setLockedAt] = useState(0);
+  const now = Math.max(tick, lockedAt);
   const [view, setView] = useState<MatchesView | null>(null);
   const [saving, setSaving] = useState<Set<number>>(() => new Set());
   const [error, setError] = useState<{ match: number; error: unknown } | null>(null);
+  const [toast, setToast] = useState<PickToastData | null>(null);
+  const dismissToast = useCallback(() => setToast(null), []);
 
   useEffect(() => {
     if (result.state === "ready") setView(result.data);
@@ -39,29 +49,57 @@ export function MatchesPage() {
     return () => window.clearInterval(id);
   }, [reload]);
 
+  // At the next Lock of any open card: move the clock to it at once, then
+  // reload shortly after, when the server has Locked (and maybe Revealed) it.
   useEffect(() => {
-    const deadlines = view?.stages.flatMap((stage) =>
-      stage.groups.flatMap((group) => group.matches.flatMap((match) =>
-        match.lock.edit_window && match.lock.locks_at ? [Date.parse(match.lock.locks_at)] : [],
-      )),
-    );
-    if (!deadlines?.length) return;
-    const next = Math.min(...deadlines);
-    const timer = window.setTimeout(reload, Math.max(0, next - Date.now()) + 250);
+    const open = view?.stages.flatMap((stage) =>
+      stage.groups.flatMap((group) => group.matches.filter((match) => !match.lock.locked)),
+    ) ?? [];
+    const next = nextLockAt(open, Math.max(Date.now(), lockedAt));
+    if (next === null) return;
+    // A timer longer than ~24.8 days fires at once: wait the longest one instead
+    // (the minute refresh schedules it again) and ignore such an early call.
+    const timer = window.setTimeout(() => {
+      if (next - Date.now() < 1000) setLockedAt(Math.max(Date.now(), next));
+    }, Math.min(next - Date.now(), MAX_TIMER_MS));
     return () => window.clearTimeout(timer);
-  }, [view, reload]);
+  }, [view, lockedAt]);
 
-  async function onPredict(match: number, team: TeamRef) {
-    if (saving.has(match)) return;
+  useEffect(() => {
+    if (lockedAt === 0) return;
+    const timer = window.setTimeout(reload, 250);
+    return () => window.clearTimeout(timer);
+  }, [lockedAt, reload]);
+
+  const cards = view?.stages.flatMap((stage) => stage.groups.flatMap((group) => group.matches)) ?? [];
+
+  // Undo runs from a toast made in an earlier render: it must see the cards of now.
+  const latest = useRef({ cards, saving });
+  useEffect(() => {
+    latest.current = { cards, saving };
+  });
+
+  async function onPredict(match: number, team: TeamRef, undo = false) {
+    const card = latest.current.cards.find((c) => c.id === match);
+    if (latest.current.saving.has(match) || card?.my_prediction === team.id) return;
+    const previous = card ? undoTarget(card, team.id) : null;
+    latest.current.saving = new Set(latest.current.saving).add(match);
     setSaving((pending) => new Set(pending).add(match));
     setError(null);
     try {
-      await predict(league, match, team.id);
+      await predict(league, match, team.id, true);
       setView((v) => v && withPrediction(v, match, team.id));
+      setToast({
+        id: Date.now(),
+        text: tPicks(undo ? "toast.restored" : "toast.saved", { team: team.name }),
+        // Only a changed pick can be undone: there is no way to take a pick back.
+        onUndo: previous && !undo ? () => void onPredict(match, previous, true) : null,
+      });
       // The count changed, and this Prediction may have opened the final edit window.
       reload();
     } catch (e) {
       setError({ match, error: e });
+      setToast(null);
       reload();
     } finally {
       setSaving((pending) => {
@@ -72,33 +110,47 @@ export function MatchesPage() {
     }
   }
 
-  const back = (
-    <Link to={`/leagues/${league}`} className="text-sm text-mute hover:text-fg">
-      ← {t("backToLeague")}
-    </Link>
-  );
-
-  if (view === null) {
-    if (result.state === "error") {
-      return (
-        <div className="flex flex-col gap-4 py-10">
-          {back}
-          <p className="text-danger">{errorMessage(t, result.error)}</p>
-        </div>
-      );
-    }
-    return <p className="py-10 text-mute">{t("loading")}</p>;
+  function pickNext() {
+    const target = nextUnpicked(cards, now);
+    const element = target && document.getElementById(`match-${target.id}`);
+    if (!element) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    element.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    // The scroll is already under way: do not let focusing restart it.
+    (element.querySelector<HTMLElement>("button[aria-pressed]") ?? element).focus({ preventScroll: true });
   }
 
+  const header = <LeagueHeader league={league} active="matches" loaded={leagueResult} />;
+  const frame = "flex flex-col gap-6 py-4 md:py-8";
+
+  if (view === null) {
+    return (
+      <div className={frame}>
+        {header}
+        {result.state === "error" ? <LoadFailed league={league} onRetry={reload} /> : <MatchesSkeleton />}
+      </div>
+    );
+  }
+
+  const isAdmin = leagueResult.state === "ready" && leagueResult.data.my_role === "admin";
+  // The strip shows unless the League is known to be archived: while that
+  // request loads or after it fails too (an archived League's cards have
+  // `can_predict` false, so the strip could not offer a pick there anyway).
+  const canPick = !(leagueResult.state === "ready" && leagueResult.data.archived_at !== null);
+  const strip = canPick ? stripModel(cards, now) : null;
+
   const renderCard = (card: Card) => (
-    <div key={card.id} className="flex flex-col gap-1">
+    <div key={card.id} id={`match-${card.id}`} tabIndex={-1} className="flex scroll-mt-24 flex-col gap-1 outline-none">
       <MatchCard
         card={card}
         now={now}
         saving={saving.has(card.id)}
         onPredict={(team) => void onPredict(card.id, team)}
+        showMeta={isAdmin}
       />
-      {error?.match === card.id && <p className="px-1 text-sm text-danger">{errorMessage(t, error.error)}</p>}
+      {error?.match === card.id && (
+        <p role="alert" className="px-1 text-sm text-danger">{errorMessage(t, error.error)}</p>
+      )}
     </div>
   );
 
@@ -107,120 +159,25 @@ export function MatchesPage() {
     groups: orderMatchGroups(stage.groups),
     matches: stage.groups.flatMap((group) => group.matches),
   })));
+  const current = currentStage(stages);
 
   return (
-    <div className="flex flex-col gap-8 py-10">
-      <header className="flex flex-col gap-1">
-        {back}
-        <h1 className="text-2xl font-extrabold text-gold-gradient">{t("title")}</h1>
-        <p className="text-mute">{view.event.name}</p>
-      </header>
+    <div className={frame}>
+      {header}
 
-      {view.stages.length === 0 && <p className="card p-6 text-mute">{t("empty")}</p>}
+      {result.state === "error" && <RefreshFailed onRetry={reload} />}
+
+      {strip && <NextUpStrip model={strip} now={now} onPickNext={pickNext} />}
+
+      {view.stages.length === 0 && <NoMatches onCheck={reload} />}
 
       {stages.map((stage) => (
-        <section key={stage.ordinal} className="flex flex-col gap-4">
-          <h2 className="text-lg font-bold text-gold-gradient">{stage.name}</h2>
-          {stage.kind === "playoffs" ? (
-            <PlayoffsBracket t={t} stage={stage} renderCard={renderCard} />
-          ) : (
-            stage.groups.map((group) => (
-              <div key={groupKey(group)} className="flex flex-col gap-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-mute">
-                  {groupTitle(t, group)}
-                </h3>
-                <div className="grid gap-3 md:grid-cols-2">{group.matches.map(renderCard)}</div>
-              </div>
-            ))
-          )}
-        </section>
+        <StageSection key={stage.ordinal} stage={stage} current={current} now={now} renderCard={renderCard} />
       ))}
+
+      <PickToast toast={toast} onDismiss={dismissToast} />
     </div>
   );
-}
-
-/**
- * The Playoffs as a bracket (story 29): one column per round, first round
- * first, each slot level with the two it is fed by. Wide brackets scroll
- * sideways inside their box; the page itself never does.
- */
-function PlayoffsBracket({
-  t,
-  stage,
-  renderCard,
-}: {
-  t: TFunction;
-  stage: StageView;
-  renderCard: (card: Card) => ReactNode;
-}) {
-  const rounds = stage.groups.flatMap((g) => (g.kind === "playoff_round" ? [g] : []));
-  const { columns, extra } = bracketColumns(rounds);
-  const others = [...extra, ...stage.groups.flatMap((g) => (g.kind === "playoff_round" ? [] : g.matches))];
-  return (
-    <div className="flex flex-col gap-4">
-      {columns.length > 0 && (
-        <div className="overflow-x-auto pb-2">
-          <div className="flex min-w-max gap-4">
-            {columns.map((column) => (
-              <div key={column.round} className="flex w-72 flex-col gap-3 sm:w-80">
-                <h3 className="text-center text-sm font-semibold uppercase tracking-wide text-mute">
-                  {groupTitle(t, { kind: "playoff_round", rounds_before_final: column.round, matches: [] })}
-                </h3>
-                <div className="flex flex-1 flex-col justify-around gap-3">
-                  {column.cells.map((card, slot) =>
-                    card ? (
-                      renderCard(card)
-                    ) : (
-                      <div
-                        key={`empty-${slot}`}
-                        className="rounded-2xl border border-dashed border-line p-4 text-center text-sm text-mute"
-                      >
-                        {t("bracket.emptySlot")}
-                      </div>
-                    ),
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {others.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-mute">{t("bracket.other")}</h3>
-          <div className="grid gap-3 md:grid-cols-2">{others.sort(compareMatchOrder).map(renderCard)}</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function groupKey(group: MatchGroup): string {
-  switch (group.kind) {
-    case "record":
-      return `r${group.wins}-${group.losses}`;
-    case "playoff_round":
-      return `p${group.rounds_before_final}`;
-    case "unplaced":
-      return "u";
-  }
-}
-
-function groupTitle(t: TFunction, group: MatchGroup): string {
-  switch (group.kind) {
-    case "record":
-      return t("group.record", { wins: group.wins, losses: group.losses });
-    case "playoff_round":
-      if (group.rounds_before_final === 0) return t("group.final");
-      if (group.rounds_before_final === 1) return t("group.semifinals");
-      if (group.rounds_before_final === 2) return t("group.quarterfinals");
-      return t("group.roundOf", {
-        teams: 2 ** (group.rounds_before_final + 1),
-        fraction: 2 ** group.rounds_before_final,
-      });
-    case "unplaced":
-      return t("group.matches");
-  }
 }
 
 function withPrediction(view: MatchesView, match: number, team: number): MatchesView {

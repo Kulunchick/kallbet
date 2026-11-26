@@ -47,10 +47,10 @@ export function NewLeaguePage() {
 
   return (
     <form onSubmit={submit} aria-busy={busy !== null} className="flex max-w-2xl flex-col gap-8 py-10">
-      <h1 className="text-2xl font-extrabold text-gold-gradient">{t("new.title")}</h1>
+      <h1 className="font-display text-2xl font-extrabold text-fg">{t("new.title")}</h1>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-bold">{t("new.pickEvent")}</h2>
+        <h2 className="font-display font-bold text-fg">{t("new.pickEvent")}</h2>
         {events.result.state === "loading" && <p className="text-mute">{t("loading")}</p>}
         {events.result.state === "error" && (
           <p className="text-danger">{errorMessage(t, events.result.error)}</p>
@@ -66,8 +66,8 @@ export function NewLeaguePage() {
                   type="button"
                   onClick={() => setPicked(event)}
                   aria-pressed={picked?.id === event.id}
-                  className={`card flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-raised ${
-                    picked?.id === event.id ? "glow-emerald border-emerald-a" : ""
+                  className={`card flex min-h-12 w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-[140ms] ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:bg-raised ${
+                    picked?.id === event.id ? "!border-emerald-a !bg-emerald-tint" : ""
                   }`}
                 >
                   <span className="font-semibold">{event.name}</span>
@@ -86,13 +86,13 @@ export function NewLeaguePage() {
         <label htmlFor="hltv-link" className="font-bold">
           {t("new.orLink")}
         </label>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
             id="hltv-link"
             value={link}
             onChange={(e) => setLink(e.target.value)}
             placeholder="https://www.hltv.org/events/…"
-            className="min-w-0 flex-1 rounded-xl border border-line bg-raised px-4 py-2.5"
+            className="min-h-12 min-w-48 flex-1 rounded-xl border border-line bg-raised px-4 py-2.5 text-base text-fg"
           />
           <button
             type="button"
@@ -118,7 +118,7 @@ export function NewLeaguePage() {
             value={name}
             maxLength={60}
             onChange={(e) => setName(e.target.value)}
-            className="rounded-xl border border-line bg-raised px-4 py-2.5"
+            className="min-h-12 rounded-xl border border-line bg-raised px-4 py-2.5 text-base text-fg"
           />
         </section>
       )}

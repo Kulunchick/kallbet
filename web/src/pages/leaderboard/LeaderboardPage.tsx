@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { errorMessage } from "../../api/client";
 import { useSession } from "../account/session";
+import { LeagueHeader } from "../../components/LeagueHeader";
 import { Medal } from "../../components/Medal";
 import { getLeague } from "../leagues/api";
 import { Avatar } from "../../components/Avatar";
@@ -26,28 +27,28 @@ export function LeaderboardPage() {
     return () => window.clearInterval(id);
   }, [reload]);
 
-  const back = (
-    <Link to={`/leagues/${league}`} className="text-sm text-mute hover:text-fg">
-      ← {t("backToLeague")}
-    </Link>
-  );
+  const header = <LeagueHeader league={league} active="leaderboard" loaded={archived} />;
 
-  if (result.state === "loading") return <p className="py-10 text-mute">{t("loading")}</p>;
+  if (result.state === "loading") {
+    return (
+      <div className="flex flex-col gap-6 py-4 md:py-8">
+        {header}
+        <p className="text-mute">{t("loading")}</p>
+      </div>
+    );
+  }
   if (result.state === "error") {
     return (
-      <div className="flex flex-col gap-4 py-10">
-        {back}
+      <div className="flex flex-col gap-6 py-4 md:py-8">
+        {header}
         <p className="text-danger">{errorMessage(t, result.error)}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 py-10">
-      <header className="flex flex-col gap-1">
-        {back}
-        <h1 className="text-2xl font-extrabold text-gold-gradient">{t("title")}</h1>
-      </header>
+    <div className="flex flex-col gap-6 py-4 md:py-8">
+      {header}
 
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
@@ -81,7 +82,7 @@ export function LeaderboardPage() {
                   className={`border-b border-line last:border-b-0 ${mine ? "bg-raised" : ""}`}
                 >
                   <td
-                    className={`px-3 py-3 text-center font-display font-bold ${leader ? "text-gold-a text-glow-gold" : "text-mute"}`}
+                    className={`px-3 py-3 text-center font-display font-bold ${leader ? "text-gold-a" : "text-mute"}`}
                   >
                     {isArchived && <Medal place={row.place} />} {row.place}
                   </td>
@@ -89,7 +90,7 @@ export function LeaderboardPage() {
                     <span className="flex items-center gap-3">
                       <Avatar nickname={row.nickname} url={row.avatar_url} className="size-8" />
                       <span
-                        className={`min-w-0 truncate font-semibold ${leader ? "text-gold-a" : ""} ${mine ? "text-emerald-b" : ""}`}
+                        className={`min-w-0 truncate font-semibold ${mine ? "text-emerald-b" : "text-fg"}`}
                       >
                         {row.nickname}
                       </span>
@@ -100,9 +101,7 @@ export function LeaderboardPage() {
                       )}
                     </span>
                   </td>
-                  <td
-                    className={`px-3 py-3 text-right font-display font-bold ${leader ? "text-gold-a" : ""}`}
-                  >
+                  <td className="px-3 py-3 text-right font-display font-bold text-gold-a">
                     {row.points}
                   </td>
                   <td className="px-3 py-3 text-right text-mute">{row.playoff_points}</td>

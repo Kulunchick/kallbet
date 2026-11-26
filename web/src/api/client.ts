@@ -20,13 +20,19 @@ type Options = {
   body?: unknown;
   signal?: AbortSignal;
   success?: string;
+  /**
+   * No automatic notice after a write, neither the success nor the error one:
+   * the caller shows its own confirmation and its own error (it still gets the
+   * thrown `ApiError`).
+   */
+  quiet?: boolean;
 };
 
 /** Calls `/api<path>` and returns the JSON body. Throws `ApiError`. */
 export async function api<T>(path: string, options: Options = {}): Promise<T> {
   const mutation = options.method !== undefined && options.method !== "GET";
   const fail = (error: ApiError) => {
-    if (mutation) notify({ error: error.code });
+    if (mutation && !options.quiet) notify({ error: error.code });
     throw error;
   };
   let response: Response;
@@ -48,7 +54,7 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
     return fail(new ApiError(response.status, payload?.error?.code ?? "internal"));
   }
   const data = response.status === 204 ? undefined : await response.json();
-  if (mutation) notify({ success: options.success ?? "saved" });
+  if (mutation && !options.quiet) notify({ success: options.success ?? "saved" });
   return data as T;
 }
 

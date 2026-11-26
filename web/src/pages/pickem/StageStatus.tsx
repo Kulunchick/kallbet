@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { useLoad } from "../../api/useLoad";
 import { getPickem, type PickemView } from "./api";
+import { Lock } from "./icons";
 
 export function useStagePickem(league: number, stage: number, onReveal: () => void) {
   const load = useLoad(() => getPickem(league, stage), [league, stage]);
@@ -32,12 +33,17 @@ export function StageStatus({ view }: { view: PickemView }) {
     ? new Date(lock.locks_at).toLocaleString(i18n.resolvedLanguage)
     : "";
   return (
-    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-mute">
-      <span>{lock.locked ? t("revealed")
-        : lock.edit_window
-          ? t(lock.can_edit ? "finalEditUntil" : "revealAt", { time })
-          : time ? t("locksAt", { time }) : t("lockUnknown")}</span>
-      <span>{t("submittedCount", { count: view.submitted, eligible: view.eligible })}</span>
+    <div className="card flex items-start gap-3 p-4">
+      <Lock className="mt-0.5 size-5 shrink-0 text-mute" />
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <p className="text-sm text-fg">
+          {lock.locked ? t("revealed")
+            : lock.edit_window
+              ? t(lock.can_edit ? "finalEditUntil" : "revealAt", { time })
+              : time ? t("locksAt", { time }) : t("lockUnknown")}
+        </p>
+        <p className="text-[13px] text-mute">{t("submittedCount", { count: view.submitted, eligible: view.eligible })}</p>
+      </div>
     </div>
   );
 }

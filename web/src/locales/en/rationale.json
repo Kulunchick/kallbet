@@ -1,0 +1,6 @@
+{
+  "aiMark": "AI",
+  "toWin": "{{team}} to win",
+  "preliminaryChip": "Preliminary · {{note}}",
+  "barLabel": "{{team}} {{percent}}%, {{opponent}} {{opponentPercent}}%"
+}

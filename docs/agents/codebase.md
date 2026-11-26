@@ -209,9 +209,11 @@ Locales:
 
 Theme (dark only):
 
-- Colours: `ink` (page), `panel` (cards), `raised`, `line` (borders), `fg`, `mute`, `emerald-a/b`, `gold-a/b`, `danger`. Use them as Tailwind classes: `bg-panel`, `text-mute`, `border-line`.
-- Utilities: `bg-emerald-gradient`, `bg-gold-gradient`, `text-emerald-gradient`, `text-gold-gradient`, `glow-emerald`, `glow-gold`, `text-glow-gold`, `card`, `btn-primary`, `btn-ghost`.
-- Emerald means my Prediction, correct, and primary actions. Gold means Points, the leader and headings.
+- Colours: `ink` (page), `panel` (cards), `raised`, `line` (borders), `fg`, `mute`, `on-accent`, `emerald-a/b`, `emerald-tint`, `gold-a/b`, `danger`, `danger-fill`. Use them as Tailwind classes: `bg-panel`, `text-mute`, `border-line`, `text-on-accent`, `bg-emerald-tint`, `bg-danger-fill`.
+- Easing tokens: `--ease-out`, `--ease-in-out`, `--ease-drawer` (usable via `var(--ease-*)` or Tailwind `ease-out`, `ease-in-out`, `ease-drawer`).
+- Utilities: `card`, `btn-primary`, `btn-ghost`, `btn-danger`, `tap` (44 px minimum touch target).
+- Removed: the gradient and glow utilities (`bg-emerald-gradient`, `bg-gold-gradient`, `text-emerald-gradient`, `text-gold-gradient`, `glow-emerald`, `glow-gold`, `text-glow-gold`). Do not reintroduce them.
+- Semantics: Emerald means my Prediction, correct results, and the one primary action per screen. Gold means Points, the leader, and the logo only. Headings are flat `text-fg` in `font-display` (no gradient text or glow).
 - Fonts: `font-display` (Unbounded) for headings, Inter for body. Both are bundled, with Cyrillic.
 
 ## Configuration and secrets

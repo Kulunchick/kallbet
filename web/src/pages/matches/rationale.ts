@@ -60,6 +60,21 @@ export function winPercent(p: number): number | null {
   return Math.round(p * 100);
 }
 
+/**
+ * The win-chance bar's two shares as whole percentages that always add up to
+ * 100: the picked team's (`winPercent`) and the opponent's remainder. `null`
+ * if `p_win` is not a probability.
+ */
+export function winSplit(p: number): { pick: number; opponent: number } | null {
+  const pick = winPercent(p);
+  return pick === null ? null : { pick, opponent: 100 - pick };
+}
+
+/** First letter of a nickname, upper-cased (whole code point, so emoji and surrogate pairs stay intact). */
+export function initialOf(nickname: string): string {
+  return Array.from(nickname.trim())[0]?.toUpperCase() ?? "";
+}
+
 /** The URL if it is an absolute http(s) link, so it is safe as an `href`; else `null`. */
 export function externalLink(url: string): string | null {
   if (!/^https?:\/\/[^/]/i.test(url)) return null;

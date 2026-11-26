@@ -2,14 +2,36 @@
   "hero": {
     "titleLead": "Call the winners.",
     "titleAccent": "Beat your friends.",
-    "subtitle": "Private Leagues for predicting CS2 Matches at the Major and other pro Events. Predictions stay hidden until everyone is in.",
-    "badge": "Sign in with Telegram, no password needed"
+    "subtitle": "Private Leagues for predicting CS2 Matches at the Major and other pro Events. Predictions stay hidden until everyone is in."
+  },
+  "cta": {
+    "signIn": "Sign in with Telegram",
+    "leagues": "My Leagues",
+    "note": "Free to play · no money involved"
+  },
+  "demo": {
+    "title": "How Reveal works",
+    "example": "Example",
+    "describe": "Example Match showing how Reveal works. Predictions stay hidden until everyone has predicted or the Match Locks, then all of them are shown at once: two for Astralis and three for Falcons. Before that, three of five have predicted.",
+    "vs": "vs",
+    "before": {
+      "label": "Before Lock",
+      "status": "Locks in 8 min",
+      "footer": "3 of 5 predicted · hidden until everyone predicts or Lock"
+    },
+    "locked": {
+      "label": "At Lock",
+      "status": "Locked",
+      "footer": "Everyone's Predictions, revealed",
+      "teamPicks_one": "{{team}}: {{count}} Prediction",
+      "teamPicks_other": "{{team}}: {{count}} Predictions"
+    }
   },
   "how": {
     "title": "How it works",
     "league": {
       "title": "Create a League",
-      "text": "Pick an Event, name your League and share the Invite Link in your chat."
+      "text": "Choose an Event, name your League and share the Invite Link in your chat."
     },
     "predict": {
       "title": "Predict every Match",
@@ -21,7 +43,7 @@
     },
     "leaderboard": {
       "title": "Climb the Leaderboard",
-      "text": "1 Point for every correct Prediction, and a separate Pick'em for each Stage."
+      "text": "Points for every correct Prediction, and a separate Pick'em for each Stage."
     }
   },
   "notFound": {

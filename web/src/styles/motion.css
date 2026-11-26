@@ -1,0 +1,189 @@
+/*
+ * Motion for the Reveal moment and the team pick button (Figma "Motion spec"
+ * 21:657, "Reveal keyframes" 21:889, "Component states" 21:807).
+ *
+ * The Reveal is the one rare-tier animation (once per Match): picks fade up
+ * 8 px out of a 2 px blur, staggered 40 / 90 / 120 / 160 ms. Everything else
+ * here is quiet feedback. Transitions only (with @starting-style for entering
+ * elements), never keyframes; opacity and transform only, the blur being the
+ * one exception during the 250 ms of the Reveal. Never `transition: all`.
+ * Scores, the LIVE badge, countdowns and keyboard actions never animate.
+ */
+
+/* ---------------------------------------------------------------- Reveal */
+
+/* Picks under each team on a card that was just revealed (MatchCard adds
+ * `reveal-enter` to the list; the delay comes from `--reveal-delay`). */
+.reveal-enter > li {
+  transition:
+    opacity 250ms var(--ease-out),
+    transform 250ms var(--ease-out),
+    filter 250ms var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+@starting-style {
+  .reveal-enter > li {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+}
+
+/* The "Predictions revealed" cue, in the Lock status slot of a card that was
+ * just revealed (MatchCard's LockLine). The status and the cue share one grid
+ * cell, so the slot is as large as the larger of the two and never changes
+ * size: the cue fades in over the status, then after ~6 s or on the next
+ * pointer interaction the two crossfade back (opacity only). A keyboard
+ * interaction switches back at once (`off` has no transition). */
+.lock-cue > * {
+  grid-area: 1 / 1;
+}
+
+.lock-cue[data-cue="on"] > .lock-cue-status,
+.lock-cue[data-cue="leaving"] > .lock-cue-label,
+.lock-cue[data-cue="off"] > .lock-cue-label {
+  opacity: 0;
+}
+
+.lock-cue[data-cue="off"] > .lock-cue-label {
+  visibility: hidden;
+}
+
+.lock-cue[data-cue="on"] > .lock-cue-label,
+.lock-cue[data-cue="leaving"] > * {
+  transition: opacity 200ms var(--ease-out);
+}
+
+@starting-style {
+  .lock-cue[data-cue="on"] > .lock-cue-label {
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------ Team pick button */
+
+/* Press scale .97 comes from the button's `active:scale-[.97]` class (the
+ * `scale` property in Tailwind v4): 140 ms on press, 200 ms back on release.
+ * Border, tint and text change over 160 ms. */
+.pick-choice {
+  transition:
+    scale 200ms var(--ease-out),
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.pick-choice:active {
+  transition-duration: 140ms, 160ms, 160ms, 160ms, 160ms, 160ms;
+}
+
+/* The check on a team that was just picked with a pointer. */
+.pick-check-enter {
+  transition:
+    opacity 120ms var(--ease-out),
+    transform 120ms var(--ease-out);
+}
+
+@starting-style {
+  .pick-check-enter {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* ------------------------------------------------------ Landing demo */
+
+/* RevealDemo sets `data-reveal` on its section: `armed` until it scrolls
+ * into view, then `played`. Without IntersectionObserver, or with reduced
+ * motion, it is `static` and none of this applies. */
+.reveal-demo[data-reveal="armed"] .reveal-demo-avatar {
+  opacity: 0;
+  transform: translateY(8px);
+  filter: blur(2px);
+}
+
+.reveal-demo[data-reveal="played"] .reveal-demo-avatar {
+  transition:
+    opacity 250ms var(--ease-out),
+    transform 250ms var(--ease-out),
+    filter 250ms var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+/* The status icon: the clock gives way to the lock (opacity only). */
+.reveal-demo-icon {
+  display: inline-grid;
+}
+
+.reveal-demo-icon > * {
+  grid-area: 1 / 1;
+}
+
+.reveal-demo-icon > .reveal-demo-icon-before {
+  opacity: 0;
+}
+
+.reveal-demo[data-reveal="armed"] .reveal-demo-icon-before {
+  opacity: 1;
+}
+
+.reveal-demo[data-reveal="armed"] .reveal-demo-icon-after {
+  opacity: 0;
+}
+
+.reveal-demo[data-reveal="played"] .reveal-demo-icon > * {
+  transition: opacity 200ms var(--ease-out);
+  transition-delay: 40ms;
+}
+
+/* ------------------------------------------------------ Reduced motion */
+
+/* Fade only: no movement, no blur, no stagger, no scale. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal-enter > li,
+  .reveal-demo[data-reveal="played"] .reveal-demo-avatar {
+    transition: opacity 200ms var(--ease-out);
+    transition-delay: 0ms;
+  }
+
+  @starting-style {
+    .reveal-enter > li {
+      opacity: 0;
+      transform: none;
+      filter: none;
+    }
+  }
+
+  .reveal-demo[data-reveal="armed"] .reveal-demo-avatar {
+    transform: none;
+    filter: none;
+  }
+
+  .reveal-demo[data-reveal="played"] .reveal-demo-icon > * {
+    transition-delay: 0ms;
+  }
+
+  .pick-choice,
+  .pick-choice:active {
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease,
+      box-shadow 160ms ease,
+      color 160ms ease,
+      opacity 160ms ease;
+  }
+
+  .pick-check-enter {
+    transition: opacity 120ms var(--ease-out);
+  }
+
+  @starting-style {
+    .pick-check-enter {
+      opacity: 0;
+      transform: none;
+    }
+  }
+}

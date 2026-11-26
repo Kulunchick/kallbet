@@ -81,7 +81,7 @@ export function LoginPage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 py-16 text-center">
-      <h1 className="text-2xl font-extrabold text-gold-gradient">{t("login.title")}</h1>
+      <h1 className="font-display text-2xl font-extrabold text-fg">{t("login.title")}</h1>
       <p className="text-mute">{t("login.subtitle")}</p>
 
       <div className="card flex flex-col gap-5 p-6">
@@ -98,7 +98,7 @@ export function LoginPage() {
               value={nickname}
               onChange={(event) => setNickname(event.target.value)}
               placeholder={t("profile.nickname")}
-              className="rounded-xl border border-line bg-ink px-3 py-2.5 text-sm outline-none focus:border-emerald-a"
+              className="min-h-11 rounded-xl border border-line bg-ink px-3 py-2.5 text-base text-fg focus:border-emerald-a focus:outline-hidden"
             />
             <button type="submit" className="btn-ghost" disabled={!nickname.trim()}>
               {t("login.devSubmit")}
