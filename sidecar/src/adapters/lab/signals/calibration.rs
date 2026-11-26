@@ -106,14 +106,10 @@ impl CandidateSignal for RatingCalibration {
 }
 
 /// The fitted scales, by format (`None`: too few training Matches).
-#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Calibrated {
     pub scales: [Option<f64>; 3],
 }
 impl FittedSignal for Calibrated {
-    fn deployment(&self) -> Result<Option<serde_json::Value>> {
-        Ok(Some(serde_json::to_value(self)?))
-    }
     fn predict(&self, m: &MatchView) -> Result<Option<AsOf<f64>>> {
         let (Some(signal), Some(scale)) = (m.signal()?, self.scales[slot(m.game.format)]) else {
             return Ok(None);

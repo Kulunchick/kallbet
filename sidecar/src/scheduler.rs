@@ -31,7 +31,6 @@ pub enum OnFailure {
 }
 pub struct Sidecar {
     pub bots: Vec<BotProfile>,
-    pub(crate) promotions: std::collections::HashMap<String, crate::promotion::Promotion>,
     pub audit: Audit,
     pub ports: Ports,
     pub on_failure: OnFailure,
@@ -57,7 +56,6 @@ impl Sidecar {
     pub fn new(bots: Vec<BotProfile>, audit: Audit, ports: Ports) -> Self {
         Self {
             bots,
-            promotions: Default::default(),
             audit,
             ports,
             on_failure: OnFailure::Isolate,
@@ -277,32 +275,6 @@ impl Sidecar {
             .map(|c| c.at(now).cloned())
             .collect::<Result<Vec<_>, _>>()?;
         facts.sort_by_cached_key(serde_json::Value::to_string);
-        // A promoted Signal Lab criterion (ticket #47): computed from the same
-        // ports the lab replays, and recorded in the dossier the audit keeps.
-        let promoted = match self.promotions.get(&bot.bot_key) {
-            Some(promotion) => {
-                let view = adapters::lab::MatchView {
-                    game: game.clone(),
-                    cutoff: now,
-                    signal: signal.clone(),
-                    market: market.clone(),
-                    history_before: Default::default(),
-                    team_a_history: Default::default(),
-                    team_b_history: Default::default(),
-                };
-                let live = promotion.live(&view)?;
-                if !live.available {
-                    tracing::warn!(bot = %bot.bot_key, match_id = game.id, criterion = %promotion.label,
-                        "no live data for the promoted criterion; deciding from the anchor");
-                }
-                facts.push(serde_json::json!({"promotion": {
-                    "criterion": promotion.identity,
-                    "live_data": if live.available { "available" } else { "unavailable: the anchor decided" },
-                }}));
-                Some((promotion, view, live))
-            }
-            None => None,
-        };
         let dossier = Dossier {
             game,
             signal: signal.as_ref().map(|s| s.at(now).cloned()).transpose()?,
@@ -317,15 +289,6 @@ impl Sidecar {
         let prediction = match state {
             Decision::Complete => return Ok(0),
             Decision::Submit(pick) => pick,
-            Decision::Pending if promoted.is_some() => {
-                let Some((promotion, view, live)) = &promoted else {
-                    unreachable!()
-                };
-                let pick = promotion.prediction(view, *live, tier)?;
-                self.audit.decide(run_id, pick.as_ref()).await?;
-                let Some(pick) = pick else { return Ok(0) };
-                pick
-            }
             Decision::Pending => match self.adjustment(bot, &dossier, tier).await {
                 Ok(adjustment) => {
                     let pick = self.ports.policy.decide(bot, &dossier, tier, adjustment)?;

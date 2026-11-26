@@ -38,12 +38,8 @@ impl CandidateSignal for LearnedWeights {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Learned(pub Combiner);
 impl FittedSignal for Learned {
-    fn deployment(&self) -> Result<Option<serde_json::Value>> {
-        Ok(Some(serde_json::to_value(self)?))
-    }
     fn predict(&self, m: &MatchView) -> Result<Option<AsOf<f64>>> {
         let (Some(p), Some(observed)) = (self.0.predict(&inputs(m)?), m.observed_at()) else {
             return Ok(None);
