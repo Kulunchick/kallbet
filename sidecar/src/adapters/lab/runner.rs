@@ -10,7 +10,7 @@ use super::signals::{self, CandidateSignal, FittedSignal, MatchView, Observed};
 use super::stats::{self, Verdict};
 use super::{PROTOCOL_VERSION, Protocol};
 use crate::adapters::backtest::feeds::{MarketSource, PriceHistory, ReplayOdds};
-use crate::adapters::backtest::{Feeds, ReplayArchive};
+use crate::adapters::backtest::{Feeds, ReplayArchive, ReplayMatch, ReplayStage};
 use crate::*;
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -75,7 +75,9 @@ impl Lab {
         })
     }
 
-    pub(super) async fn view(&self, game: &Match, cutoff: Instant) -> Result<MatchView> {
+    pub(super) async fn view(&self, stage: &ReplayStage, m: &ReplayMatch) -> Result<MatchView> {
+        let game = &m.game;
+        let cutoff = m.cutoff();
         let mut market_history = BTreeMap::new();
         for source in MarketSource::ALL {
             let points = self.price_history.points(source, game, cutoff).await?;
@@ -98,6 +100,7 @@ impl Lab {
                 .history
                 .team_matches(&game.team_b.name, cutoff)
                 .await?,
+            context: self.archive.match_context.view(stage, m),
             game: game.clone(),
             cutoff,
         };
@@ -152,7 +155,7 @@ impl Lab {
             event.info.begins = event.info.begins.min(stage.cutoff);
             for m in &stage.matches {
                 event.info.ends = event.info.ends.max(m.finished_at);
-                let view = self.view(&m.game, m.cutoff()).await?;
+                let view = self.view(stage, m).await?;
                 event.matches.push(Observed {
                     view,
                     team_a_won: m.winner == m.game.team_a.id,

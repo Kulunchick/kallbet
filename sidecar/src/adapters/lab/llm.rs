@@ -302,6 +302,7 @@ fn subset(archive: &ReplayArchive, ids: &BTreeSet<i64>) -> ReplayArchive {
             .filter(|s| s.matches.iter().any(|m| ids.contains(&m.game.id)))
             .cloned()
             .collect(),
+        match_context: archive.match_context.clone(),
         standings: archive.standings.clone(),
         fixture_lists: archive.fixture_lists.clone(),
         histories: archive.histories.clone(),

@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 
 pub mod calibration;
 pub mod favourite_longshot;
+pub mod match_context;
 pub mod head_to_head;
 pub mod learned_weights;
 pub mod line_movement;
@@ -22,6 +23,7 @@ pub mod recent_form;
 #[derive(Clone)]
 pub struct MatchView {
     pub game: Match,
+    pub context: crate::adapters::backtest::match_context::MatchContext,
     /// The Match cutoff (`backtest::match_cutoff`): every datum must be
     /// observed strictly before it.
     pub cutoff: Instant,
@@ -158,7 +160,7 @@ pub trait FittedSignal: Send + Sync {
 
 /// Every registered Candidate Signal, in report order.
 pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
-    vec![
+    let mut signals: Vec<std::sync::Arc<dyn CandidateSignal>> = vec![
         std::sync::Arc::new(calibration::RatingCalibration),
         std::sync::Arc::new(learned_weights::LearnedWeights),
         std::sync::Arc::new(market_sources::pinnacle()),
@@ -171,7 +173,9 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(recent_form::RecentForm),
         std::sync::Arc::new(head_to_head::HeadToHead),
         std::sync::Arc::new(super::llm::LlmAnswers::unrun()),
-    ]
+    ];
+    signals.extend(match_context::registry());
+    signals
 }
 
 pub fn by_name(name: &str) -> Option<std::sync::Arc<dyn CandidateSignal>> {
