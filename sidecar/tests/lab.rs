@@ -340,11 +340,16 @@ async fn a_candidate_signal_without_its_data_is_reported_not_testable_with_the_r
         .iter()
         .map(|c| c.name.as_str())
         .collect();
-    assert_eq!(names, ["rating_calibration", "silent"], "none is left out");
+    assert_eq!(
+        names.len(),
+        signals::registry().len() + 1,
+        "none is left out"
+    );
+    assert_eq!(names.last(), Some(&"silent"));
     let c = calibration(&outcome);
     assert_eq!(c.verdict, Verdict::NotTestable);
     assert!(c.reason.contains("Valve standings"), "{}", c.reason);
-    let silent = &outcome.report.candidates[1];
+    let silent = outcome.report.candidates.last().unwrap();
     assert_eq!(silent.verdict, Verdict::NotTestable);
     assert!(
         silent.reason.contains("a datum no saved response carries"),

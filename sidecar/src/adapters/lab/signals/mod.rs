@@ -87,7 +87,10 @@ pub trait FittedSignal: Send + Sync {
 
 /// Every registered Candidate Signal, in report order.
 pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
-    vec![std::sync::Arc::new(calibration::RatingCalibration)]
+    vec![
+        std::sync::Arc::new(calibration::RatingCalibration),
+        std::sync::Arc::new(super::llm::LlmAnswers::unrun()),
+    ]
 }
 
 pub fn by_name(name: &str) -> Option<std::sync::Arc<dyn CandidateSignal>> {

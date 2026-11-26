@@ -7,6 +7,7 @@ Baseline: the anchor: HybridAnchored without LLM, 0.80 market and 0.20 Valve rat
 | Candidate Signal | Verdict | Computed on | Paired | Events | Δ log-loss | 90% interval | Detectable | Δ Brier | Δ accuracy | Market subset (n, Δ log-loss) |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `rating_calibration` | no evidence | 342 | 342 | 4 | -0.1066 | [-0.1779, +0.0037] | 0.1274 | -0.0230 | +0.0058 | 112, -0.0005 |
+| `llm_adjustment` | not testable | 0 | 0 | 0 | — | — | — | — | — | — |
 
 ## `rating_calibration`: no evidence
 
@@ -28,6 +29,21 @@ Verdict: the interval of the log-loss difference includes zero.
 | IEM Cologne Major 2026 | 358 | 106 | 106 | +0.0146 |
 | PGL Major Singapore 2026 | 464 | 24 | 24 | -0.0124 |
 
+## `llm_adjustment`: not testable
+
+The three-seat debate's adjustment (HybridAnchored, debate mode `always`, the first seating) on the Matches with a roster flag, from recorded answers.
+
+Verdict: no LLM answers in this run; produce them with `cargo run -p kallbet-ai -- lab --llm <LLM_FILE> --answers <ANSWERS_FILE> --budget claude=<RUNS> --budget codex=<RUNS> --budget antigravity=<RUNS>`.
+
+| Event | Fitted on | Computed on | Paired | Δ log-loss |
+|---|---|---|---|---|
+| PGL Major Copenhagen 2024 | 0 | 0 | 0 | — |
+| Perfect World Major Shanghai Major 2024 | 73 | 0 | 0 | — |
+| BLAST.tv Major Austin 2025 | 146 | 0 | 0 | — |
+| StarLadder Major Budapest 2025 | 252 | 0 | 0 | — |
+| IEM Cologne Major 2026 | 358 | 0 | 0 | — |
+| PGL Major Singapore 2026 | 464 | 0 | 0 | — |
+
 ## Events (walk-forward order)
 
 | Event | Begins | Ends | Scored Matches |
@@ -40,3 +56,5 @@ Verdict: the interval of the log-loss difference includes zero.
 | PGL Major Singapore 2026 | 2026-11-24 04:00 | 2026-11-25 13:10 | 24 |
 
 [Catch-up mode in simulated Leagues](catch-up.md)
+
+[LLM track: single agent, debate and seatings](llm.md)

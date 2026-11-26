@@ -135,6 +135,72 @@
           "log_loss_difference": -0.012429521654218638
         }
       ]
+    },
+    {
+      "name": "llm_adjustment",
+      "description": "The three-seat debate's adjustment (HybridAnchored, debate mode `always`, the first seating) on the Matches with a roster flag, from recorded answers",
+      "verdict": "not testable",
+      "reason": "no LLM answers in this run; produce them with `cargo run -p kallbet-ai -- lab --llm <LLM_FILE> --answers <ANSWERS_FILE> --budget claude=<RUNS> --budget codex=<RUNS> --budget antigravity=<RUNS>`",
+      "computed_on": 0,
+      "paired": 0,
+      "events": 0,
+      "baseline": null,
+      "variant": null,
+      "difference": null,
+      "interval": null,
+      "std_error": null,
+      "detectable": null,
+      "market": null,
+      "per_event": [
+        {
+          "event_id": 7278,
+          "title": "PGL Major Copenhagen 2024",
+          "training_matches": 0,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null
+        },
+        {
+          "event_id": 8751,
+          "title": "Perfect World Major Shanghai Major 2024",
+          "training_matches": 73,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null
+        },
+        {
+          "event_id": 9309,
+          "title": "BLAST.tv Major Austin 2025",
+          "training_matches": 146,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null
+        },
+        {
+          "event_id": 9822,
+          "title": "StarLadder Major Budapest 2025",
+          "training_matches": 252,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null
+        },
+        {
+          "event_id": 10488,
+          "title": "IEM Cologne Major 2026",
+          "training_matches": 358,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null
+        },
+        {
+          "event_id": 11176,
+          "title": "PGL Major Singapore 2026",
+          "training_matches": 464,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null
+        }
+      ]
     }
   ]
 }
