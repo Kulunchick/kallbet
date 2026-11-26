@@ -4,12 +4,14 @@
 //! - `/matches/*` paths only (explicitly refuses `/stats/*` or any other path).
 //! - On-disk raw cache (`matches/hltv-match-<id>.html.gz`) written before parsing
 //!   so nothing is ever fetched twice.
-//! - Minimum rate-limit interval between network calls (default 9 s; >= 8 s for remote HLTV).
+//! - Minimum rate-limit interval per connection (default 9 s; >= 4 s for remote HLTV),
+//!   with optional async `--concurrency N` (default 1, aggregate rate = N / interval).
 //! - Daily UTC request budget (default 400), persisted in `manifest.json` and charged
 //!   per actual HTTP request (including redirect hops).
-//! - Hard stop rule: any HTTP 403, HTTP 429, `cf-mitigated` header, or Cloudflare challenge
-//!   body saves the raw response for audit, records it in `manifest.json`, and permanently
-//!   halts the collector (zero retries, zero evasion).
+//! - Global hard stop rule: the first HTTP 403, HTTP 429, `cf-mitigated` header, or
+//!   Cloudflare challenge body on any connection immediately cancels all in-flight and
+//!   queued requests, saves the raw response for audit, records it in `manifest.json`,
+//!   and permanently halts the collector (zero retries, zero evasion).
 
 use super::{
     archive::{HltvArchiveManifest, HltvMatchRecord, ManifestMatchEntry, StopRecord},
@@ -20,20 +22,23 @@ use async_trait::async_trait;
 use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeSet, HashSet, VecDeque},
     io::{Read, Write},
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
     time::Duration,
 };
+use tokio::{sync::watch, task::JoinSet};
 use tracing::{info, warn};
 
 /// Default daily UTC HTTP request cap authorized by the operator.
 pub const DEFAULT_DAILY_BUDGET: u32 = 400;
-/// Default spacing between HLTV requests (inside the operator's 8-10 s window).
+/// Default spacing between HLTV requests per connection.
 pub const DEFAULT_MIN_INTERVAL_SECS: u64 = 9;
-/// Minimum allowed spacing for non-loopback HLTV requests.
-pub const REMOTE_MIN_INTERVAL_SECS: u64 = 8;
+/// Minimum allowed per-connection spacing for non-loopback HLTV requests.
+pub const REMOTE_MIN_INTERVAL_SECS: u64 = 4;
+/// Default number of concurrent worker connections.
+pub const DEFAULT_CONCURRENCY: usize = 1;
 
 /// Builds the operator's iOS-app User-Agent string:
 /// `hltv/2.13.2 (org.hltv; build:1; iOS <major>.<minor>.<patch>) Alamofire/4.9.1`
@@ -113,6 +118,7 @@ pub struct CollectorConfig {
     pub min_interval: Duration,
     pub ua_mode: UaMode,
     pub daily_budget: u32,
+    pub concurrency: usize,
 }
 
 impl CollectorConfig {
@@ -126,6 +132,7 @@ impl CollectorConfig {
                 patch: 1,
             },
             daily_budget: DEFAULT_DAILY_BUDGET,
+            concurrency: DEFAULT_CONCURRENCY,
         }
     }
 }
@@ -519,71 +526,126 @@ impl HltvCollector {
         })
     }
 
-    /// Collects a list of `(match_id, url)` targets in order, skipping cached pages,
-    /// recording per-page parse quirks without refetching, and stopping immediately
-    /// on budget exhaustion or any 403/429/Cloudflare challenge.
+    /// Collects a list of `(match_id, url)` targets using up to `config.concurrency`
+    /// async connections (each enforcing `config.min_interval` independently),
+    /// deduplicating targets, skipping cached pages, recording per-page parse quirks
+    /// without refetching, and immediately cancelling all in-flight and queued
+    /// requests on the first 403/429/Cloudflare challenge.
     pub async fn collect_batch(
         &mut self,
         targets: &[(i64, String)],
         max_requests_this_run: Option<u32>,
     ) -> Result<BatchReport, CollectorError> {
-        let mut report = BatchReport {
-            targets_total: targets.len(),
-            daily_budget: self.config.daily_budget,
-            spent_today: self.spent_today(),
-            ..Default::default()
-        };
+        if self.config.concurrency == 0 {
+            return Err(CollectorError::InvalidConfig(
+                "concurrency must be at least 1".into(),
+            ));
+        }
 
+        // Deduplicate by match_id while preserving priority order so no match can
+        // ever be dispatched to two connections or fetched twice.
+        let mut seen: HashSet<i64> = HashSet::with_capacity(targets.len());
+        let mut queue: VecDeque<(i64, String)> = VecDeque::with_capacity(targets.len());
         for (match_id, url) in targets {
-            let raw_path = self
-                .config
-                .out_dir
-                .join(format!("matches/hltv-match-{match_id}.html.gz"));
-            let is_cached = raw_path.exists();
-
-            if !is_cached {
-                if let Some(limit) = max_requests_this_run
-                    && report.requests_made >= limit
-                {
-                    report.stopped_by_budget = true;
-                    break;
-                }
-                if self.spent_today() >= self.config.daily_budget {
-                    report.stopped_by_budget = true;
-                    break;
-                }
-            }
-
-            match self.collect_match(*match_id, url).await {
-                Ok(outcome) => {
-                    report.requests_made += outcome.requests_used;
-                    if outcome.from_cache {
-                        report.cached_hits += 1;
-                    } else {
-                        report.fetched_ok += 1;
-                    }
-                }
-                Err(CollectorError::Parse(e)) => {
-                    // Raw HTML was cached before parse; record and continue with next match.
-                    warn!(match_id = *match_id, error = %e, "cached raw HLTV page failed parse; continuing");
-                    if !is_cached {
-                        report.requests_made += 1;
-                    }
-                    report.parse_errors += 1;
-                }
-                Err(CollectorError::BudgetExhausted { .. }) => {
-                    report.stopped_by_budget = true;
-                    break;
-                }
-                Err(CollectorError::Stopped { .. }) | Err(CollectorError::AlreadyStopped) => {
-                    report.stopped_by_challenge = self.manifest.last_stop.clone();
-                    break;
-                }
-                Err(other) => return Err(other),
+            if seen.insert(*match_id) {
+                queue.push_back((*match_id, url.clone()));
             }
         }
 
-        report.spent_today = self.spent_today();
+        let targets_total = queue.len();
+        if self.stopped {
+            return Ok(BatchReport {
+                targets_total,
+                daily_budget: self.config.daily_budget,
+                spent_today: self.spent_today(),
+                stopped_by_challenge: self.manifest.last_stop.clone(),
+                ..Default::default()
+            });
+        }
+
+        let ua = self.user_agent()?;
+        std::fs::create_dir_all(self.config.out_dir.join("matches"))?;
+        self.manifest.last_ios_user_agent = Some(ua.clone());
+
+        let (cancel_tx, _) = watch::channel(false);
+        let cancel_tx = Arc::new(cancel_tx);
+
+        let shared = Arc::new(Mutex::new(SharedBatch {
+            queue,
+            manifest: std::mem::take(&mut self.manifest),
+            stopped: self.stopped,
+            run_stop: None,
+            stopped_by_budget: false,
+            requests_made: 0,
+            cached_hits: 0,
+            fetched_ok: 0,
+            parse_errors: 0,
+            fatal_error: None,
+        }));
+
+        let worker_count = self.config.concurrency.min(targets_total.max(1));
+        let mut join_set: JoinSet<Option<Instant>> = JoinSet::new();
+        for worker_idx in 0..worker_count {
+            let shared = Arc::clone(&shared);
+            let config = self.config.clone();
+            let http = Arc::clone(&self.http);
+            let clock = Arc::clone(&self.clock);
+            let pause = Arc::clone(&self.pause);
+            let ua = ua.clone();
+            let cancel_tx = Arc::clone(&cancel_tx);
+            let cancel_rx = cancel_tx.subscribe();
+            let initial_last_req = if worker_idx == 0 {
+                self.last_request
+            } else {
+                None
+            };
+            join_set.spawn(async move {
+                run_batch_worker(
+                    shared,
+                    config,
+                    http,
+                    clock,
+                    pause,
+                    ua,
+                    max_requests_this_run,
+                    cancel_tx,
+                    cancel_rx,
+                    initial_last_req,
+                )
+                .await
+            });
+        }
+
+        let mut latest_request = self.last_request;
+        while let Some(res) = join_set.join_next().await {
+            if let Ok(Some(ts)) = res {
+                latest_request = Some(match latest_request {
+                    Some(prev) if prev > ts => prev,
+                    _ => ts,
+                });
+            }
+        }
+
+        let mut state = shared.lock().unwrap();
+        self.manifest = std::mem::take(&mut state.manifest);
+        self.stopped = state.stopped;
+        self.last_request = latest_request;
+
+        if let Some(err) = state.fatal_error.take() {
+            return Err(err);
+        }
+
+        let report = BatchReport {
+            targets_total,
+            cached_hits: state.cached_hits,
+            fetched_ok: state.fetched_ok,
+            parse_errors: state.parse_errors,
+            requests_made: state.requests_made,
+            spent_today: self.spent_today(),
+            daily_budget: self.config.daily_budget,
+            stopped_by_budget: state.stopped_by_budget,
+            stopped_by_challenge: state.run_stop.take(),
+        };
         Ok(report)
     }
 
@@ -593,29 +655,480 @@ impl HltvCollector {
         raw_rel: &str,
         json_rel: &str,
     ) -> std::io::Result<()> {
-        let players: usize = rec.overall_stats.iter().map(|t| t.players.len()).sum();
-        self.manifest.parse_errors.remove(&rec.match_id);
-        self.manifest.matches.insert(
-            rec.match_id,
-            ManifestMatchEntry {
-                match_id: rec.match_id,
-                json_file: json_rel.to_string(),
-                raw_file: raw_rel.to_string(),
-                url: rec.url.clone(),
-                event_id: rec.event_id,
-                event_name: rec.event_name.clone(),
-                started_at: rec.started_at,
-                format: rec.format.clone(),
-                team_a: rec.team_a.name.clone(),
-                team_b: rec.team_b.name.clone(),
-                maps: rec.maps.len(),
-                veto_steps: rec.veto.len(),
-                players,
-            },
-        );
-        self.manifest.updated_at = Some(self.clock.now());
+        record_manifest_match_entry(&mut self.manifest, self.clock.now(), rec, raw_rel, json_rel);
         save_manifest(&self.config.out_dir, &self.manifest)
     }
+}
+
+struct SharedBatch {
+    queue: VecDeque<(i64, String)>,
+    manifest: HltvArchiveManifest,
+    stopped: bool,
+    run_stop: Option<StopRecord>,
+    stopped_by_budget: bool,
+    requests_made: u32,
+    cached_hits: usize,
+    fetched_ok: usize,
+    parse_errors: usize,
+    fatal_error: Option<CollectorError>,
+}
+
+enum ReserveOutcome {
+    Allowed,
+    Stopped,
+    BudgetExhausted,
+}
+
+async fn wait_cancelled(rx: &mut watch::Receiver<bool>) {
+    if *rx.borrow() {
+        return;
+    }
+    while rx.changed().await.is_ok() {
+        if *rx.borrow() {
+            return;
+        }
+    }
+}
+
+fn check_budget_available(
+    state: &SharedBatch,
+    clock: &dyn Clock,
+    daily_budget: u32,
+    max_requests_this_run: Option<u32>,
+) -> bool {
+    if let Some(limit) = max_requests_this_run
+        && state.requests_made >= limit
+    {
+        return false;
+    }
+    let day = clock.now().format("%Y-%m-%d").to_string();
+    let spent = state.manifest.daily_requests.get(&day).copied().unwrap_or(0);
+    spent < daily_budget
+}
+
+fn reserve_one_request(
+    shared: &Mutex<SharedBatch>,
+    out_dir: &Path,
+    clock: &dyn Clock,
+    daily_budget: u32,
+    max_requests_this_run: Option<u32>,
+) -> Result<ReserveOutcome, std::io::Error> {
+    let mut state = shared.lock().unwrap();
+    if state.stopped || state.fatal_error.is_some() {
+        return Ok(ReserveOutcome::Stopped);
+    }
+    if !check_budget_available(&state, clock, daily_budget, max_requests_this_run) {
+        state.stopped_by_budget = true;
+        return Ok(ReserveOutcome::BudgetExhausted);
+    }
+    let now = clock.now();
+    let day = now.format("%Y-%m-%d").to_string();
+    let spent = state.manifest.daily_requests.get(&day).copied().unwrap_or(0);
+    state.manifest.daily_requests.insert(day, spent + 1);
+    state.manifest.updated_at = Some(now);
+    state.requests_made += 1;
+    save_manifest(out_dir, &state.manifest)?;
+    Ok(ReserveOutcome::Allowed)
+}
+
+fn trigger_global_stop(
+    shared: &Mutex<SharedBatch>,
+    cancel_tx: &watch::Sender<bool>,
+    out_dir: &Path,
+    clock: &dyn Clock,
+    match_id: i64,
+    url: &str,
+    resp: &HttpResponse,
+) -> Result<(), std::io::Error> {
+    // Signal every sibling connection immediately so in-flight HTTP calls and
+    // rate-limit sleeps cancel before any disk I/O runs.
+    let _ = cancel_tx.send(true);
+
+    let blocked_dir = out_dir.join("blocked");
+    std::fs::create_dir_all(&blocked_dir)?;
+    let blocked_rel = format!("blocked/hltv-match-{match_id}-blocked.html");
+    let blocked_path = out_dir.join(&blocked_rel);
+    std::fs::write(&blocked_path, resp.body.as_bytes())?;
+
+    let reason = if let Some(cf) = &resp.cf_mitigated {
+        format!("cf-mitigated={cf}")
+    } else if resp.status == 429 {
+        "rate limited (429)".to_string()
+    } else if resp.status == 403 {
+        "forbidden (403)".to_string()
+    } else {
+        "Cloudflare challenge body".to_string()
+    };
+
+    let now = clock.now();
+    let stop = StopRecord {
+        at: now,
+        match_id,
+        url: url.to_string(),
+        status: resp.status,
+        reason: reason.clone(),
+        saved_file: blocked_rel,
+    };
+
+    let mut state = shared.lock().unwrap();
+    state.stopped = true;
+    if state.run_stop.is_none() {
+        state.run_stop = Some(stop.clone());
+        state.manifest.last_stop = Some(stop);
+    }
+    state.manifest.updated_at = Some(now);
+    save_manifest(out_dir, &state.manifest)?;
+    warn!(match_id, status = resp.status, %reason, "HLTV global stop rule triggered");
+    Ok(())
+}
+
+fn record_fatal(
+    shared: &Mutex<SharedBatch>,
+    cancel_tx: &watch::Sender<bool>,
+    err: CollectorError,
+) {
+    let _ = cancel_tx.send(true);
+    let mut state = shared.lock().unwrap();
+    if state.fatal_error.is_none() {
+        state.fatal_error = Some(err);
+    }
+}
+
+fn record_manifest_match_entry(
+    manifest: &mut HltvArchiveManifest,
+    now: Instant,
+    rec: &HltvMatchRecord,
+    raw_rel: &str,
+    json_rel: &str,
+) {
+    let players: usize = rec.overall_stats.iter().map(|t| t.players.len()).sum();
+    manifest.parse_errors.remove(&rec.match_id);
+    manifest.matches.insert(
+        rec.match_id,
+        ManifestMatchEntry {
+            match_id: rec.match_id,
+            json_file: json_rel.to_string(),
+            raw_file: raw_rel.to_string(),
+            url: rec.url.clone(),
+            event_id: rec.event_id,
+            event_name: rec.event_name.clone(),
+            started_at: rec.started_at,
+            format: rec.format.clone(),
+            team_a: rec.team_a.name.clone(),
+            team_b: rec.team_b.name.clone(),
+            maps: rec.maps.len(),
+            veto_steps: rec.veto.len(),
+            players,
+        },
+    );
+    manifest.updated_at = Some(now);
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn run_batch_worker(
+    shared: Arc<Mutex<SharedBatch>>,
+    config: CollectorConfig,
+    http: Arc<dyn ResearchHttp>,
+    clock: Arc<dyn Clock>,
+    pause: Arc<dyn Pause>,
+    ua: String,
+    max_requests_this_run: Option<u32>,
+    cancel_tx: Arc<watch::Sender<bool>>,
+    mut cancel_rx: watch::Receiver<bool>,
+    mut conn_last_request: Option<Instant>,
+) -> Option<Instant> {
+    loop {
+        if *cancel_rx.borrow() {
+            break;
+        }
+
+        let next_item = {
+            let mut state = shared.lock().unwrap();
+            if state.stopped || state.fatal_error.is_some() {
+                None
+            } else {
+                state.queue.pop_front()
+            }
+        };
+        let Some((match_id, url)) = next_item else {
+            break;
+        };
+
+        if let Err(err) = validate_matches_url(&url) {
+            record_fatal(&shared, &cancel_tx, err);
+            break;
+        }
+
+        let raw_rel = format!("matches/hltv-match-{match_id}.html.gz");
+        let json_rel = format!("matches/hltv-match-{match_id}.json");
+        let raw_path = config.out_dir.join(&raw_rel);
+        let json_path = config.out_dir.join(&json_rel);
+
+        // Cache hit: handle locally with zero network requests and zero rate-limit sleep.
+        if raw_path.exists() {
+            let cached_record = if json_path.exists() {
+                match std::fs::read(&json_path) {
+                    Ok(bytes) => serde_json::from_slice::<HltvMatchRecord>(&bytes).map_err(|e| {
+                        ParseError::InvalidMarkup(format!("cached archive JSON unreadable: {e}"))
+                    }),
+                    Err(e) => {
+                        record_fatal(&shared, &cancel_tx, CollectorError::Io(e));
+                        break;
+                    }
+                }
+            } else {
+                match read_gzip_string(&raw_path) {
+                    Ok(html) => match parse_match_page(match_id, &url, clock.now(), &html) {
+                        Ok(rec) => {
+                            if let Err(e) = write_json(&json_path, &rec) {
+                                record_fatal(&shared, &cancel_tx, CollectorError::Io(e));
+                                break;
+                            }
+                            Ok(rec)
+                        }
+                        Err(e) => Err(e),
+                    },
+                    Err(e) => {
+                        record_fatal(&shared, &cancel_tx, CollectorError::Io(e));
+                        break;
+                    }
+                }
+            };
+
+            match cached_record {
+                Ok(rec) => {
+                    let mut state = shared.lock().unwrap();
+                    state.cached_hits += 1;
+                    if !state.manifest.matches.contains_key(&match_id) {
+                        record_manifest_match_entry(
+                            &mut state.manifest,
+                            clock.now(),
+                            &rec,
+                            &raw_rel,
+                            &json_rel,
+                        );
+                        if let Err(e) = save_manifest(&config.out_dir, &state.manifest) {
+                            drop(state);
+                            record_fatal(&shared, &cancel_tx, CollectorError::Io(e));
+                            break;
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!(match_id, error = %e, "cached raw HLTV page failed parse; continuing");
+                    let mut state = shared.lock().unwrap();
+                    state.parse_errors += 1;
+                    state.manifest.parse_errors.insert(match_id, e.to_string());
+                    state.manifest.updated_at = Some(clock.now());
+                    if let Err(io_err) = save_manifest(&config.out_dir, &state.manifest) {
+                        drop(state);
+                        record_fatal(&shared, &cancel_tx, CollectorError::Io(io_err));
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
+
+        // Uncached match: check budget before waiting on rate limit.
+        {
+            let mut state = shared.lock().unwrap();
+            if state.stopped || state.fatal_error.is_some() {
+                break;
+            }
+            if !check_budget_available(&state, clock.as_ref(), config.daily_budget, max_requests_this_run) {
+                state.stopped_by_budget = true;
+                break;
+            }
+        }
+
+        let mut current_url = url.clone();
+        let mut requests_used = 0u32;
+        let mut final_resp: Option<HttpResponse> = None;
+        let mut stop_worker = false;
+
+        // Initial GET plus at most 2 same-origin `/matches/*` redirects.
+        for hop in 0..=2 {
+            if let Err(err) = validate_matches_url(&current_url) {
+                record_fatal(&shared, &cancel_tx, err);
+                stop_worker = true;
+                break;
+            }
+
+            // Per-connection rate limit (cancellable by global stop).
+            if let Some(prev) = conn_last_request {
+                let elapsed = (clock.now() - prev).to_std().unwrap_or(Duration::ZERO);
+                if elapsed < config.min_interval {
+                    let wait = config.min_interval - elapsed;
+                    tokio::select! {
+                        biased;
+                        _ = wait_cancelled(&mut cancel_rx) => {
+                            stop_worker = true;
+                        }
+                        _ = pause.sleep(wait) => {}
+                    }
+                    if stop_worker {
+                        break;
+                    }
+                }
+            }
+
+            match reserve_one_request(
+                &shared,
+                &config.out_dir,
+                clock.as_ref(),
+                config.daily_budget,
+                max_requests_this_run,
+            ) {
+                Ok(ReserveOutcome::Allowed) => {}
+                Ok(ReserveOutcome::Stopped) | Ok(ReserveOutcome::BudgetExhausted) => {
+                    stop_worker = true;
+                    break;
+                }
+                Err(io_err) => {
+                    record_fatal(&shared, &cancel_tx, CollectorError::Io(io_err));
+                    stop_worker = true;
+                    break;
+                }
+            }
+
+            conn_last_request = Some(clock.now());
+            requests_used += 1;
+
+            let resp_res = tokio::select! {
+                biased;
+                _ = wait_cancelled(&mut cancel_rx) => {
+                    stop_worker = true;
+                    break;
+                }
+                res = http.get(&current_url, &ua) => res,
+            };
+
+            let resp = match resp_res {
+                Ok(r) => r,
+                Err(err) => {
+                    record_fatal(&shared, &cancel_tx, err);
+                    stop_worker = true;
+                    break;
+                }
+            };
+
+            if is_cloudflare_challenge(resp.status, resp.cf_mitigated.as_deref(), &resp.body) {
+                if let Err(io_err) = trigger_global_stop(
+                    &shared,
+                    &cancel_tx,
+                    &config.out_dir,
+                    clock.as_ref(),
+                    match_id,
+                    &current_url,
+                    &resp,
+                ) {
+                    record_fatal(&shared, &cancel_tx, CollectorError::Io(io_err));
+                }
+                stop_worker = true;
+                break;
+            }
+
+            if hop < 2 && matches!(resp.status, 301 | 302 | 303 | 307 | 308) {
+                let Some(loc) = resp.location.as_deref() else {
+                    record_fatal(&shared, &cancel_tx, CollectorError::HttpStatus(resp.status));
+                    stop_worker = true;
+                    break;
+                };
+                match resolve_same_origin_matches_redirect(&current_url, loc) {
+                    Ok(next_url) => {
+                        current_url = next_url;
+                        continue;
+                    }
+                    Err(err) => {
+                        record_fatal(&shared, &cancel_tx, err);
+                        stop_worker = true;
+                        break;
+                    }
+                }
+            }
+
+            final_resp = Some(resp);
+            break;
+        }
+
+        if stop_worker {
+            break;
+        }
+
+        let Some(resp) = final_resp else {
+            break;
+        };
+
+        if resp.status != 200 {
+            record_fatal(&shared, &cancel_tx, CollectorError::HttpStatus(resp.status));
+            break;
+        }
+
+        // Save raw HTML + provenance BEFORE parsing so an edge-case page is never fetched twice.
+        let fetched_at = clock.now();
+        if let Err(io_err) = write_gzip(&raw_path, resp.body.as_bytes()) {
+            record_fatal(&shared, &cancel_tx, CollectorError::Io(io_err));
+            break;
+        }
+        let sha256 = sha256_hex(resp.body.as_bytes());
+        {
+            let _guard = shared.lock().unwrap();
+            if let Err(io_err) =
+                append_provenance(&config.out_dir, &raw_rel, &current_url, fetched_at, &sha256)
+            {
+                drop(_guard);
+                record_fatal(&shared, &cancel_tx, CollectorError::Io(io_err));
+                break;
+            }
+        }
+
+        match parse_match_page(match_id, &current_url, fetched_at, &resp.body) {
+            Ok(record) => {
+                if let Err(io_err) = write_json(&json_path, &record) {
+                    record_fatal(&shared, &cancel_tx, CollectorError::Io(io_err));
+                    break;
+                }
+                {
+                    let mut state = shared.lock().unwrap();
+                    state.fetched_ok += 1;
+                    record_manifest_match_entry(
+                        &mut state.manifest,
+                        fetched_at,
+                        &record,
+                        &raw_rel,
+                        &json_rel,
+                    );
+                    if let Err(io_err) = save_manifest(&config.out_dir, &state.manifest) {
+                        drop(state);
+                        record_fatal(&shared, &cancel_tx, CollectorError::Io(io_err));
+                        break;
+                    }
+                }
+                info!(
+                    match_id,
+                    maps = record.maps.len(),
+                    veto = record.veto.len(),
+                    requests_used,
+                    "HLTV match collected into archive"
+                );
+            }
+            Err(e) => {
+                warn!(match_id, error = %e, "cached raw HLTV page failed parse; continuing");
+                let mut state = shared.lock().unwrap();
+                state.parse_errors += 1;
+                state.manifest.parse_errors.insert(match_id, e.to_string());
+                state.manifest.updated_at = Some(fetched_at);
+                if let Err(io_err) = save_manifest(&config.out_dir, &state.manifest) {
+                    drop(state);
+                    record_fatal(&shared, &cancel_tx, CollectorError::Io(io_err));
+                    break;
+                }
+            }
+        }
+    }
+
+    conn_last_request
 }
 
 /// Discovers unique HLTV match IDs from `<out_dir>/targets.tsv` (preserving its
