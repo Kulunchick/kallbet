@@ -676,6 +676,7 @@ impl Lab {
             name: signal.name().into(),
             description: signal.description().into(),
             verdict: Verdict::NotTestable,
+            added_after_list_fixed: signal.added_after_list_fixed(),
             reason: String::new(),
             computed_on,
             paired: paired.len(),

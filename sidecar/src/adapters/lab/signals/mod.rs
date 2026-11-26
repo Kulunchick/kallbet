@@ -8,6 +8,7 @@ use crate::*;
 use std::collections::BTreeMap;
 
 pub mod bo1_veto_sim;
+pub mod bo3_veto_sim;
 pub mod calibration;
 pub mod favourite_longshot;
 pub mod match_context;
@@ -180,6 +181,11 @@ pub trait CandidateSignal: Send + Sync {
     fn uses_rosters(&self) -> bool {
         false
     }
+    /// Whether this Candidate Signal was added after spec #33's candidate list
+    /// was fixed (marked next to its verdict in the report).
+    fn added_after_list_fixed(&self) -> bool {
+        false
+    }
     /// Why the archive cannot test it at all, if it cannot (reported `not testable`).
     fn missing_data(&self, _archive: &crate::adapters::backtest::ReplayArchive) -> Option<String> {
         None
@@ -246,6 +252,7 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(player_form::PlayerForm),
         std::sync::Arc::new(per_map_rating::PerMapRating),
         std::sync::Arc::new(bo1_veto_sim::Bo1VetoSim),
+        std::sync::Arc::new(bo3_veto_sim::Bo3VetoSim),
     ];
     signals.extend(roster::candidates());
     signals.extend(match_context::registry());
