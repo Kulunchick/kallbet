@@ -2,12 +2,30 @@ import gzip
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
+from urllib.error import HTTPError
 
 import collect_research as research
 
 
 class ArchiveTest(unittest.TestCase):
+    def test_rate_limit_names_source_and_continues_other_sources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = ["collector", "--archive", tmp, "--panda-cap", "0", "--until", "2024-08-01"]
+            with (patch.object(research.sys, "argv", args),
+                  patch.object(research, "collect_panda", side_effect=HTTPError("url", 429, "", {}, None)) as panda,
+                  patch.object(research, "collect_valve", return_value=None) as valve,
+                  patch.object(research, "collect_rosters", return_value=[]) as wiki,
+                  redirect_stdout(StringIO()), redirect_stderr(StringIO()) as errors):
+                self.assertEqual(research.main(), 2)
+                self.assertIn("panda: HTTP 429", errors.getvalue())
+                panda.assert_called_once()
+                valve.assert_called_once()
+                wiki.assert_called_once()
+
     def test_resume_spend_and_provenance(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp)
