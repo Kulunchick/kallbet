@@ -123,6 +123,29 @@ impl Promotion {
             };
             members.push(Member { signal, fit });
         }
+        // A verdict is the protocol's only under its prescribed bootstrap and floor.
+        let prescribed = lab::Protocol::default();
+        let (resamples, level, floor) = (
+            report["resamples"].as_u64(),
+            report["level"].as_f64(),
+            report["min_matches"].as_u64(),
+        );
+        if resamples != Some(prescribed.resamples as u64)
+            || level != Some(prescribed.level)
+            || floor != Some(prescribed.min_matches as u64)
+        {
+            let show = |v: Option<String>| v.unwrap_or_else(|| "?".into());
+            return Err(format!(
+                "the report was run with {} bootstrap resamples (level {}, floor {}), not the protocol's {} ({}, {}): its verdicts cannot be promoted",
+                show(resamples.map(|v| v.to_string())),
+                show(level.map(|v| v.to_string())),
+                show(floor.map(|v| v.to_string())),
+                prescribed.resamples,
+                prescribed.level,
+                prescribed.min_matches
+            )
+            .into());
+        }
         let combination = if name == COMBINATION {
             let combiner: Combiner =
                 serde_json::from_value(report["deployment"][COMBINATION].clone())?;

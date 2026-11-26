@@ -44,14 +44,14 @@ pub struct Bootstrap {
 /// `(event id, difference)` per Match; each resample draws as many Events as
 /// there are, with replacement, and takes the mean over all their Matches. The
 /// interval is the central `level` of the resampled means (linear interpolation
-/// between order statistics). `None` without a Match.
+/// between order statistics). `None` without a Match or without a resample.
 pub fn event_bootstrap(
     diffs: &[(i64, f64)],
     resamples: usize,
     level: f64,
     seed: u64,
 ) -> Option<Bootstrap> {
-    if diffs.is_empty() {
+    if diffs.is_empty() || resamples == 0 {
         return None;
     }
     let mut events: BTreeMap<i64, (f64, usize)> = BTreeMap::new();
@@ -64,7 +64,7 @@ pub fn event_bootstrap(
     let mean = diffs.iter().map(|d| d.1).sum::<f64>() / diffs.len() as f64;
     let mut rng = SeededRng::new(seed);
     let k = events.len();
-    let mut means: Vec<f64> = (0..resamples.max(1))
+    let mut means: Vec<f64> = (0..resamples)
         .map(|_| {
             let (mut sum, mut n) = (0.0, 0usize);
             for _ in 0..k {

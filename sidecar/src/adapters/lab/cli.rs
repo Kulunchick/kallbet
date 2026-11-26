@@ -55,7 +55,13 @@ pub fn parse(args: &[String]) -> Result<Options> {
             }
             "--out" => o.out = value()?.into(),
             "--seed" => o.seed = Some(value()?.parse()?),
-            "--resamples" => o.resamples = Some(value()?.parse()?),
+            "--resamples" => {
+                let n: usize = value()?.parse()?;
+                if n == 0 {
+                    return Err("--resamples needs at least one resample".into());
+                }
+                o.resamples = Some(n);
+            }
             "--signal" => o.signals.push(value()?),
             flag if super::llm::FLAGS.contains(&flag) => o.llm.set(flag, value()?)?,
             other => return Err(format!("unknown lab option {other:?}\n{USAGE}").into()),

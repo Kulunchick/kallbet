@@ -150,3 +150,13 @@ fn the_calibration_scale_is_the_maximum_likelihood_one() {
     assert!(close(fit_scale(&mirrored).unwrap(), expected, 1e-4));
     assert!(fit_scale(&[]).is_none());
 }
+
+// Finding 17 (review of 6eea194): no bootstrap is made of zero resamples
+// (it was taken as one), and the CLI refuses `--resamples 0`.
+#[test]
+fn zero_resamples_give_no_interval_and_are_refused() {
+    let diffs = [(1, -0.1), (2, -0.2), (3, -0.05)];
+    assert!(kallbet_ai::adapters::lab::stats::event_bootstrap(&diffs, 0, 0.9, 33).is_none());
+    let args: Vec<String> = ["--resamples", "0"].iter().map(|s| s.to_string()).collect();
+    assert!(kallbet_ai::adapters::lab::cli::parse(&args).is_err());
+}

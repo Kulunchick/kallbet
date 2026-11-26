@@ -223,6 +223,18 @@ async fn selecting_a_name_the_lab_did_not_promote_is_a_configuration_error_with_
     let e = load_error(promoted("combination"), &report).await;
     assert!(e.contains("froze no Candidate Signal"), "{e}");
 
+    // Finding 17 (review of 6eea194): verdicts of a run under another protocol
+    // than the prescribed one (here one bootstrap resample) cannot be promoted.
+    let mut degenerate = serde_json::from_slice::<Value>(&std::fs::read(&report).unwrap()).unwrap();
+    degenerate["resamples"] = json!(1);
+    degenerate["level"] = json!(0.9);
+    degenerate["min_matches"] = json!(100);
+    std::fs::write(&report, degenerate.to_string()).unwrap();
+    let e = load_error(promoted("own_rating"), &report).await;
+    assert!(e.contains("1 bootstrap resamples"), "{e}");
+    degenerate["resamples"] = json!(2000);
+    std::fs::write(&report, degenerate.to_string()).unwrap();
+
     let mut old = serde_json::from_slice::<Value>(&std::fs::read(&report).unwrap()).unwrap();
     old["protocol_version"] = json!("signal-lab/1");
     std::fs::write(&report, old.to_string()).unwrap();
