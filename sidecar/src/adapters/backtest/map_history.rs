@@ -3,7 +3,6 @@ use super::archive::ReplayStage;
 use crate::adapters::hltv_research::archive::{LiquipediaStageMaps, Side};
 use crate::team_names::team_key;
 use crate::{AsOf, Instant, TemporalLeakError};
-use serde_json::Value;
 use std::{collections::BTreeMap, sync::Arc};
 
 pub struct PlayedMaps {
@@ -13,14 +12,33 @@ pub struct PlayedMaps {
     pub results: Vec<(String, bool)>,
 }
 
-#[derive(Clone, Default)]
-pub struct MapHistory {
-    entries: Arc<[AsOf<PlayedMaps>]>,
+pub type MapHistory = MatchHistory<PlayedMaps>;
+
+pub struct MatchHistory<T> {
+    entries: Arc<[AsOf<T>]>,
     end: usize,
 }
 
-impl MapHistory {
-    pub(super) fn new(mut entries: Vec<AsOf<PlayedMaps>>) -> Self {
+impl<T> Default for MatchHistory<T> {
+    fn default() -> Self {
+        Self {
+            entries: Arc::default(),
+            end: 0,
+        }
+    }
+}
+
+impl<T> Clone for MatchHistory<T> {
+    fn clone(&self) -> Self {
+        Self {
+            entries: self.entries.clone(),
+            end: self.end,
+        }
+    }
+}
+
+impl<T> MatchHistory<T> {
+    pub(super) fn new(mut entries: Vec<AsOf<T>>) -> Self {
         entries.sort_by_key(AsOf::observed_at);
         let end = entries.len();
         Self {
@@ -44,29 +62,21 @@ impl MapHistory {
     pub fn at(
         &self,
         cutoff: Instant,
-    ) -> impl Iterator<Item = Result<(&PlayedMaps, Instant), TemporalLeakError>> {
+    ) -> impl Iterator<Item = Result<(&T, Instant), TemporalLeakError>> {
         self.entries[..self.end]
             .iter()
             .map(move |entry| Ok((entry.at(cutoff)?, entry.observed_at())))
     }
 }
 
-fn pair(a: &str, b: &str) -> (String, String) {
+pub(super) fn pair(a: &str, b: &str) -> (String, String) {
     let mut keys = [team_key(a), team_key(b)];
     keys.sort();
     let [a, b] = keys;
     (a, b)
 }
 
-pub(super) fn link_stage(
-    stage: &ReplayStage,
-    rows: &[Value],
-    page: LiquipediaStageMaps,
-) -> Vec<AsOf<PlayedMaps>> {
-    let ends: BTreeMap<i64, Instant> = rows
-        .iter()
-        .filter_map(|row| Some((row["id"].as_i64()?, row["end_at"].as_str()?.parse().ok()?)))
-        .collect();
+pub(super) fn link_stage(stage: &ReplayStage, page: LiquipediaStageMaps) -> Vec<AsOf<PlayedMaps>> {
     let mut by_pair = BTreeMap::new();
     for game in &stage.matches {
         let key = pair(&game.game.team_a.name, &game.game.team_b.name);
@@ -81,7 +91,7 @@ pub(super) fn link_stage(
         let Some(Some(replay)) = by_pair.get(&key) else {
             continue;
         };
-        let Some(&end) = ends.get(&replay.game.id) else {
+        let Some(end) = replay.reported_finish else {
             continue;
         };
         if end <= replay.actual_start || end >= page.revision_timestamp {

@@ -32,6 +32,7 @@ pub struct MatchView {
     /// Team B's archive Matches finished strictly before `cutoff`, oldest first.
     pub team_b_history: HistorySlice,
     pub map_history: crate::adapters::backtest::map_history::MapHistory,
+    pub veto_history: crate::adapters::backtest::veto_history::VetoHistory,
 }
 impl MatchView {
     pub fn signal(&self) -> Result<Option<&Signal>, TemporalLeakError> {

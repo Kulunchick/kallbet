@@ -56,6 +56,7 @@ impl Lab {
     pub(super) async fn view(&self, game: &Match, cutoff: Instant) -> Result<MatchView> {
         let view = MatchView {
             map_history: self.archive.map_history.before(cutoff),
+            veto_history: self.archive.veto_history.before(cutoff),
             signal: self.feeds.signal.signal(game, cutoff).await?,
             market: self.feeds.odds.quote(game, cutoff).await?,
             history_before: self.feeds.history.matches_before(cutoff).await?,

@@ -28,6 +28,8 @@ pub struct ReplayMatch {
     pub actual_start: Instant,
     /// When the result was known: PandaScore's `end_at`, else the actual start.
     pub finished_at: Instant,
+    /// Source-reported finish, without the results history's start-time fallback.
+    pub reported_finish: Option<Instant>,
     pub winner: i64,
     /// Map score `(team_a_maps, team_b_maps)` from PandaScore `results`, if present.
     pub maps_score: Option<(u32, u32)>,
@@ -128,6 +130,7 @@ pub struct ReplayArchive {
     pub event_titles: BTreeMap<i64, String>,
     /// Played maps linked to finished PandaScore Matches.
     pub map_history: MapHistory,
+    pub veto_history: super::veto_history::VetoHistory,
     /// SHA-256 over every file name and content, in name order.
     pub digest: String,
     pub files: usize,
@@ -192,8 +195,12 @@ impl ReplayArchive {
             .collect::<std::io::Result<_>>()?;
         names.retain(|p| p.is_file());
         let catalog = dir.join("catalog");
-        if catalog.is_dir() {
-            for entry in std::fs::read_dir(&catalog)? {
+        let hltv = dir.join("hltv");
+        for subdir in [&catalog, &hltv] {
+            if !subdir.is_dir() {
+                continue;
+            }
+            for entry in std::fs::read_dir(subdir)? {
                 let entry = entry?;
                 if entry.file_type()?.is_file() {
                     names.push(entry.path());
@@ -206,6 +213,7 @@ impl ReplayArchive {
         let mut matches: BTreeMap<i64, Vec<Value>> = BTreeMap::new();
         let mut stage_pages: BTreeMap<i64, WikiRevision> = BTreeMap::new();
         let mut map_pages = BTreeMap::new();
+        let mut hltv_matches = BTreeMap::new();
         for path in names {
             let name = path.file_name().unwrap_or_default().to_string_lossy();
             let stem = name.trim_end_matches(".gz");
@@ -216,6 +224,9 @@ impl ReplayArchive {
             let is_catalog = path.parent() == Some(catalog.as_path());
             if is_catalog {
                 digest.update(b"catalog/");
+            }
+            if path.parent() == Some(hltv.as_path()) {
+                digest.update(b"hltv/");
             }
             digest.update(stem.as_bytes());
             digest.update(&bytes);
@@ -235,7 +246,17 @@ impl ReplayArchive {
             if stem.starts_with("panda-") && value.as_array().is_some_and(Vec::is_empty) {
                 continue;
             }
-            if let Some(tournament) = stem
+            if let Some(id) = stem
+                .strip_prefix("hltv-match-")
+                .and_then(|s| s.strip_suffix(".json"))
+                .and_then(|s| s.parse::<i64>().ok())
+            {
+                let record: crate::adapters::hltv_research::archive::HltvMatchRecord =
+                    serde_json::from_value(value).map_err(|e| format!("{name}: {e}"))?;
+                if record.match_id != id || hltv_matches.insert(id, record).is_some() {
+                    return Err(format!("{name}: mismatched or duplicate HLTV Match id").into());
+                }
+            } else if let Some(tournament) = stem
                 .strip_prefix("maps-")
                 .and_then(|s| s.trim_end_matches(".json").parse::<i64>().ok())
             {
@@ -340,11 +361,13 @@ impl ReplayArchive {
                 archive.event_titles.insert(stage.event_id, root.to_owned());
             }
             if let Some(page) = map_pages.remove(&id) {
-                map_matches.extend(super::map_history::link_stage(&stage, &rows, page));
+                map_matches.extend(super::map_history::link_stage(&stage, page));
             }
             archive.stages.push(stage);
         }
         archive.map_history = MapHistory::new(map_matches);
+        archive.veto_history =
+            super::veto_history::link(&archive.stages, hltv_matches.into_values());
         archive.stages.sort_by_key(|s| (s.cutoff, s.id));
         Ok(archive)
     }
@@ -477,6 +500,7 @@ fn stage_from_pandascore(
                     game,
                     actual_start: actual,
                     finished_at: instant(&row["end_at"]).unwrap_or(actual).max(actual),
+                    reported_finish: instant(&row["end_at"]),
                     winner: w,
                     maps_score,
                     round,

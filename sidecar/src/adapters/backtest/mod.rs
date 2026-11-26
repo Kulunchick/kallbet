@@ -18,6 +18,7 @@ pub mod platform;
 pub mod report;
 pub mod runner;
 pub mod runs;
+pub mod veto_history;
 
 pub use anonymizer::{Blind, BlindAnonymizer};
 pub use archive::{ReplayArchive, ReplayMatch, ReplayStage, StageKind};
