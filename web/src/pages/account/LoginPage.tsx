@@ -98,7 +98,7 @@ export function LoginPage() {
               value={nickname}
               onChange={(event) => setNickname(event.target.value)}
               placeholder={t("profile.nickname")}
-              className="min-h-11 rounded-xl border border-line bg-ink px-3 py-2.5 text-base text-fg outline-none focus:border-emerald-a"
+              className="min-h-11 rounded-xl border border-line bg-ink px-3 py-2.5 text-base text-fg focus:border-emerald-a focus:outline-hidden"
             />
             <button type="submit" className="btn-ghost" disabled={!nickname.trim()}>
               {t("login.devSubmit")}

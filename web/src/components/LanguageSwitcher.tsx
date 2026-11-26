@@ -55,12 +55,12 @@ export function LanguageSegmentedControl() {
           <button
             key={language}
             type="button"
-            role="menuitem"
+            role="menuitemradio"
             lang={language}
             title={t(`language.${language}`, { ns: "common" })}
-            aria-pressed={active}
+            aria-checked={active}
             onClick={() => void i18n.changeLanguage(language)}
-            className={`inline-flex min-h-10 min-w-11 items-center justify-center rounded-lg px-2 text-xs font-semibold uppercase outline-none transition-[background-color,color,transform] duration-[140ms] ease-out focus-visible:ring-2 focus-visible:ring-emerald-b active:scale-[.97] motion-reduce:transition-[background-color,color] motion-reduce:active:scale-100 ${
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 text-xs font-semibold uppercase transition-[background-color,color,scale] duration-[140ms] ease-out focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-b active:scale-[.97] motion-reduce:transition-[background-color,color] motion-reduce:active:scale-100 ${
               active
                 ? "bg-emerald-tint text-emerald-b"
                 : "text-mute [@media(hover:hover)_and_(pointer:fine)]:hover:bg-raised [@media(hover:hover)_and_(pointer:fine)]:hover:text-fg"
@@ -83,7 +83,7 @@ export function LanguageSwitcher() {
     <Popover
       align="end"
       label={t("language")}
-      triggerClassName="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl border border-transparent px-2.5 text-xs font-semibold uppercase text-fg transition-[background-color,border-color,transform] duration-[140ms] ease-out active:scale-[.97] motion-reduce:transition-[background-color,border-color] motion-reduce:active:scale-100 [@media(hover:hover)_and_(pointer:fine)]:hover:border-line [@media(hover:hover)_and_(pointer:fine)]:hover:bg-raised aria-expanded:border-line aria-expanded:bg-raised"
+      triggerClassName="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl border border-transparent px-2.5 text-xs font-semibold uppercase text-fg transition-[background-color,border-color,scale] duration-[140ms] ease-out active:scale-[.97] motion-reduce:transition-[background-color,border-color] motion-reduce:active:scale-100 [@media(hover:hover)_and_(pointer:fine)]:hover:border-line [@media(hover:hover)_and_(pointer:fine)]:hover:bg-raised aria-expanded:border-line aria-expanded:bg-raised"
       trigger={({ open }) => (
         <>
           <span>{current}</span>

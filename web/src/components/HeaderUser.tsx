@@ -36,7 +36,7 @@ export function HeaderUser() {
     <Popover
       align="end"
       label={t("accountMenu", { ns: "ui" })}
-      triggerClassName="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-line bg-panel pl-1.5 pr-2 text-sm font-semibold text-fg transition-[background-color,transform] duration-[140ms] ease-out active:scale-[.97] motion-reduce:transition-[background-color] motion-reduce:active:scale-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-raised aria-expanded:bg-raised sm:pr-2.5"
+      triggerClassName="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-line bg-panel pl-1.5 pr-2 text-sm font-semibold text-fg transition-[background-color,scale] duration-[140ms] ease-out active:scale-[.97] motion-reduce:transition-[background-color] motion-reduce:active:scale-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-raised aria-expanded:bg-raised sm:pr-2.5"
       trigger={({ open }) => (
         <>
           <Avatar url={user.avatar_url} nickname={user.nickname} className="size-8" />
@@ -66,7 +66,7 @@ export function HeaderUser() {
           <button
             type="button"
             role="menuitem"
-            className={`${popoverItemClass} !text-danger`}
+            className={popoverItemClass}
             onClick={() => void signOut().then(() => navigate("/"))}
           >
             {t("signOut")}

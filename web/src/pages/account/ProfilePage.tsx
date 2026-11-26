@@ -72,7 +72,7 @@ function Profile({ user }: { user: User }) {
             setNickname(event.target.value);
             setSaved(false);
           }}
-          className="min-h-11 rounded-xl border border-line bg-ink px-3 py-2.5 text-base text-fg outline-none focus:border-emerald-a"
+          className="min-h-11 rounded-xl border border-line bg-ink px-3 py-2.5 text-base text-fg focus:border-emerald-a focus:outline-hidden"
         />
         <p className="text-xs text-mute">{t("profile.nicknameHint")}</p>
         {error !== null && (
