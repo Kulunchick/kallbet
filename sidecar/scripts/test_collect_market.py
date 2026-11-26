@@ -214,6 +214,20 @@ class Kalshi(unittest.TestCase):
             self.assertEqual(len(remote.urls), 1)
 
 
+class Manifest(unittest.TestCase):
+    def test_rows_append_and_compact_keeps_the_last_row_per_file(self):
+        with tempfile.TemporaryDirectory() as t:
+            c = make(t)
+            c.save("a.json", b"1", "r1")
+            c.save("a.json", b"2", "r2")
+            c.save("b.json", b"3", "r3")
+            path = pathlib.Path(t) / "sources-market.tsv"
+            self.assertEqual(len(path.read_text().splitlines()), 3)
+            c.compact_manifest()
+            rows = [l.split("	") for l in path.read_text().splitlines()]
+            self.assertEqual([(r[0], r[1]) for r in rows], [("a.json.gz", "r2"), ("b.json.gz", "r3")])
+
+
 class Plan(unittest.TestCase):
     def test_a_tournament_list_file_joins_the_plan(self):
         with tempfile.TemporaryDirectory() as t:

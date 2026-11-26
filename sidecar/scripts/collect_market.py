@@ -105,14 +105,22 @@ class Collector:
         folder = self.catalog if catalog else self.archive
         (folder / (name + ".gz")).write_bytes(gzip.compress(body, mtime=0))
         rel = ("catalog/" if catalog else "") + name + ".gz"
-        path = self.archive / MANIFEST
-        rows = {}
-        if path.exists():
-            for line in path.read_text(encoding="utf8").splitlines():
-                rows[line.split("\t")[0]] = line
-        rows[rel] = "\t".join([rel, request, iso(self.now()), hashlib.sha256(body).hexdigest()])
-        path.write_text("\n".join(sorted(rows.values())) + "\n", encoding="utf8")
+        # Append-only, so two collectors running side by side (OddsPapi and remote) never lose a row;
+        # `compact_manifest` (the report command) keeps the last row per file.
+        row = "\t".join([rel, request, iso(self.now()), hashlib.sha256(body).hexdigest()])
+        with open(self.archive / MANIFEST, "a", encoding="utf8", newline="\n") as out:
+            out.write(row + "\n")
         self.saved += 1
+
+    def compact_manifest(self):
+        path = self.archive / MANIFEST
+        if not path.exists():
+            return
+        rows = {}
+        for line in path.read_text(encoding="utf8").splitlines():
+            if line.strip():
+                rows[line.split("\t")[0]] = line
+        path.write_text("\n".join(sorted(rows.values())) + "\n", encoding="utf8", newline="\n")
 
     def month(self):
         return self.now().strftime("%Y-%m")
@@ -379,6 +387,8 @@ def main():
         if collector.spend_billable():
             body, request = collector.oddspapi("tournaments", {"sportId": 17})
             collector.save("oddspapi-tournaments-17.json", body, request, catalog=True)
+    elif args.command == "report":
+        collector.compact_manifest()
     elif args.command == "collect":
         plan = load_plan(args.plan, args.tournaments)
         steps = args.only.split(",")
