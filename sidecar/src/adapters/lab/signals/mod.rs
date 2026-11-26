@@ -22,6 +22,7 @@ pub mod own_rating;
 pub mod per_map_rating;
 pub mod player_form;
 pub mod recent_form;
+pub mod round_diff_rating;
 
 /// What a Candidate Signal may read of one Match: the Match as the pipeline
 /// sees it before its cutoff, and the anchor's inputs read through the replay
@@ -253,6 +254,7 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(per_map_rating::PerMapRating),
         std::sync::Arc::new(bo1_veto_sim::Bo1VetoSim),
         std::sync::Arc::new(bo3_veto_sim::Bo3VetoSim),
+        std::sync::Arc::new(round_diff_rating::RoundDiffRating),
     ];
     signals.extend(roster::candidates());
     signals.extend(match_context::registry());
