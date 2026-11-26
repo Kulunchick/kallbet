@@ -16,7 +16,8 @@ const SHOWN_WITH_UNDO_MS = 8_000;
  * The confirmation after a pick: "Pick saved · team", with a 44 px Undo when
  * the Member had picked the other team before. The live region is always in the
  * page, so a screen reader announces each new message. The timer stops while
- * the pointer or focus is on the toast.
+ * the pointer or focus is on the toast. It keeps clear of the notch, the
+ * rounded corners and the home indicator (the safe areas).
  */
 export function PickToast({ toast, onDismiss }: { toast: PickToastData | null; onDismiss: () => void }) {
   const { t } = useTranslation("picks");
@@ -38,7 +39,7 @@ export function PickToast({ toast, onDismiss }: { toast: PickToastData | null; o
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex justify-center"
+      className="pointer-events-none fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] z-40 flex justify-center"
     >
       {toast && (
         <div

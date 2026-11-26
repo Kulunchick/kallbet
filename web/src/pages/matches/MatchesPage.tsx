@@ -7,7 +7,7 @@ import { useLoad } from "../../api/useLoad";
 import { getLeague } from "../leagues/api";
 import { MatchCard } from "./MatchCard";
 import { getMatches, predict, type MatchCard as Card, type MatchesView, type TeamRef } from "./api";
-import { currentStage, nextUnpicked, orderMatchGroups, stripModel, undoTarget } from "./layout";
+import { currentStage, nextLockAt, nextUnpicked, orderMatchGroups, stripModel, undoTarget } from "./layout";
 import { LoadFailed, MatchesSkeleton, NoMatches, RefreshFailed } from "./MatchesStates";
 import { NextUpStrip } from "./NextUpStrip";
 import { PickToast, type PickToastData } from "./PickToast";
@@ -16,6 +16,8 @@ import { useNow } from "./time";
 
 /** How often the page refetches, so new Swiss rounds and Locks show up. */
 const REFRESH_MS = 60_000;
+/** The longest delay `setTimeout` keeps (2^31 - 1 ms). */
+const MAX_TIMER_MS = 2 ** 31 - 1;
 
 export function MatchesPage() {
   const { t } = useTranslation("matches");
@@ -23,9 +25,14 @@ export function MatchesPage() {
   const league = Number(useParams().id);
   const { result, reload } = useLoad(() => getMatches(league), [league]);
   // One extra request: it says whether this is an admin (the source line on each
-  // card) and whether the League is archived (no picking, so no strip).
+  // card) and whether the League is archived (no picking, so no strip). Nothing
+  // waits on it: until it says "archived", the strip shows.
   const { result: leagueResult } = useLoad(() => getLeague(league), [league]);
-  const now = useNow();
+  const tick = useNow();
+  // The moment of the last Lock the page saw pass: the clock jumps to it, so a
+  // card stops offering its teams exactly at its Lock, not at the next tick.
+  const [lockedAt, setLockedAt] = useState(0);
+  const now = Math.max(tick, lockedAt);
   const [view, setView] = useState<MatchesView | null>(null);
   const [saving, setSaving] = useState<Set<number>>(() => new Set());
   const [error, setError] = useState<{ match: number; error: unknown } | null>(null);
@@ -41,17 +48,27 @@ export function MatchesPage() {
     return () => window.clearInterval(id);
   }, [reload]);
 
+  // At the next Lock of any open card: move the clock to it at once, then
+  // reload shortly after, when the server has Locked (and maybe Revealed) it.
   useEffect(() => {
-    const deadlines = view?.stages.flatMap((stage) =>
-      stage.groups.flatMap((group) => group.matches.flatMap((match) =>
-        match.lock.edit_window && match.lock.locks_at ? [Date.parse(match.lock.locks_at)] : [],
-      )),
-    );
-    if (!deadlines?.length) return;
-    const next = Math.min(...deadlines);
-    const timer = window.setTimeout(reload, Math.max(0, next - Date.now()) + 250);
+    const open = view?.stages.flatMap((stage) =>
+      stage.groups.flatMap((group) => group.matches.filter((match) => !match.lock.locked)),
+    ) ?? [];
+    const next = nextLockAt(open, Math.max(Date.now(), lockedAt));
+    if (next === null) return;
+    // A timer longer than ~24.8 days fires at once: wait the longest one instead
+    // (the minute refresh schedules it again) and ignore such an early call.
+    const timer = window.setTimeout(() => {
+      if (next - Date.now() < 1000) setLockedAt(Math.max(Date.now(), next));
+    }, Math.min(next - Date.now(), MAX_TIMER_MS));
     return () => window.clearTimeout(timer);
-  }, [view, reload]);
+  }, [view, lockedAt]);
+
+  useEffect(() => {
+    if (lockedAt === 0) return;
+    const timer = window.setTimeout(reload, 250);
+    return () => window.clearTimeout(timer);
+  }, [lockedAt, reload]);
 
   const cards = view?.stages.flatMap((stage) => stage.groups.flatMap((group) => group.matches)) ?? [];
 
@@ -124,7 +141,10 @@ export function MatchesPage() {
   }
 
   const isAdmin = leagueResult.state === "ready" && leagueResult.data.my_role === "admin";
-  const canPick = leagueResult.state === "ready" && leagueResult.data.archived_at === null;
+  // The strip shows unless the League is known to be archived: while that
+  // request loads or after it fails too (an archived League's cards have
+  // `can_predict` false, so the strip could not offer a pick there anyway).
+  const canPick = !(leagueResult.state === "ready" && leagueResult.data.archived_at !== null);
   const strip = canPick ? stripModel(cards, now) : null;
 
   const renderCard = (card: Card) => (

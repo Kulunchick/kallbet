@@ -15,6 +15,7 @@
   "locksIn": "Закриється через {{time}}",
   "predictedCount": "Прогнозів: {{n}} з {{m}}",
   "revealed": "Прогнози відкрито",
+  "revealedFor": "Прогнози відкрито: {{a}} проти {{b}}",
   "nobodyPicked": "Ніхто",
   "addedByHand": "Додано адміністратором ліги",
   "overridden": "Виправлено: {{fields}}",

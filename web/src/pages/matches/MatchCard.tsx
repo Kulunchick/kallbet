@@ -73,26 +73,25 @@ export function MatchCard({ card, now, saving, onPredict, showMeta = false }: Pr
         cue.dismiss("keyboard");
       }}
     >
-      <span role="status" className="sr-only">{cue.state !== "off" ? t("revealed") : ""}</span>
+      <span role="status" className="sr-only">
+        {cue.state !== "off"
+          ? t("revealedFor", { a: card.team_a?.name ?? t("tbd"), b: card.team_b?.name ?? t("tbd") })
+          : ""}
+      </span>
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <LockLine card={card} locked={locked} locksAt={locksAt} now={now} />
+        <LockLine
+          card={card}
+          locked={locked}
+          locksAt={locksAt}
+          now={now}
+          cue={reveal === "just-revealed" ? cue.state : null}
+        />
         <span className="ml-auto text-[13px] text-mute">
           <span className="uppercase">{t(`format.${card.format}`)}</span>
           {" · "}
           {card.scheduled_start ? formatStart(card.scheduled_start, language) : t("startUnknown")}
         </span>
       </header>
-
-      {cue.state !== "off" && (
-        <p
-          aria-hidden="true"
-          data-leaving={cue.state === "leaving" ? "" : undefined}
-          className="reveal-cue inline-flex items-center gap-1.5 self-start rounded-full bg-emerald-tint px-2.5 py-1 text-[13px] font-semibold text-emerald-b"
-        >
-          <CheckIcon className="size-3.5 shrink-0" />
-          {t("revealed")}
-        </p>
-      )}
 
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2">
         {side(card.team_a, "start")}
@@ -115,20 +114,17 @@ export function MatchCard({ card, now, saving, onPredict, showMeta = false }: Pr
         </p>
       )}
 
-      {(revealed === null || showResult || showMeta) && (
-        <footer className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[13px]">
-          {revealed === null && (
-            <span className="text-mute">
-              {t("predictedCount", { n: count, m: eligible })}
-              {unpicked && <>{" · "}{t("unpickedHint")}</>}
-            </span>
-          )}
-          {showResult && (
-            <PredictionResult result={card.my_result} team={myTeam ?? undefined} points={card.my_points} />
-          )}
-          {showMeta && <MetaLine card={card} settled={settled} now={now} language={language} />}
-        </footer>
-      )}
+      <footer className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[13px]">
+        <span className="text-mute">
+          {revealed !== null && !settled && <>{t("locked")}{" · "}</>}
+          {t("predictedCount", { n: count, m: eligible })}
+          {unpicked && <>{" · "}{t("unpickedHint")}</>}
+        </span>
+        {showResult && (
+          <PredictionResult result={card.my_result} team={myTeam ?? undefined} points={card.my_points} />
+        )}
+        {showMeta && <MetaLine card={card} settled={settled} now={now} language={language} />}
+      </footer>
     </article>
   );
 }
@@ -153,9 +149,9 @@ function useRevealState(key: string, revealed: boolean): RevealState {
 type CueState = "on" | "leaving" | "off";
 
 /**
- * The "Predictions revealed" cue of a just revealed card. It fades out after
- * about 6 s or on the next pointer interaction, and goes at once on a key
- * press (keyboard actions never animate). Gone, it collapses without animation.
+ * The "Predictions revealed" cue of a just revealed card, shown in its Lock
+ * status slot. It fades out after about 6 s or on the next pointer interaction,
+ * and goes at once on a key press (keyboard actions never animate).
  */
 function useRevealCue(justRevealed: boolean) {
   const [state, setState] = useState<CueState>("on");
@@ -337,7 +333,7 @@ function RevealedPick({ pick, delayMs }: { pick: RevealedPrediction; delayMs: nu
       className={`flex items-center gap-1 rounded-full border border-line bg-raised pr-1.5 ${preliminary ? "border-dashed" : ""}`}
     >
       <Avatar url={pick.avatar_url} nickname={pick.nickname} className="size-6" />
-      <span aria-hidden="true" className="text-[0.625rem] font-bold uppercase leading-none text-mute">
+      <span aria-hidden="true" className="text-xs font-bold uppercase leading-none text-mute">
         {t("bot.badge")}{preliminary && "*"}
       </span>
       <span className="sr-only">{label}</span>
@@ -345,14 +341,20 @@ function RevealedPick({ pick, delayMs }: { pick: RevealedPrediction; delayMs: nu
   );
 }
 
-/** The Lock status, the most important fact on the card. */
+/**
+ * The Lock status, the most important fact on the card. On a card just
+ * revealed (`cue` set) the status and the "Predictions revealed" cue share one
+ * grid cell and crossfade (opacity only), so the slot keeps its size and
+ * nothing below moves when the cue leaves.
+ */
 function LockLine({
-  card, locked, locksAt, now,
+  card, locked, locksAt, now, cue,
 }: {
   card: Card;
   locked: boolean;
   locksAt: number | null;
   now: number;
+  cue: CueState | null;
 }) {
   const { t } = useTranslation("matches");
   const state = cardState(card);
@@ -380,7 +382,20 @@ function LockLine({
     const key = card.lock.edit_window && card.lock.can_predict ? "editWindow" : "locksIn";
     content = <><ClockIcon />{t(key, { time: formatSpan(t, locksAt - now) })}</>;
   }
-  return <span className={`inline-flex min-w-0 items-center gap-1.5 text-base ${tone}`}>{content}</span>;
+  const status = <span className={`inline-flex min-w-0 items-center gap-1.5 text-base ${tone}`}>{content}</span>;
+  if (cue === null) return status;
+  return (
+    <span className="lock-cue inline-grid min-w-0" data-cue={cue}>
+      <span className="lock-cue-status inline-flex min-w-0">{status}</span>
+      <span
+        aria-hidden="true"
+        className="lock-cue-label inline-flex min-w-0 items-center gap-1.5 text-base font-semibold text-emerald-b"
+      >
+        <CheckIcon className="size-4 shrink-0" />
+        {t("revealed")}
+      </span>
+    </span>
+  );
 }
 
 const iconProps = {

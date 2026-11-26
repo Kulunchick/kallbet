@@ -15,6 +15,7 @@
   "locksIn": "Закроется через {{time}}",
   "predictedCount": "Прогнозов: {{n}} из {{m}}",
   "revealed": "Прогнозы открыты",
+  "revealedFor": "Прогнозы открыты: {{a}} против {{b}}",
   "nobodyPicked": "Никто",
   "addedByHand": "Добавлен администратором лиги",
   "overridden": "Исправлено: {{fields}}",

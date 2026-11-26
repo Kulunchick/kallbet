@@ -30,20 +30,35 @@
   }
 }
 
-/* The "Predictions revealed" cue: fades in, fades out after ~6 s or on the
- * next pointer interaction with the card (a keyboard one removes it at once). */
-.reveal-cue {
+/* The "Predictions revealed" cue, in the Lock status slot of a card that was
+ * just revealed (MatchCard's LockLine). The status and the cue share one grid
+ * cell, so the slot is as large as the larger of the two and never changes
+ * size: the cue fades in over the status, then after ~6 s or on the next
+ * pointer interaction the two crossfade back (opacity only). A keyboard
+ * interaction switches back at once (`off` has no transition). */
+.lock-cue > * {
+  grid-area: 1 / 1;
+}
+
+.lock-cue[data-cue="on"] > .lock-cue-status,
+.lock-cue[data-cue="leaving"] > .lock-cue-label,
+.lock-cue[data-cue="off"] > .lock-cue-label {
+  opacity: 0;
+}
+
+.lock-cue[data-cue="off"] > .lock-cue-label {
+  visibility: hidden;
+}
+
+.lock-cue[data-cue="on"] > .lock-cue-label,
+.lock-cue[data-cue="leaving"] > * {
   transition: opacity 200ms var(--ease-out);
 }
 
 @starting-style {
-  .reveal-cue {
+  .lock-cue[data-cue="on"] > .lock-cue-label {
     opacity: 0;
   }
-}
-
-.reveal-cue[data-leaving] {
-  opacity: 0;
 }
 
 /* ------------------------------------------------------ Team pick button */

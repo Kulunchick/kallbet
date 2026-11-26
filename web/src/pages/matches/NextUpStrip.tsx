@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { StripModel } from "./layout";
@@ -20,6 +20,7 @@ export function NextUpStrip({ model, now, onPickNext }: Props) {
   const { t } = useTranslation("picks");
   const { t: tMatches } = useTranslation("matches");
   const [helpOpen, setHelpOpen] = useState(false);
+  const titleId = useId();
   if (model.kind === "hidden") return null;
 
   const urgent = model.kind === "unpicked";
@@ -32,13 +33,13 @@ export function NextUpStrip({ model, now, onPickNext }: Props) {
 
   return (
     <section
-      aria-label={title}
+      aria-labelledby={titleId}
       className={`flex flex-col gap-3 rounded-2xl border p-4 md:flex-row md:items-center md:justify-between md:gap-4 md:px-5 ${
         urgent ? "border-emerald-a bg-emerald-tint" : "border-line bg-panel"
       }`}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 md:flex-col md:items-start md:justify-start">
-        <p className="text-lg font-bold leading-snug text-fg">{title}</p>
+        <p id={titleId} className="text-lg font-bold leading-snug text-fg">{title}</p>
         {nextLock !== null && (
           <p className={`inline-flex items-center gap-1.5 text-sm font-semibold ${urgent ? "text-emerald-b" : "text-mute"}`}>
             <ClockIcon />

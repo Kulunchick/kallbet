@@ -1,26 +1,13 @@
 import type { TFunction } from "i18next";
-import { type ReactNode, useId, useState, useSyncExternalStore } from "react";
+import { type CSSProperties, type ReactNode, useId, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { MatchCard as Card, MatchGroup, StageView } from "./api";
 import {
-  bracketColumns, collapsedStage, compareMatchOrder, earliestStart, estimateCardHeight, masonryColumns,
-  splitFinished,
+  bracketColumns, collapsedStage, compareMatchOrder, earliestStart, MASONRY_ROW, masonrySpan, splitFinished,
 } from "./layout";
 
 type RenderCard = (card: Card) => ReactNode;
-
-const WIDE = "(min-width: 48rem)";
-const subscribeWide = (notify: () => void) => {
-  const query = window.matchMedia(WIDE);
-  query.addEventListener("change", notify);
-  return () => query.removeEventListener("change", notify);
-};
-
-/** Two columns from `md`, one below. */
-function useColumnCount(): number {
-  return useSyncExternalStore(subscribeWide, () => (window.matchMedia(WIDE).matches ? 2 : 1), () => 1);
-}
 
 /**
  * One Stage. A later Stage that has not started is a single collapsed row; the
@@ -120,18 +107,51 @@ function GroupBlock({ t, group, renderCard }: { t: TFunction; group: MatchGroup;
 }
 
 /**
- * The cards of a section: one column, or from `md` two independent columns,
- * each card going to the shorter one by a height estimate (no measuring).
+ * The cards of a section, in time order. Below `md` one column. From `md` a
+ * packed two-column masonry: a CSS grid of 4 px rows with no row gap, where each
+ * card spans the rows of its measured height plus the gap (`masonrySpan`).
+ * Auto-placement puts each card in the first free spot after the previous one,
+ * so the DOM order, the Tab order and what a screen reader reads all stay
+ * chronological while the columns pack. The trailing gap under the last cards
+ * is taken back by the negative bottom margin.
  */
 function MatchGrid({ cards, renderCard }: { cards: Card[]; renderCard: RenderCard }) {
-  const columns = masonryColumns(cards, estimateCardHeight, useColumnCount());
   return (
-    <div className="flex items-start gap-3">
-      {columns.map((column, index) => (
-        <div key={index} className="flex min-w-0 flex-1 flex-col gap-3">
-          {column.map(renderCard)}
-        </div>
-      ))}
+    <div
+      className="grid grid-cols-1 items-start gap-3 md:-mb-3 md:auto-rows-[var(--masonry-row)] md:grid-cols-2 md:gap-y-0"
+      style={{ "--masonry-row": `${MASONRY_ROW}px` } as CSSProperties}
+    >
+      {cards.map((card) => <MasonryItem key={card.id}>{renderCard(card)}</MasonryItem>)}
+    </div>
+  );
+}
+
+/**
+ * One grid item that spans the rows its content needs. It is measured before
+ * the first paint and again whenever its size changes (width, fonts, images, a
+ * reasoning panel opened, the Reveal): the span is written straight to the
+ * element in the same frame, so a card never paints over the one below it.
+ */
+function MasonryItem({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const apply = (height: number) => element.style.setProperty("--masonry-span", String(masonrySpan(height)));
+    apply(element.getBoundingClientRect().height);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const box = entry.borderBoxSize?.[0];
+        apply(box ? box.blockSize : entry.target.getBoundingClientRect().height);
+      }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className="min-w-0 md:[grid-row-end:span_var(--masonry-span,1)]">
+      {children}
     </div>
   );
 }
