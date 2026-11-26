@@ -17,6 +17,7 @@ pub mod map_history;
 pub mod match_context;
 pub mod platform;
 pub mod player_history;
+pub mod rank_history;
 pub mod report;
 pub mod runner;
 pub mod runs;

@@ -359,6 +359,7 @@ fn subset(archive: &ReplayArchive, ids: &BTreeSet<i64>) -> ReplayArchive {
         event_pages: archive.event_pages.clone(),
         event_titles: archive.event_titles.clone(),
         hltv_matches: archive.hltv_matches.clone(),
+        hltv_ranks: archive.hltv_ranks.clone(),
         map_history: archive.map_history.clone(),
         veto_history: archive.veto_history.clone(),
         digest: archive.digest.clone(),

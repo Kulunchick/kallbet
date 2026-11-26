@@ -19,6 +19,7 @@ pub mod line_movement;
 pub mod market_sources;
 pub mod lineup_strength;
 pub mod own_rating;
+pub mod rank_gap;
 pub mod per_map_rating;
 pub mod player_form;
 pub mod recent_form;
@@ -57,6 +58,8 @@ pub struct MatchView {
     pub player_stats: std::collections::BTreeMap<String, PlayerStatsSlice>,
     /// Both active fives and the roster observations available at this cutoff.
     pub roster: Option<AsOf<roster::RosterFeatures>>,
+    /// Both teams' VRS and HLTV ranks known at this cutoff (`backtest::rank_history`).
+    pub ranks: crate::adapters::backtest::rank_history::Ranks,
 }
 impl MatchView {
     /// The view a live bot has (ticket #47): the anchor's inputs from the live
@@ -85,6 +88,7 @@ impl MatchView {
             team_b_roster: None,
             player_stats: Default::default(),
             roster: None,
+            ranks: Default::default(),
         }
     }
     /// The price points of `source`, each rechecked against the cutoff.
@@ -254,6 +258,7 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(per_map_rating::PerMapRating),
         std::sync::Arc::new(bo1_veto_sim::Bo1VetoSim),
         std::sync::Arc::new(bo3_veto_sim::Bo3VetoSim),
+        std::sync::Arc::new(rank_gap::RankGap),
         std::sync::Arc::new(round_diff_rating::RoundDiffRating),
     ];
     signals.extend(roster::candidates());

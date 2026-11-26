@@ -26,6 +26,8 @@ archive, with throw-away Python (`python -I`, not committed); the procedure is i
    rank won **72.0%** of 1968 Matches **[archive check]**, against 65.7% for the anchor on the lab's
    2243 Matches. The sets differ and the badge needs a leakage audit before anyone believes the gap
    (see C1), but nothing else in this document has a gap that size.
+   *Ticket #57's audit (C1): the VRS badge is not pre-Match (it already moves with the Match's own result);
+   the dated Valve snapshot before the Match picks 65.9% of the same Matches. The HLTV badge is point-in-time.*
 3. **Margin of victory does not look like the lever.** Updating a team rating by round share instead of
    map win/loss gave the same accuracy (66.1% vs 66.0%, 889 held-out series) **[archive check]**. What
    helped was rating at *map* level rather than series level (+1.9 points, inside the noise).
@@ -106,6 +108,48 @@ not how much we gain.
   (c) Coverage starts where HLTV pages start (2024-07-29), and the 8 walkover pages have no rank.
 - **Cost.** Zero requests.
 - **Priority.** Build first.
+
+#### C1 leakage audit (ticket #57)
+
+Question: does a badge show the rank as of the Match, or as of the page fetch (2026-11-26)? And if as of
+the Match, is it the rank *before* the Match? Reproduce with
+`python -I sidecar/scripts/audit_rank_badges.py <research archive>` (offline, read-only; all 1975 pages
+with a parsed record and raw HTML, the archive's 48 dated Valve standings).
+
+| Check | VRS badge | HLTV badge |
+|---|---|---|
+| Badge dated by the fetch day | 0 of 3940 badges | 0 of 3940 |
+| Badge date against the Match day | the Match day (3898) or the day after (42): the link is built from the Match date, not from a publication | 0–7 days before (a weekly ranking): 1 to 7 days for 3828, the Match day itself for 112 (Monday Matches) |
+| Agreement with the Valve snapshot of the same date (where the archive has one) | 107 of 233 team ranks equal, 181 within 2 | no dated HLTV source in the archive |
+| A team's next page, 1 day later, rank changed: the change follows the result of the **earlier** page's Match (already played) | 688 of 1168 (59%) | 101 of 174 (58%) |
+| ... follows the result of the **later page's own** Match (possible only if the badge already holds it) | **966 of 1168 (83%)** | 91 of 174 (52%, chance) |
+| Same, next page within 14 days: earlier / own | 998 / **1305** of 1656 | 258 / 204 of 417 |
+| Better rank picks the winner (1928 Matches with both badges and a Valve snapshot before the Match day) | badge 1386 (71.9%); latest Valve snapshot before the Match day 1270 (65.9%) | badge 1259 (65.3%) |
+
+**Verdict.**
+
+- *Not fetch-time.* No badge carries the fetch date; both are dated near the Match.
+- *VRS badge: not point-in-time; must not be used.* Its rank moves with the Match's own result far more
+  often than with the previous Match's (83% against 59%). It is HLTV's VRS figure for the Match day after that
+  day's results, not the standing a bettor could read before the Match. Most of the 72.0% headline (item 2 above)
+  is this leak: the dated Valve snapshot before the Match picks 65.9% of the same Matches. `rank_gap` builds its VRS
+  part from the archive's dated Valve snapshots instead (latest strictly before the cutoff, known once its UTC day is
+  over, as the anchor's own rating reads them).
+- *HLTV badge: point-in-time when dated by its ranking.* It links to the weekly ranking on or before the Match
+  day, and its changes follow the earlier Match's result, not the own one (52%, chance). `rank_gap` reads it as
+  known once the ranking's UTC day is over, so the 112 badges published on the Match day itself are not used for
+  that Match; at most 35 days old. Any page may tell a team's rank (a later page carries the same earlier ranking),
+  except a Holdout Match's page for a training-side view. The remaining risk is that HLTV re-renders an old
+  ranking with a revised number; no dated HLTV source in the archive can check that, so it is not checked.
+- Parser: `hltv_research::rank_badges::parse_rank_badges`, tested on the saved pages in `sidecar/tests/fixtures/research/`.
+- *Lab result* (`rank_gap` alone, research archive digest `a556cc44…7c8a`, seed 33, protocol signal-lab/3; added after the
+  list was fixed): computed on 2242 of 2243 Matches, paired 2242 over 61 Events; Δ log-loss −0.173 (90% interval
+  −0.235 to −0.116, detectable 0.090), Δ Brier −0.025, Δ accuracy −0.18 points (interval −0.78 to +0.37); Matches with a
+  market line (776) Δ log-loss −0.009. Verdict **promote**. The fitted weights say where the gain comes from: on the
+  1466 Matches with no market line the combiner shrinks the overconfident Valve rating (weight 0.08) and leans on the
+  rank gaps (HLTV 0.30, VRS 0.20); with a market line the gaps get almost nothing. So it is better probabilities,
+  not more winners picked: the HLTV badge was the only new information, and it picks fewer winners (65.3%) than the
+  dated Valve snapshot (65.9%).
 
 ### C2. Accuracy-fitted stacker (the "ensemble" candidate)
 
