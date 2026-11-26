@@ -333,4 +333,40 @@ mod tests {
         games[0].anchor = Some(0.4);
         assert_eq!(play(&games).places, [1, 1]);
     }
+
+    #[test]
+    fn catch_up_flips_only_close_matches_when_trailing() {
+        // When not trailing, always takes the favourite (team A at >= 0.5).
+        for p in [0.39, 0.40, 0.45, 0.50, 0.55, 0.60, 0.61] {
+            assert_eq!(catch_up(p, 0), p >= 0.5, "deficit=0 p={p}");
+        }
+        // When trailing, flips strictly inside (0.40..=0.60) excluding 0.50.
+        assert!(!catch_up(0.39, 1));
+        assert!(catch_up(0.40, 1));
+        assert!(catch_up(0.45, 1));
+        assert!(catch_up(0.50, 1));
+        assert!(!catch_up(0.55, 1));
+        assert!(!catch_up(0.60, 1));
+        assert!(catch_up(0.61, 2));
+    }
+
+    #[test]
+    fn future_results_never_change_earlier_decisions() {
+        let base = vec![
+            game(0, 5, Some(0.8), false),
+            game(10, 15, Some(0.54), true),
+            game(20, 25, Some(0.54), true),
+        ];
+        let mut flipped_future = vec![
+            game(0, 5, Some(0.8), false),
+            game(10, 15, Some(0.54), true),
+            game(20, 25, Some(0.54), false),
+        ];
+        flipped_future[2].known = None;
+        let r1 = simulate(&base, 4, Model::Market, &mut SeededRng::new(9));
+        let r2 = simulate(&flipped_future, 4, Model::Market, &mut SeededRng::new(9));
+        // Both diverge on the same second match with the same live deficit.
+        assert_eq!(r1.first_change, Some((1, 2)));
+        assert_eq!(r2.first_change, r1.first_change);
+    }
 }

@@ -17,10 +17,19 @@ async fn saved_archive_reports_paired_places_by_model_size_and_trigger() {
         "Market only",
         "| 4 |",
         "| 12 |",
-        "First place",
+        "| 4 | plain |",
+        "| 4 | catch-up |",
+        "| 12 | plain |",
+        "| 12 | catch-up |",
+        "First place probability",
         "Expected place",
         "Verdict",
         "points behind",
+        "Matches left",
+        "Difference in first-place probability",
+        "Difference in expected place",
+        "[0.",
+        "11+",
     ] {
         assert!(report.contains(label), "{label}");
     }
