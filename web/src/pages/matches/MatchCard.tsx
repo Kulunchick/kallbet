@@ -1,11 +1,16 @@
-import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useParams } from "react-router";
 
 import { Avatar } from "../../components/Avatar";
 import { TeamLogo } from "../../components/TeamLogo";
 import type { MatchCard as Card, RevealedPrediction, TeamRef } from "./api";
 import { cardState, hasPreliminaryPick, pickMark } from "./layout";
 import { RationaleList } from "./RationalePanel";
+import {
+  nextRevealState, REVEAL_CUE_FADE_MS, REVEAL_CUE_MS, revealDelayMs, revealKey, revealTracker,
+  type RevealState,
+} from "./reveal";
 import { formatAgo, formatSpan, formatStart } from "./time";
 
 type Props = {
@@ -31,6 +36,12 @@ export function MatchCard({ card, now, saving, onPredict, showMeta = false }: Pr
   const unpicked = showChoices && card.my_prediction === null;
   const showResult = !showChoices && (myTeam !== undefined || card.my_result !== "pending");
 
+  const { id: league } = useParams();
+  const reveal = useRevealState(revealKey(league, card.id), revealed !== null);
+  const cue = useRevealCue(reveal === "just-revealed");
+  // The last input inside this card: a pick made with the keyboard gets no motion.
+  const lastInput = useRef<"pointer" | "keyboard" | null>(null);
+
   function side(team: TeamRef | null, align: "start" | "end") {
     return (
       <TeamSide
@@ -42,13 +53,27 @@ export function MatchCard({ card, now, saving, onPredict, showMeta = false }: Pr
         choice={showChoices}
         saving={saving}
         picks={revealed}
+        revealing={reveal === "just-revealed"}
+        animateCheck={lastInput.current === "pointer"}
         onPick={onPredict}
       />
     );
   }
 
   return (
-    <article className="card flex min-w-0 flex-col gap-3 px-3 py-3.5 sm:px-4" aria-busy={saving}>
+    <article
+      className="card flex min-w-0 flex-col gap-3 px-3 py-3.5 sm:px-4"
+      aria-busy={saving}
+      onPointerDownCapture={() => {
+        lastInput.current = "pointer";
+        cue.dismiss("pointer");
+      }}
+      onKeyDownCapture={() => {
+        lastInput.current = "keyboard";
+        cue.dismiss("keyboard");
+      }}
+    >
+      <span role="status" className="sr-only">{cue.state !== "off" ? t("revealed") : ""}</span>
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <LockLine card={card} locked={locked} locksAt={locksAt} now={now} />
         <span className="ml-auto text-[13px] text-mute">
@@ -57,6 +82,17 @@ export function MatchCard({ card, now, saving, onPredict, showMeta = false }: Pr
           {card.scheduled_start ? formatStart(card.scheduled_start, language) : t("startUnknown")}
         </span>
       </header>
+
+      {cue.state !== "off" && (
+        <p
+          aria-hidden="true"
+          data-leaving={cue.state === "leaving" ? "" : undefined}
+          className="reveal-cue inline-flex items-center gap-1.5 self-start rounded-full bg-emerald-tint px-2.5 py-1 text-[13px] font-semibold text-emerald-b"
+        >
+          <CheckIcon className="size-3.5 shrink-0" />
+          {t("revealed")}
+        </p>
+      )}
 
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2">
         {side(card.team_a, "start")}
@@ -95,6 +131,55 @@ export function MatchCard({ card, now, saving, onPredict, showMeta = false }: Pr
       )}
     </article>
   );
+}
+
+/**
+ * Where this card is in its Reveal: `just-revealed` exactly once, when this
+ * page session saw the Predictions hidden and then revealed (see reveal.ts).
+ */
+function useRevealState(key: string, revealed: boolean): RevealState {
+  const mounted = useRef<{ key: string; prev: RevealState | undefined } | null>(null);
+  if (mounted.current === null || mounted.current.key !== key) {
+    mounted.current = { key, prev: revealTracker.initial(key) };
+  }
+  const state = nextRevealState(mounted.current.prev, { revealed, played: revealTracker.played(key) });
+  useLayoutEffect(() => {
+    if (mounted.current?.key === key) mounted.current.prev = state;
+    revealTracker.commit(key, state);
+  }, [key, state]);
+  return state;
+}
+
+type CueState = "on" | "leaving" | "off";
+
+/**
+ * The "Predictions revealed" cue of a just revealed card. It fades out after
+ * about 6 s or on the next pointer interaction, and goes at once on a key
+ * press (keyboard actions never animate). Gone, it collapses without animation.
+ */
+function useRevealCue(justRevealed: boolean) {
+  const [state, setState] = useState<CueState>("on");
+  const shown: CueState = justRevealed ? state : "off";
+
+  useEffect(() => {
+    if (!justRevealed) return;
+    const timer = window.setTimeout(() => setState((s) => (s === "on" ? "leaving" : s)), REVEAL_CUE_MS);
+    return () => window.clearTimeout(timer);
+  }, [justRevealed]);
+
+  useEffect(() => {
+    if (shown !== "leaving") return;
+    const timer = window.setTimeout(() => setState("off"), REVEAL_CUE_FADE_MS);
+    return () => window.clearTimeout(timer);
+  }, [shown]);
+
+  function dismiss(input: "pointer" | "keyboard") {
+    if (shown === "off") return;
+    if (input === "keyboard") setState("off");
+    else setState((s) => (s === "on" ? "leaving" : s));
+  }
+
+  return { state: shown, dismiss };
 }
 
 /** Source, freshness and League Overrides: small print, only when asked for. */
@@ -163,7 +248,7 @@ function PredictionResult({ result, team, points }: { result: Card["my_result"];
 }
 
 function TeamSide({
-  team, align, winner, loser, mine, choice, saving, picks, onPick,
+  team, align, winner, loser, mine, choice, saving, picks, revealing, animateCheck, onPick,
 }: {
   team: TeamRef | null;
   align: "start" | "end";
@@ -173,6 +258,10 @@ function TeamSide({
   choice: boolean;
   saving: boolean;
   picks: RevealedPrediction[] | null;
+  /** Play the Reveal: the picks fade up in a stagger. */
+  revealing: boolean;
+  /** A check that appears now (a pick made with a pointer) scales in. */
+  animateCheck: boolean;
   onPick: (team: TeamRef) => void;
 }) {
   const { t } = useTranslation("matches");
@@ -187,13 +276,13 @@ function TeamSide({
         aria-label={`${t("pick")}: ${team.name}`}
         disabled={saving}
         onClick={() => onPick(team)}
-        className={`flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2 text-base font-bold transition-transform duration-[140ms] ease-[cubic-bezier(.23,1,.32,1)] active:scale-[.97] motion-reduce:transition-none motion-reduce:active:scale-100 disabled:cursor-wait ${mine
-          ? "border-2 border-emerald-a bg-emerald-a/10 text-emerald-b"
-          : "border border-line bg-raised [@media(hover:hover)_and_(pointer:fine)]:hover:border-emerald-a"}`}
+        className={`pick-choice flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-lg border px-2 py-2 text-base font-bold active:scale-[.97] motion-reduce:active:scale-100 disabled:cursor-wait disabled:opacity-60 ${mine
+          ? "border-emerald-a bg-emerald-a/10 text-emerald-b shadow-[inset_0_0_0_1px_var(--color-emerald-a)]"
+          : "border-line bg-raised [@media(hover:hover)_and_(pointer:fine)]:hover:border-emerald-a"}`}
       >
         {logo}
         {name}
-        {mine && <CheckIcon className="size-4 shrink-0" />}
+        {mine && <CheckIcon className={`size-4 shrink-0 ${animateCheck ? "pick-check-enter" : ""}`} />}
       </button>
     );
   }
@@ -215,9 +304,11 @@ function TeamSide({
       {picks !== null && team && (
         <ul
           aria-label={t("pickedBy", { team: team.name })}
-          className={`flex min-h-6 flex-wrap gap-1 ${end ? "justify-end" : ""}`}
+          className={`flex min-h-6 flex-wrap gap-1 ${end ? "justify-end" : ""} ${revealing ? "reveal-enter" : ""}`}
         >
-          {teamPicks.map((pick) => <RevealedPick key={pick.user_id} pick={pick} />)}
+          {teamPicks.map((pick, index) => (
+            <RevealedPick key={pick.user_id} pick={pick} delayMs={revealing ? revealDelayMs(index) : null} />
+          ))}
         </ul>
       )}
     </div>
@@ -225,12 +316,13 @@ function TeamSide({
 }
 
 /** One revealed Prediction: the Member's avatar; a Bot User's also carries a bot badge. */
-function RevealedPick({ pick }: { pick: RevealedPrediction }) {
+function RevealedPick({ pick, delayMs }: { pick: RevealedPrediction; delayMs: number | null }) {
   const { t } = useTranslation("matches");
   const mark = pickMark(pick);
+  const style = delayMs === null ? undefined : ({ "--reveal-delay": `${delayMs}ms` } as CSSProperties);
   if (mark === "human") {
     return (
-      <li title={pick.nickname}>
+      <li title={pick.nickname} style={style}>
         <Avatar url={pick.avatar_url} nickname={pick.nickname} className="size-6" />
         <span className="sr-only">{pick.nickname}</span>
       </li>
@@ -241,6 +333,7 @@ function RevealedPick({ pick }: { pick: RevealedPrediction }) {
   return (
     <li
       title={label}
+      style={style}
       className={`flex items-center gap-1 rounded-full border border-line bg-raised pr-1.5 ${preliminary ? "border-dashed" : ""}`}
     >
       <Avatar url={pick.avatar_url} nickname={pick.nickname} className="size-6" />
