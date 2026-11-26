@@ -78,7 +78,7 @@ pub(crate) struct Member<'a> {
 /// The features of one Candidate Signal for every Match: `[event][match][feature]`.
 type Features = Vec<Vec<Vec<Option<f64>>>>;
 
-fn features_of(
+pub(crate) fn features_of(
     signal: &dyn CandidateSignal,
     fit: &dyn FittedSignal,
     view: &MatchView,
@@ -521,4 +521,15 @@ pub(crate) fn holdout(
         report,
         predictions,
     })
+}
+
+pub(crate) fn deployment_combiner(events: &[Event], members: &[Member]) -> Result<Combiner> {
+    let cached = members
+        .iter()
+        .map(|m| cache(m, events))
+        .collect::<Result<Vec<_>>>()?;
+    let features = cached.iter().collect::<Vec<_>>();
+    let signals = members.iter().map(|m| &m.signal).collect::<Vec<_>>();
+    let inputs = rows(events, &bases(events)?, &features, Instant::MAX_UTC);
+    Ok(Combiner::fit(&extra_names(&signals), &inputs, LAMBDA))
 }
