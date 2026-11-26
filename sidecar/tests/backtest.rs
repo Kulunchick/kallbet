@@ -328,6 +328,7 @@ async fn run_with_injected(kind: &'static str, offset: Duration) -> Result<(), S
         signal: inject.clone(),
         odds: inject.clone(),
         context: inject,
+        ..Feeds::replay(&backtest.archive).unwrap()
     };
     let (_a, audit) = fresh_audit().await;
     match backtest.run(&audit).await {

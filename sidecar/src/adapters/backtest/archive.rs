@@ -28,6 +28,8 @@ pub struct ReplayMatch {
     /// When the result was known: PandaScore's `end_at`, else the actual start.
     pub finished_at: Instant,
     pub winner: i64,
+    /// Map score `(team_a_maps, team_b_maps)` from PandaScore `results`, if present.
+    pub maps_score: Option<(u32, u32)>,
     /// The Swiss round from PandaScore's name ("Round 3: ..."), if any.
     pub round: Option<u32>,
 }
@@ -434,6 +436,15 @@ fn stage_from_pandascore(
         {
             results.push((w, if w == a.id { b.id } else { a.id }));
         }
+        let maps_score = row["results"].as_array().and_then(|res| {
+            let score_of = |tid: i64| {
+                res.iter()
+                    .find(|r| r["team_id"].as_i64() == Some(tid))
+                    .and_then(|r| r["score"].as_u64())
+                    .and_then(|s| u32::try_from(s).ok())
+            };
+            Some((score_of(a.id)?, score_of(b.id)?))
+        });
         match (status, row["forfeit"].as_bool(), winner, scheduled, actual) {
             ("finished", Some(false), Some(w), Some(_), Some(actual)) if w == a.id || w == b.id => {
                 matches.push(ReplayMatch {
@@ -441,6 +452,7 @@ fn stage_from_pandascore(
                     actual_start: actual,
                     finished_at: instant(&row["end_at"]).unwrap_or(actual).max(actual),
                     winner: w,
+                    maps_score,
                     round,
                 })
             }
