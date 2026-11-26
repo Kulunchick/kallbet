@@ -3,6 +3,12 @@ name = "kallbet-ai"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+# Optional iOS TLS/HTTP2 impersonation transport for ticket #36's offline HLTV
+# research collector. Never enabled in default or production Docker builds.
+hltv-impersonate = ["dep:wreq", "dep:wreq-util"]
+
 [dependencies]
 async-trait = "0.1.92"
 chrono = { version = "0.4.45", default-features = false, features = ["serde", "std", "clock"] }
@@ -12,6 +18,7 @@ hex = "0.4.3"
 regex = "1.13.1"
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "gzip", "rustls-no-provider"] }
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
+scraper = "0.29.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 sha2 = "0.11.1"
@@ -20,6 +27,8 @@ thiserror = "2.0.21"
 tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time", "fs", "process"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+wreq = { version = "6.0.0-rc.31", optional = true, features = ["gzip", "brotli", "deflate"] }
+wreq-util = { version = "3.0.0-rc.14", optional = true, features = ["emulation"] }
 
 [dev-dependencies]
 kallbet = { path = ".." }
