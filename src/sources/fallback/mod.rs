@@ -251,7 +251,7 @@ impl FallbackSource {
         }
         for (from, to) in adopt.matches {
             if !external_ids::rekey_match(&self.db, from, to).await? {
-                tracing::warn!("local Match {from} is HLTV Match {to}, which is already stored");
+                tracing::warn!("local Match {from} could not be re-keyed to HLTV Match {to}");
             }
         }
         // Conflicts are looked up by id, so only after adoption: a local
