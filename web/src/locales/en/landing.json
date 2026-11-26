@@ -2,8 +2,7 @@
   "hero": {
     "titleLead": "Call the winners.",
     "titleAccent": "Beat your friends.",
-    "subtitle": "Private Leagues for predicting CS2 Matches at the Major and other pro Events. Predictions stay hidden until everyone is in.",
-    "badge": "Sign in with Telegram, no password needed"
+    "subtitle": "Private Leagues for predicting CS2 Matches at the Major and other pro Events. Predictions stay hidden until everyone is in."
   },
   "cta": {
     "signIn": "Sign in with Telegram",
@@ -11,13 +10,14 @@
     "note": "Free to play · no money involved"
   },
   "demo": {
-    "title": "This is the whole game",
-    "describe": "Example Match showing how Reveal works. Before Lock, five Members' Predictions stay hidden. At Lock, everyone's picks are revealed: two for Astralis and three for Falcons.",
+    "title": "How Reveal works",
+    "example": "Example",
+    "describe": "Example Match showing how Reveal works. Predictions stay hidden until everyone has predicted or the Match Locks, then all of them are shown at once: two for Astralis and three for Falcons. Before that, three of five have predicted.",
     "vs": "vs",
     "before": {
       "label": "Before Lock",
       "status": "Locks in 8 min",
-      "footer": "5 of 5 picked · hidden until Lock"
+      "footer": "3 of 5 predicted · hidden until everyone predicts or Lock"
     },
     "locked": {
       "label": "At Lock",
@@ -43,7 +43,7 @@
     },
     "leaderboard": {
       "title": "Climb the Leaderboard",
-      "text": "1 Point for every correct Prediction, and a separate Pick'em for each Stage."
+      "text": "Points for every correct Prediction, and a separate Pick'em for each Stage."
     }
   },
   "notFound": {

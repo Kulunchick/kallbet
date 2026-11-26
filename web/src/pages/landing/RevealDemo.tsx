@@ -5,7 +5,8 @@ import { revealDelayMs } from "../matches/reveal";
 
 const DEMO_TEAM_A = "Astralis";
 const DEMO_TEAM_B = "Falcons";
-const HIDDEN_PICKS = [1, 2, 3, 4, 5] as const;
+// Before Lock: three of the five Members have predicted, so three face-down slots.
+const HIDDEN_PICKS = [1, 2, 3] as const;
 const REVEALED_TEAM_A = ["A", "K"] as const;
 const REVEALED_TEAM_B = ["M", "D", "S"] as const;
 
@@ -119,9 +120,14 @@ export function RevealDemo() {
       aria-describedby="reveal-demo-desc"
       className="reveal-demo flex min-w-0 flex-col gap-3"
     >
-      <h2 id="reveal-demo-title" className="text-base font-bold text-fg sm:text-lg">
-        {t("demo.title")}
-      </h2>
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 id="reveal-demo-title" className="text-base font-bold text-fg sm:text-lg">
+          {t("demo.title")}
+        </h2>
+        <span className="rounded-full border border-line bg-raised px-2 py-0.5 text-xs font-medium text-mute">
+          {t("demo.example")}
+        </span>
+      </div>
       <p id="reveal-demo-desc" className="sr-only">
         {t("demo.describe")}
       </p>
