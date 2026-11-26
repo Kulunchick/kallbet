@@ -52,7 +52,7 @@
   "editWindow": "Змінити можна ще {{time}}",
   "unpickedHint": "ви ще не обрали",
   "winner": "Переможець",
-  "youPicked": "Ваш вибір: {{team}}",
+  "youPicked": "Ви обрали {{team}}",
   "pickedBy": "Хто обрав {{team}}",
   "pointsEarned_one": "+{{count}} бал",
   "pointsEarned_few": "+{{count}} бали",
