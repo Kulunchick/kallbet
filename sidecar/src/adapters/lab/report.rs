@@ -59,6 +59,9 @@ pub struct CandidateReport {
     pub name: String,
     pub description: String,
     pub verdict: Verdict,
+    /// Added after spec #33's candidate list was fixed (shown next to verdict).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub added_after_list_fixed: bool,
     /// Why this verdict, in words.
     pub reason: String,
     /// Matches the Candidate Signal gave a probability for.
@@ -261,11 +264,16 @@ impl LabReport {
         let _ = writeln!(md, "|---|---|---|---|---|---|---|---|---|---|---|");
         for c in &self.candidates {
             let d = c.difference;
+            let verdict = if c.added_after_list_fixed {
+                format!("{} (added after list fixed)", c.verdict.as_str())
+            } else {
+                c.verdict.as_str().to_string()
+            };
             let _ = writeln!(
                 md,
                 "| `{}` | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
                 c.name,
-                c.verdict.as_str(),
+                verdict,
                 c.computed_on,
                 c.paired,
                 c.events,
@@ -282,8 +290,21 @@ impl LabReport {
             );
         }
         for c in &self.candidates {
-            let _ = writeln!(md, "\n## `{}`: {}\n", c.name, c.verdict.as_str());
-            let _ = writeln!(md, "{}.\n\nVerdict: {}.\n", c.description, c.reason);
+            let note = if c.added_after_list_fixed {
+                " (added after list fixed)"
+            } else {
+                ""
+            };
+            let _ = writeln!(md, "\n## `{}`: {}{note}\n", c.name, c.verdict.as_str());
+            if c.added_after_list_fixed {
+                let _ = writeln!(
+                    md,
+                    "{}.\n\nVerdict: {} (added after spec #33's candidate list was fixed).\n",
+                    c.description, c.reason
+                );
+            } else {
+                let _ = writeln!(md, "{}.\n\nVerdict: {}.\n", c.description, c.reason);
+            }
             if let (Some(b), Some(v)) = (c.baseline, c.variant) {
                 let _ = writeln!(
                     md,

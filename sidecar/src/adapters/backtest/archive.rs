@@ -929,6 +929,17 @@ fn load_hltv_dir(dir: &Path, archive: &mut ReplayArchive, digest: &mut Sha256) -
     paths.sort();
 
     let mut seen_ids: BTreeSet<i64> = archive.hltv_matches.iter().map(|r| r.match_id).collect();
+    let mut recorded_parse_errors: BTreeSet<i64> = BTreeSet::new();
+    let manifest_path = dir.join("hltv").join("manifest.json");
+    if manifest_path.is_file()
+        && let Ok(bytes) = std::fs::read(&manifest_path)
+        && let Ok(val) = serde_json::from_slice::<Value>(&bytes)
+        && let Some(errors) = val.get("parse_errors").and_then(Value::as_object)
+    {
+        for id in errors.keys().filter_map(|k| k.parse::<i64>().ok()) {
+            recorded_parse_errors.insert(id);
+        }
+    }
     let mut html_fallbacks = Vec::new();
 
     for path in paths {
@@ -959,7 +970,7 @@ fn load_hltv_dir(dir: &Path, archive: &mut ReplayArchive, digest: &mut Sha256) -
     }
 
     for (match_id, stem, path) in html_fallbacks {
-        if !seen_ids.insert(match_id) {
+        if !seen_ids.insert(match_id) || recorded_parse_errors.contains(&match_id) {
             continue;
         }
         let bytes = read_file(&path)?;
