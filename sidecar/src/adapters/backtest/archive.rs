@@ -24,6 +24,8 @@ use std::{
 pub struct ReplayMatch {
     pub game: Match,
     pub actual_start: Instant,
+    /// When the result was known: PandaScore's `end_at`, else the actual start.
+    pub finished_at: Instant,
     pub winner: i64,
     /// The Swiss round from PandaScore's name ("Round 3: ..."), if any.
     pub round: Option<u32>,
@@ -394,6 +396,7 @@ fn stage_from_pandascore(
                 matches.push(ReplayMatch {
                     game,
                     actual_start: actual,
+                    finished_at: instant(&row["end_at"]).unwrap_or(actual).max(actual),
                     winner: w,
                     round,
                 })

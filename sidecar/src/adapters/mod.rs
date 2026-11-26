@@ -3,6 +3,7 @@ pub mod baseline;
 pub mod context;
 pub mod debate;
 pub mod http;
+pub mod lab;
 pub mod llm;
 pub mod odds;
 pub mod pickem;
