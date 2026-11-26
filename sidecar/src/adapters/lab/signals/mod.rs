@@ -6,6 +6,7 @@ use crate::adapters::debate;
 use crate::*;
 
 pub mod calibration;
+pub mod roster;
 
 /// What a Candidate Signal may read of one Match: the Match as the pipeline
 /// sees it before its cutoff, and the anchor's inputs read through the replay
@@ -20,6 +21,8 @@ pub struct MatchView {
     pub signal: Option<AsOf<Signal>>,
     /// Team A's fair series probability as the Odds Source port gives it.
     pub market: Option<AsOf<f64>>,
+    /// Both active fives and the roster observations available at this cutoff.
+    pub roster: Option<AsOf<roster::RosterFeatures>>,
 }
 impl MatchView {
     pub fn signal(&self) -> Result<Option<&Signal>, TemporalLeakError> {
@@ -68,6 +71,9 @@ pub trait CandidateSignal: Send + Sync {
     fn description(&self) -> &'static str;
     /// The data it needs, for the `not testable` reason when no Match had it.
     fn needs(&self) -> &'static str;
+    fn uses_rosters(&self) -> bool {
+        false
+    }
     /// Why the archive cannot test it at all, if it cannot (reported `not testable`).
     fn missing_data(&self, _archive: &crate::adapters::backtest::ReplayArchive) -> Option<String> {
         None
@@ -87,7 +93,10 @@ pub trait FittedSignal: Send + Sync {
 
 /// Every registered Candidate Signal, in report order.
 pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
-    vec![std::sync::Arc::new(calibration::RatingCalibration)]
+    let mut candidates: Vec<std::sync::Arc<dyn CandidateSignal>> =
+        vec![std::sync::Arc::new(calibration::RatingCalibration)];
+    candidates.extend(roster::candidates());
+    candidates
 }
 
 pub fn by_name(name: &str) -> Option<std::sync::Arc<dyn CandidateSignal>> {

@@ -2,6 +2,7 @@
 //! replay ports at its cutoff, then evaluates each Candidate Signal Event by
 //! Event, walk-forward, against the anchor.
 use super::report::{CandidateReport, EventInfo, EventRow, LabReport, MarketSubset, Metrics};
+use super::signals::roster::RosterHistory;
 use super::signals::{self, CandidateSignal, MatchView, Observed};
 use super::stats::{self, Verdict};
 use super::{PROTOCOL_VERSION, Protocol};
@@ -51,10 +52,19 @@ impl Lab {
         })
     }
 
-    async fn view(&self, game: &Match, cutoff: Instant) -> Result<MatchView> {
+    async fn view(
+        &self,
+        game: &Match,
+        cutoff: Instant,
+        rosters: Option<&RosterHistory>,
+    ) -> Result<MatchView> {
         let view = MatchView {
             signal: self.feeds.signal.signal(game, cutoff).await?,
             market: self.feeds.odds.quote(game, cutoff).await?,
+            roster: rosters
+                .map(|history| history.at(game, cutoff))
+                .transpose()?
+                .flatten(),
             game: game.clone(),
             cutoff,
         };
@@ -65,6 +75,12 @@ impl Lab {
     }
 
     async fn events(&self) -> Result<Vec<Event>> {
+        let rosters = self
+            .signals
+            .iter()
+            .any(|signal| signal.uses_rosters())
+            .then(|| RosterHistory::new(&self.archive))
+            .transpose()?;
         let mut by_id: BTreeMap<i64, Event> = BTreeMap::new();
         for stage in &self.archive.stages {
             let event = by_id.entry(stage.event_id).or_insert_with(|| Event {
@@ -80,7 +96,7 @@ impl Lab {
             event.info.begins = event.info.begins.min(stage.cutoff);
             for m in &stage.matches {
                 event.info.ends = event.info.ends.max(m.finished_at);
-                let view = self.view(&m.game, m.cutoff()).await?;
+                let view = self.view(&m.game, m.cutoff(), rosters.as_ref()).await?;
                 event.matches.push(Observed {
                     view,
                     team_a_won: m.winner == m.game.team_a.id,
