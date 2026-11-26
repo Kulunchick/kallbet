@@ -50,4 +50,5 @@ pub mod audit;
 pub use audit::*;
 mod scheduler;
 pub use scheduler::*;
+pub mod promotion;
 mod registry;

@@ -57,6 +57,34 @@ pub struct MatchView {
     pub roster: Option<AsOf<roster::RosterFeatures>>,
 }
 impl MatchView {
+    /// The view a live bot has (ticket #47): the anchor's inputs from the live
+    /// ports and nothing else. The live sidecar has no history, roster, map or
+    /// context port, so those are empty; only the `promotion::LIVE` signals,
+    /// which read the signal and the market alone, run on it.
+    pub fn live(
+        game: Match,
+        cutoff: Instant,
+        signal: Option<AsOf<Signal>>,
+        market: Option<AsOf<f64>>,
+    ) -> Self {
+        Self {
+            game,
+            context: crate::adapters::backtest::match_context::MatchContext::unknown(),
+            cutoff,
+            signal,
+            market,
+            history_before: Default::default(),
+            team_a_history: Default::default(),
+            team_b_history: Default::default(),
+            map_history: Default::default(),
+            veto_history: Default::default(),
+            market_history: Default::default(),
+            team_a_roster: None,
+            team_b_roster: None,
+            player_stats: Default::default(),
+            roster: None,
+        }
+    }
     /// The price points of `source`, each rechecked against the cutoff.
     pub fn points(&self, source: MarketSource) -> Result<Vec<(Instant, f64)>, TemporalLeakError> {
         self.market_history
@@ -172,6 +200,11 @@ pub trait FittedSignal: Send + Sync {
     /// (the protocol checks it against the cutoff), or `None` when it has no
     /// prediction for this Match.
     fn predict(&self, m: &MatchView) -> Result<Option<AsOf<f64>>>;
+    /// The fit at full precision, for a live bot to load (ticket #47); `None`
+    /// for a Candidate Signal that cannot run live (`promotion::LIVE`).
+    fn deployment(&self) -> Result<Option<serde_json::Value>> {
+        Ok(None)
+    }
     /// What it fitted, for the report's row of the evaluated Event.
     fn parameters(&self) -> Option<serde_json::Value> {
         None
