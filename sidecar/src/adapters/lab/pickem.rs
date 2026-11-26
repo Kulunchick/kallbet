@@ -311,7 +311,7 @@ async fn pairs(
                 format: Format::Bo1,
                 scheduled_start: Some(stage.cutoff),
             });
-            let context = lab.archive.match_context.stage_view(stage);
+            let context = lab.archive.match_context.stage_view(stage, now);
             let view = lab.view_of(&game, now, context, None, hidden).await?;
             let mut pair = Pair {
                 first: ta.id,

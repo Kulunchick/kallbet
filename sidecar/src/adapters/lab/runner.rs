@@ -227,7 +227,7 @@ impl Lab {
                 hidden,
                 cutoff,
             )?,
-            context,
+            context: context.sliced(cutoff),
             team_a_roster,
             team_b_roster,
             player_stats,

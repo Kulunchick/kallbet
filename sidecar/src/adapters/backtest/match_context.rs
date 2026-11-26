@@ -193,9 +193,11 @@ impl ArchiveContext {
         }
     }
 
+    /// The context of `game`, sliced at its cutoff.
     pub fn view(&self, stage: &ReplayStage, game: &ReplayMatch) -> MatchContext {
         MatchContext {
             index: self.0.clone(),
+            cutoff: game.cutoff(),
             event_id: stage.event_id,
             stage_id: stage.id,
             stage_kind: stage.kind,
@@ -204,10 +206,12 @@ impl ArchiveContext {
         }
     }
 
-    /// The Stage's context for a pairing that is not one of its Matches (no round).
-    pub fn stage_view(&self, stage: &ReplayStage) -> MatchContext {
+    /// The Stage's context for a pairing that is not one of its Matches (no
+    /// round), sliced at `cutoff`.
+    pub fn stage_view(&self, stage: &ReplayStage, cutoff: Instant) -> MatchContext {
         MatchContext {
             index: self.0.clone(),
+            cutoff,
             event_id: stage.event_id,
             stage_id: stage.id,
             stage_kind: stage.kind,
@@ -217,9 +221,13 @@ impl ArchiveContext {
     }
 }
 
+/// One Match's view of the archive's context. Every read is of what was
+/// observed strictly before its cutoff, whatever instant it asks about: a
+/// later instant reads as the cutoff.
 #[derive(Clone)]
 pub struct MatchContext {
     index: Arc<Index>,
+    cutoff: Instant,
     event_id: i64,
     pub stage_id: i64,
     pub stage_kind: StageKind,
@@ -233,6 +241,7 @@ impl MatchContext {
     pub fn unknown() -> Self {
         Self {
             index: Arc::default(),
+            cutoff: Instant::MIN_UTC,
             event_id: 0,
             stage_id: 0,
             stage_kind: StageKind::Other,
@@ -248,6 +257,7 @@ impl MatchContext {
         cutoff: Instant,
         field: impl Fn(&Venue) -> &[Dated<T>],
     ) -> Option<&Dated<T>> {
+        let cutoff = cutoff.min(self.cutoff);
         self.index
             .stages
             .get(&stage)
@@ -277,7 +287,14 @@ impl MatchContext {
         self.venue(self.stage_id, self.event_id, cutoff, |v| &v.regions)
     }
 
+    /// The same context, sliced at `cutoff` if that is earlier.
+    pub fn sliced(mut self, cutoff: Instant) -> Self {
+        self.cutoff = self.cutoff.min(cutoff);
+        self
+    }
+
     pub fn team_region(&self, team: &str, cutoff: Instant) -> Option<&Dated<Region>> {
+        let cutoff = cutoff.min(self.cutoff);
         before(
             self.index
                 .team_regions

@@ -142,3 +142,29 @@ fn lan_region_and_unknown_events() {
     let (c, cutoff) = find(13056, 930780);
     assert!(c.environment(cutoff).is_none() && c.region(cutoff).is_none());
 }
+
+// Finding 21 (review of 6eea194): a Match's context is sliced at its cutoff,
+// like the map and veto histories. Asking it about a later instant gives
+// nothing observed at or after the cutoff.
+#[test]
+fn a_matchs_context_answers_nothing_from_after_its_cutoff() {
+    let archive = archive();
+    let later: kallbet_ai::Instant = "2030-01-01T00:00:00Z".parse().unwrap();
+    let mut read_later = 0;
+    for stage in &archive.stages {
+        for m in &stage.matches {
+            let c = archive.match_context.view(stage, m);
+            let cutoff = m.cutoff();
+            let observed = [
+                c.environment(later).map(|d| d.observed_at),
+                c.region(later).map(|d| d.observed_at),
+                c.team_region(&m.game.team_a.name, later).map(|d| d.observed_at),
+            ];
+            for t in observed.into_iter().flatten() {
+                assert!(t < cutoff, "Match {}: {t} read at a {cutoff} cutoff", m.game.id);
+            }
+            read_later += usize::from(c.environment(later).is_some());
+        }
+    }
+    assert!(read_later > 0);
+}
