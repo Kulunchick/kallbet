@@ -14,6 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct VetoHistory {
     bo1: MatchHistory<CompletedVeto>,
     bo3: MatchHistory<CompletedSeriesVeto>,
+    bo5: MatchHistory<CompletedSeriesVeto>,
     all: MatchHistory<CompletedSeriesVeto>,
     round_scores: MatchHistory<PlayedRoundScores>,
 }
@@ -30,10 +31,21 @@ impl VetoHistory {
         !self.bo3.is_empty()
     }
 
+    /// Whether any complete linked HLTV Bo5 veto exists.
+    pub fn has_bo5(&self) -> bool {
+        !self.bo5.is_empty()
+    }
+
+    /// Whether any complete linked HLTV veto (Bo1, Bo3 or Bo5) exists.
+    pub fn has_any(&self) -> bool {
+        !self.bo1.is_empty() || !self.bo3.is_empty() || !self.bo5.is_empty()
+    }
+
     pub fn before(&self, cutoff: Instant) -> Self {
         Self {
             bo1: self.bo1.before(cutoff),
             bo3: self.bo3.before(cutoff),
+            bo5: self.bo5.before(cutoff),
             all: self.all.before(cutoff),
             round_scores: self.round_scores.before(cutoff),
         }
@@ -43,6 +55,7 @@ impl VetoHistory {
         Self {
             bo1: self.bo1.without_stages(excluded),
             bo3: self.bo3.without_stages(excluded),
+            bo5: self.bo5.without_stages(excluded),
             all: self.all.without_stages(excluded),
             round_scores: self.round_scores.without_stages(excluded),
         }
@@ -77,6 +90,14 @@ impl VetoHistory {
         cutoff: Instant,
     ) -> impl Iterator<Item = Result<(&CompletedSeriesVeto, Instant), TemporalLeakError>> {
         self.bo3.at(cutoff)
+    }
+
+    /// Linked Bo5 vetoes, each rechecked against `cutoff`.
+    pub fn bo5_at(
+        &self,
+        cutoff: Instant,
+    ) -> impl Iterator<Item = Result<(&CompletedSeriesVeto, Instant), TemporalLeakError>> {
+        self.bo5.at(cutoff)
     }
 
     /// All linked complete 7-step vetoes (Bo1, Bo3, Bo5), each rechecked against `cutoff`.
@@ -410,6 +431,7 @@ pub(super) fn link(
 
     let mut linked_bo1 = BTreeMap::new();
     let mut linked_bo3 = BTreeMap::new();
+    let mut linked_bo5 = BTreeMap::new();
     let mut linked_all = BTreeMap::new();
     let mut linked_round_scores = BTreeMap::new();
 
@@ -514,6 +536,11 @@ pub(super) fn link(
                 .entry(game.game.id)
                 .and_modify(|v| *v = None)
                 .or_insert(Some((stage_id, entry.clone())));
+        } else if game.game.format == Format::Bo5 {
+            linked_bo5
+                .entry(game.game.id)
+                .and_modify(|v| *v = None)
+                .or_insert(Some((stage_id, entry.clone())));
         }
         linked_all
             .entry(game.game.id)
@@ -524,6 +551,7 @@ pub(super) fn link(
     VetoHistory {
         bo1: MatchHistory::new(linked_bo1.into_values().flatten().collect()),
         bo3: MatchHistory::new(linked_bo3.into_values().flatten().collect()),
+        bo5: MatchHistory::new(linked_bo5.into_values().flatten().collect()),
         all: MatchHistory::new(linked_all.into_values().flatten().collect()),
         round_scores: MatchHistory::new(linked_round_scores.into_values().flatten().collect()),
     }
