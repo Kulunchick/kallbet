@@ -4,7 +4,11 @@
 //!
 //! ```text
 //! kallbet-ai lab [--archive DIR] [--out DIR] [--seed N] [--resamples N] [--signal NAME]...
+//!               [--llm FILE --budget NAME=RUNS...] [--answers FILE] [--training-cutoff RFC3339]
 //! ```
+//!
+//! The LLM track (`llm.rs`, ticket #43) runs only with `--llm` (providers,
+//! which need a `--budget` each) or `--answers` (recorded answers, no call).
 use super::{Lab, record_lab_run, signals};
 use crate::adapters::backtest::ReplayArchive;
 use crate::adapters::baseline::SystemClock;
@@ -13,7 +17,7 @@ use std::path::PathBuf;
 use tracing::info;
 
 pub const USAGE: &str = "usage: kallbet-ai lab [--archive DIR] [--out DIR] [--seed N] \
-[--resamples N] [--signal NAME]...";
+[--resamples N] [--signal NAME]... [--llm FILE --budget NAME=RUNS...] [--answers FILE] [--training-cutoff RFC3339]";
 
 #[derive(Debug, PartialEq)]
 pub struct Options {
@@ -23,6 +27,7 @@ pub struct Options {
     pub resamples: Option<usize>,
     /// Candidate Signals to evaluate, by registry name (default: all).
     pub signals: Vec<String>,
+    pub llm: super::llm::Options,
 }
 impl Default for Options {
     fn default() -> Self {
@@ -32,6 +37,7 @@ impl Default for Options {
             seed: None,
             resamples: None,
             signals: vec![],
+            llm: Default::default(),
         }
     }
 }
@@ -47,6 +53,7 @@ pub fn parse(args: &[String]) -> Result<Options> {
             "--seed" => o.seed = Some(value()?.parse()?),
             "--resamples" => o.resamples = Some(value()?.parse()?),
             "--signal" => o.signals.push(value()?),
+            flag if super::llm::FLAGS.contains(&flag) => o.llm.set(flag, value()?)?,
             other => return Err(format!("unknown lab option {other:?}\n{USAGE}").into()),
         }
     }
@@ -87,14 +94,19 @@ pub async fn run(args: &[String]) -> Result<String> {
     // When the run happened is the one wall-clock reading of a lab run; it is
     // kept in the audit store, never in the report.
     let started_at = SystemClock.now();
+    let runner = std::sync::Arc::new(crate::adapters::llm::TokioRunner);
+    let track = super::llm::prepare(&mut lab, &o.llm, runner, &o.out).await?;
     let outcome = lab.run().await?;
     let leagues = super::leagues::report(&lab, lab.protocol.seed, 2000).await?;
     record_lab_run(&audit, started_at, SystemClock.now(), &outcome.report).await?;
     let report = &outcome.report;
     std::fs::write(o.out.join("catch-up.md"), leagues)?;
+    super::llm::write(&mut lab, track.as_ref(), &o.llm, &o.out).await?;
     std::fs::write(
         o.out.join("report.md"),
-        report.markdown() + "\n[Catch-up mode in simulated Leagues](catch-up.md)\n",
+        report.markdown()
+            + "\n[Catch-up mode in simulated Leagues](catch-up.md)\n"
+            + "\n[LLM track: single agent, debate and seatings](llm.md)\n",
     )?;
     std::fs::write(
         o.out.join("report.json"),

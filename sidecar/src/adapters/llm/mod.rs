@@ -189,6 +189,7 @@ impl LlmRuntime for CliRuntime {
             RunError::NotFound => LlmError::NotConfigured,
             RunError::TimedOut => LlmError::Timeout,
             RunError::Io(_) => LlmError::Transient,
+            RunError::OverBudget => LlmError::QuotaExceeded,
         })?;
         self.cli.parse(&finished, &role.schema).map(Some)
     }
