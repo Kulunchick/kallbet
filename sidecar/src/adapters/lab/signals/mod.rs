@@ -11,6 +11,7 @@ pub mod bo1_veto_sim;
 pub mod calibration;
 pub mod favourite_longshot;
 pub mod match_context;
+pub mod roster;
 pub mod head_to_head;
 pub mod learned_weights;
 pub mod line_movement;
@@ -52,6 +53,8 @@ pub struct MatchView {
     pub team_b_roster: Option<AsOf<TeamRosterFact>>,
     /// HLTV appearances strictly before `cutoff`, keyed by `player_key(nickname)`.
     pub player_stats: std::collections::BTreeMap<String, PlayerStatsSlice>,
+    /// Both active fives and the roster observations available at this cutoff.
+    pub roster: Option<AsOf<roster::RosterFeatures>>,
 }
 impl MatchView {
     /// The price points of `source`, each rechecked against the cutoff.
@@ -146,6 +149,9 @@ pub trait CandidateSignal: Send + Sync {
     fn description(&self) -> &'static str;
     /// The data it needs, for the `not testable` reason when no Match had it.
     fn needs(&self) -> &'static str;
+    fn uses_rosters(&self) -> bool {
+        false
+    }
     /// Why the archive cannot test it at all, if it cannot (reported `not testable`).
     fn missing_data(&self, _archive: &crate::adapters::backtest::ReplayArchive) -> Option<String> {
         None
@@ -208,6 +214,7 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(per_map_rating::PerMapRating),
         std::sync::Arc::new(bo1_veto_sim::Bo1VetoSim),
     ];
+    signals.extend(roster::candidates());
     signals.extend(match_context::registry());
     signals
 }

@@ -7,6 +7,7 @@ use super::report::{
 };
 use super::selection::{self, Member};
 use super::signals::{self, CandidateSignal, FittedSignal, MatchView, Observed};
+use super::signals::roster::RosterHistory;
 use super::stats::{self, Verdict};
 use super::{PROTOCOL_VERSION, Protocol};
 use crate::adapters::backtest::feeds::{MarketSource, PriceHistory, ReplayOdds};
@@ -78,7 +79,12 @@ impl Lab {
         })
     }
 
-    pub(super) async fn view(&self, stage: &ReplayStage, m: &ReplayMatch) -> Result<MatchView> {
+    pub(super) async fn view(
+        &self,
+        stage: &ReplayStage,
+        m: &ReplayMatch,
+        rosters: Option<&RosterHistory>,
+    ) -> Result<MatchView> {
         let game = &m.game;
         let cutoff = m.cutoff();
         let facts = self.feeds.context.facts(game, cutoff).await?;
@@ -129,6 +135,10 @@ impl Lab {
             market_history,
             signal: self.feeds.signal.signal(game, cutoff).await?,
             market: self.feeds.odds.quote(game, cutoff).await?,
+            roster: rosters
+                .map(|history| history.at(game, cutoff))
+                .transpose()?
+                .flatten(),
             history_before: self.feeds.history.matches_before(cutoff).await?,
             team_a_history: self
                 .feeds
@@ -163,6 +173,12 @@ impl Lab {
 
     /// The archive's Events, the Holdout's Stages kept apart from the training side.
     async fn events(&self) -> Result<Split> {
+        let rosters = self
+            .signals
+            .iter()
+            .any(|signal| signal.uses_rosters())
+            .then(|| RosterHistory::new(&self.archive))
+            .transpose()?;
         let mut last_result: BTreeMap<i64, Instant> = BTreeMap::new();
         for stage in &self.archive.stages {
             for m in &stage.matches {
@@ -211,7 +227,7 @@ impl Lab {
             event.info.begins = event.info.begins.min(stage.cutoff);
             for m in &stage.matches {
                 event.info.ends = event.info.ends.max(m.finished_at);
-                let mut view = self.view(stage, m).await?;
+                let mut view = self.view(stage, m, rosters.as_ref()).await?;
                 view.map_history = map_history.before(view.cutoff);
                 view.veto_history = veto_history.before(view.cutoff);
                 event.matches.push(Observed {

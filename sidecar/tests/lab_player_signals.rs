@@ -342,6 +342,7 @@ fn make_view(
         market_history: BTreeMap::new(),
         map_history: Default::default(),
         veto_history: Default::default(),
+        roster: None,
         context: kallbet_ai::adapters::backtest::match_context::MatchContext::unknown(),
         team_a_roster: roster_a,
         team_b_roster: roster_b,
