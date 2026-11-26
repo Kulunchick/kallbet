@@ -116,7 +116,15 @@ pub(super) fn link(
         if veto.winner != team_key(replay_winner) {
             continue;
         }
-        let Ok(entry) = AsOf::new(veto, end, record.fetched_at) else {
+        // A page saved after the finish: its fetch time, or, for a raw page
+        // saved without one (read as the Unix epoch), the complete veto with
+        // played maps the parser found.
+        let fetched = if record.fetched_at == chrono::DateTime::UNIX_EPOCH {
+            end + chrono::Duration::seconds(1)
+        } else {
+            record.fetched_at
+        };
+        let Ok(entry) = AsOf::new(veto, end, fetched) else {
             continue;
         };
         linked

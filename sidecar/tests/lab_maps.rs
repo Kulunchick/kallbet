@@ -242,3 +242,44 @@ fn a_serie_bundle_from_the_map_collector_links_like_a_maps_file() {
         "the bundle is part of the digest"
     );
 }
+
+/// An archive of Cologne Stage 1 (PandaScore 20708) and the saved HLTV page of
+/// Heroic vs Sharks (HLTV 2394774, PandaScore 1494593), as the raw page only.
+fn stage_with_raw_page() -> tempfile::TempDir {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let dir = tempfile::tempdir().unwrap();
+    for name in ["panda-20708.json.gz", "standings_global_2026_06_01.md.gz"] {
+        std::fs::copy(root.join("backtest").join(name), dir.path().join(name)).unwrap();
+    }
+    let hltv = dir.path().join("hltv");
+    std::fs::create_dir_all(&hltv).unwrap();
+    std::fs::copy(
+        root.join("research/hltv-match-2394774-heroic-vs-sharks.html.gz"),
+        hltv.join("hltv-match-2394774-heroic-vs-sharks.html.gz"),
+    )
+    .unwrap();
+    dir
+}
+
+fn heroic_sharks_record() -> kallbet_ai::adapters::hltv_research::archive::HltvMatchRecord {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let html = read_file(&root.join("research/hltv-match-2394774-heroic-vs-sharks.html.gz")).unwrap();
+    parse_match_page(
+        2394774,
+        "https://www.hltv.org/matches/2394774/heroic-vs-sharks-iem-cologne-major-2026-stage-1",
+        "2026-11-26T01:15:00Z".parse().unwrap(),
+        std::str::from_utf8(&html).unwrap(),
+    )
+    .unwrap()
+}
+
+// Finding 18 (review of 6eea194): a saved raw page without its parsed JSON
+// supplies its complete veto too, though its fetch time is not in the file.
+#[test]
+fn a_raw_only_page_supplies_its_veto() {
+    let dir = stage_with_raw_page();
+    let archive = ReplayArchive::load(dir.path()).unwrap();
+    assert_eq!(archive.hltv_matches.len(), 1);
+    assert!(!archive.veto_history.is_empty(), "the complete Bo1 veto is linked");
+}
+
