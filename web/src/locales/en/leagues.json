@@ -2,8 +2,12 @@
   "joining": "Joining…",
   "loading": "Loading…",
   "backToLeagues": "Back to my Leagues",
-  "archived": "This League is archived. It is read-only; the final results are kept.",
-  "role": { "admin": "League Admin" },
+  "role": {
+    "admin": "League Admin",
+    "adminShort": "Admin",
+    "adminYou": "Admin · you",
+    "you": "You"
+  },
   "mine": {
     "place": "Place {{place}}",
     "points_one": "{{count}} Point",
@@ -27,9 +31,13 @@
   "invite": {
     "title": "Invite Link",
     "copy": "Copy link",
-    "copied": "Copied",
+    "copied": "Link copied",
     "reissue": "Reissue link",
-    "reissueHint": "Reissuing makes the old link stop working."
+    "reissueHint": "Reissuing makes the old link stop working.",
+    "onlyMember": "You're the only Member so far",
+    "onlyMemberHint": "Send this link to your friends so they can join before the first Lock.",
+    "share": "Share invite",
+    "reissueWorking": "Reissuing…"
   },
   "members": {
     "title_one": "{{count}} Member",
@@ -37,21 +45,25 @@
   },
   "leave": {
     "button": "Leave League",
-    "confirm": "Leave this League?"
+    "title": "Leave this League?",
+    "body": "You will be removed from this League and it will disappear from My Leagues.",
+    "confirm": "Leave League"
   },
   "manage": {
-    "kick": "Kick",
-    "kickConfirm": "Kick {{name}} from this League?",
+    "kick": "Kick from League…",
     "makeAdmin": "Make League Admin",
-    "removeAdmin": "Remove League Admin"
+    "removeAdmin": "Remove League Admin",
+    "menuLabel": "Actions for {{name}}",
+    "kickTitle": "Kick {{name}}?",
+    "kickBody": "{{name}} will be removed from this League.",
+    "kickAction": "Kick {{name}}"
   },
   "delete": {
-    "title": "Delete League",
-    "hint": "This permanently deletes the League for every Member. Type the League name to confirm.",
     "open": "Delete League…",
-    "confirmLabel": "League name",
-    "button": "Delete this League",
-    "cancel": "Cancel"
+    "zoneHint": "Deleting removes every Prediction and Point for all Members. This can't be undone.",
+    "dialogTitle": "Delete “{{name}}”?",
+    "dialogBody": "This removes every Prediction and Point for all Members. Type the League name to confirm.",
+    "confirm": "Delete League"
   },
   "join": {
     "signInNeeded": "Sign in to open this Invite Link and join the League.",
@@ -79,6 +91,22 @@
     "title": "Points per correct match prediction",
     "save": "Save points",
     "saving": "Saving…",
-    "recalculate": "Recalculate points for all completed matches? League rankings may change."
-  }
+    "recalculate": "Recalculate points for all completed matches? League rankings may change.",
+    "rowTitle": "Points per Stage",
+    "rowHint": "Recalculates the Leaderboard",
+    "confirmTitle": "Recalculate points?",
+    "confirmAction": "Recalculate"
+  },
+  "openMatches": "Matches",
+  "retry": "Try again",
+  "back": "My Leagues",
+  "nav": {
+    "pickemHint": "Forecast each Stage",
+    "leaderboardHint": "See who's ahead"
+  },
+  "adminTools": {
+    "title": "Admin tools",
+    "overridesHint": "Fix a Match's time, result or teams"
+  },
+  "archived": "This League is archived. It is read-only; the final results are kept."
 }
