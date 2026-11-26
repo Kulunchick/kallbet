@@ -49,7 +49,16 @@
     "not_found": "Лига или матч не найдены.",
     "rationale_invalid": "Обоснование прогноза заполнено неверно."
   },
-  "editWindow": "Ставку можно изменить ещё {{time}}",
+  "editWindow": "Изменить можно ещё {{time}}",
+  "unpickedHint": "вы ещё не выбрали",
+  "winner": "Победитель",
+  "youPicked": "Ваш выбор: {{team}}",
+  "pickedBy": "Кто выбрал {{team}}",
+  "pointsEarned_one": "+{{count}} очко",
+  "pointsEarned_few": "+{{count}} очка",
+  "pointsEarned_many": "+{{count}} очков",
+  "pointsEarned_other": "+{{count}} очка",
+  "resultShort": { "correct": "Верно", "wrong": "Неверно" },
   "bot": {
     "badge": "Бот",
     "pick": "{{nickname}} (бот)",
