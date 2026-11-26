@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  bracketColumns, cardState, hasPreliminaryPick, orderMatchGroups, pickMark,
+  bracketColumns, cardState, collapsedStage, currentStage, earliestStart, estimateCardHeight,
+  hasPreliminaryPick, isOpenToPick, masonryColumns, nextLockAt, nextUnpicked, orderMatchGroups,
+  pickMark, splitFinished, stripModel, undoTarget, unpickedOpen,
 } from "../src/pages/matches/layout.ts";
 
 const card = (id, bracket_slot) => ({ id, bracket_slot });
@@ -93,4 +95,209 @@ test("match groups put live and near upcoming matches above recent results", () 
     [[6], [5, 4, 3], [2, 1]],
   );
   assert.deepEqual(archived.matches.map((m) => m.id), [1, 2]);
+});
+
+// -- Picking ----------------------------------------------------------------------
+
+const NOW = Date.parse("2026-11-20T12:00:00Z");
+const minutes = (n) => new Date(NOW + n * 60_000).toISOString();
+const A = { id: 1, name: "Astralis" };
+const B = { id: 2, name: "Falcons" };
+
+/** A card with sensible defaults: upcoming, open, nothing picked. */
+const pick = (id, over = {}) => ({
+  id,
+  status: "upcoming",
+  winner: null,
+  team_a: A,
+  team_b: B,
+  scheduled_start: minutes(60),
+  my_prediction: null,
+  predictions: { revealed: null },
+  ...over,
+  lock: { locks_at: minutes(45), locked: false, can_predict: true, ...over.lock },
+});
+
+test("a Match is open to pick only while upcoming, not Locked, with both teams", () => {
+  assert.equal(isOpenToPick(pick(1), NOW), true);
+  assert.equal(isOpenToPick(pick(1, { lock: { locked: true } }), NOW), false);
+  assert.equal(isOpenToPick(pick(1, { lock: { can_predict: false } }), NOW), false, "bot window or other owner");
+  assert.equal(isOpenToPick(pick(1, { lock: { locks_at: minutes(-1) } }), NOW), false, "lock time passed, page not refreshed yet");
+  assert.equal(isOpenToPick(pick(1, { lock: { locks_at: null } }), NOW), true, "no start time yet");
+  assert.equal(isOpenToPick(pick(1, { team_b: null }), NOW), false);
+  assert.equal(isOpenToPick(pick(1, { status: "live" }), NOW), false);
+  assert.equal(isOpenToPick(pick(1, { status: "finished", winner: 1 }), NOW), false);
+});
+
+test("unpicked count ignores picked, Locked and finished Matches", () => {
+  const cards = [
+    pick(1), pick(2, { my_prediction: 1 }), pick(3, { lock: { locked: true } }),
+    pick(4, { status: "finished", winner: 2 }), pick(5),
+  ];
+  assert.deepEqual(unpickedOpen(cards, NOW).map((c) => c.id), [1, 5]);
+  assert.deepEqual(unpickedOpen([], NOW), []);
+});
+
+test("the next Lock is the earliest one still ahead", () => {
+  const cards = [
+    pick(1, { lock: { locks_at: minutes(90) } }),
+    pick(2, { lock: { locks_at: minutes(12) } }),
+    pick(3, { lock: { locks_at: minutes(-5) } }),
+    pick(4, { lock: { locks_at: null } }),
+  ];
+  assert.equal(nextLockAt(cards, NOW), NOW + 12 * 60_000);
+  assert.equal(nextLockAt([pick(4, { lock: { locks_at: null } })], NOW), null);
+  assert.equal(nextLockAt([], NOW), null);
+});
+
+test("jump-to-next targets the unpicked Match that Locks first, a Match without a Lock time last", () => {
+  const cards = [
+    pick(1, { lock: { locks_at: null } }),
+    pick(2, { lock: { locks_at: minutes(90) } }),
+    pick(3, { lock: { locks_at: minutes(20) }, my_prediction: 1 }),
+    pick(4, { lock: { locks_at: minutes(30) } }),
+  ];
+  assert.equal(nextUnpicked(cards, NOW).id, 4);
+  assert.equal(nextUnpicked([cards[0]], NOW).id, 1);
+  assert.equal(nextUnpicked([cards[2]], NOW), null);
+});
+
+test("the strip counts unpicked Matches and times the Lock of those, not of picked ones", () => {
+  const cards = [
+    pick(1, { lock: { locks_at: minutes(12) }, my_prediction: 1 }), // picked, sooner
+    pick(2, { lock: { locks_at: minutes(70) } }),
+    pick(3, { lock: { locks_at: minutes(130) } }),
+  ];
+  assert.deepEqual(stripModel(cards, NOW), { kind: "unpicked", count: 2, nextLock: NOW + 70 * 60_000 });
+  assert.deepEqual(stripModel([cards[1]], NOW), { kind: "unpicked", count: 1, nextLock: NOW + 70 * 60_000 });
+});
+
+test("with everything picked the strip turns calm, and keeps the next Lock", () => {
+  const cards = [pick(1, { my_prediction: 1, lock: { locks_at: minutes(25) } })];
+  assert.deepEqual(stripModel(cards, NOW), { kind: "allPicked", nextLock: NOW + 25 * 60_000 });
+});
+
+test("nothing open but things pending says so; a finished Event says nothing", () => {
+  assert.deepEqual(stripModel([pick(1, { lock: { locked: true } }), pick(2, { status: "live" })], NOW), { kind: "nothing" });
+  assert.deepEqual(stripModel([pick(1, { team_a: null, team_b: null })], NOW), { kind: "nothing" });
+  assert.deepEqual(stripModel([pick(1, { status: "finished", winner: 1 })], NOW), { kind: "hidden" });
+  assert.deepEqual(stripModel([], NOW), { kind: "hidden" });
+});
+
+test("undo puts back the previous team, and only when there was one", () => {
+  assert.equal(undoTarget(pick(1), 2), null, "a first pick has nothing to undo");
+  assert.deepEqual(undoTarget(pick(1, { my_prediction: 1 }), 2), A);
+  assert.equal(undoTarget(pick(1, { my_prediction: 2 }), 2), null, "same team again");
+  assert.equal(undoTarget(pick(1, { my_prediction: 99 }), 2), null, "previous team no longer in the Match");
+});
+
+// -- Progressive disclosure -------------------------------------------------------
+
+const done = (id) => pick(id, { status: "finished", winner: 1 });
+const stage = (ordinal, ...groups) => ({ ordinal, groups: groups.map((matches) => ({ matches })) });
+
+test("the current Stage is the first with a live or fixed upcoming Match", () => {
+  const s1 = stage(1, [done(1), pick(2)]);
+  const s2 = stage(2, [pick(3, { team_a: null, team_b: null })]);
+  assert.equal(currentStage([s1, s2]), 1);
+  assert.equal(collapsedStage(s1, 1), false);
+  assert.equal(collapsedStage(s2, 1), true, "playoffs not started: collapsed");
+});
+
+test("a later Stage with a live Match is not collapsed", () => {
+  const s1 = stage(1, [done(1)]);
+  const s2 = stage(2, [pick(2, { status: "live" })]);
+  assert.equal(currentStage([s1, s2]), 2);
+  assert.equal(collapsedStage(s1, 2), false, "earlier Stages stay, their results fold");
+  assert.equal(collapsedStage(s2, 2), false);
+});
+
+test("a Locked upcoming Match still keeps its Stage current", () => {
+  const s1 = stage(1, [pick(1, { lock: { locked: true } })]);
+  const s2 = stage(2, [pick(2, { team_a: null, team_b: null })]);
+  assert.equal(currentStage([s1, s2]), 1);
+});
+
+test("with no active Match the latest Stage with results is current; with none at all the first", () => {
+  const over = [stage(1, [done(1)]), stage(2, [done(2)]), stage(3, [pick(3, { team_a: null, team_b: null })])];
+  assert.equal(currentStage(over), 2);
+  assert.equal(collapsedStage(over[2], 2), true);
+  const fresh = [stage(5, [pick(1, { team_a: null, team_b: null })]), stage(6, [])];
+  assert.equal(currentStage(fresh), 5);
+  assert.equal(collapsedStage(fresh[1], 5), true);
+  assert.equal(currentStage([]), null);
+  assert.equal(collapsedStage(stage(1), null), false);
+});
+
+test("finished and Void Matches fold away per Stage, group by group, nothing lost", () => {
+  const voided = pick(4, { status: "cancelled" });
+  const groups = [
+    { kind: "record", matches: [done(1), pick(2), done(3)] },
+    { kind: "record", matches: [voided] },
+    { kind: "record", matches: [pick(5, { status: "live" })] },
+  ];
+  const { open, finished, finishedCount } = splitFinished(groups);
+  assert.equal(finishedCount, 3);
+  assert.deepEqual(open.map((g) => g.matches.map((m) => m.id)), [[2], [5]]);
+  assert.deepEqual(finished.map((g) => g.matches.map((m) => m.id)), [[1, 3], [4]]);
+  assert.equal(open[0].kind, "record");
+  assert.deepEqual(groups[0].matches.map((m) => m.id), [1, 2, 3], "input untouched");
+});
+
+test("a Stage with nothing finished has no Finished row", () => {
+  assert.equal(splitFinished([{ matches: [pick(1)] }]).finishedCount, 0);
+  assert.deepEqual(splitFinished([]), { open: [], finished: [], finishedCount: 0 });
+});
+
+test("a Stage starts at its earliest Scheduled Start", () => {
+  const cards = [{ scheduled_start: minutes(300) }, { scheduled_start: null }, { scheduled_start: minutes(100) }];
+  assert.equal(earliestStart(cards), minutes(100));
+  assert.equal(earliestStart([{ scheduled_start: null }]), null);
+  assert.equal(earliestStart([]), null);
+});
+
+// -- Masonry ----------------------------------------------------------------------
+
+test("masonry puts each card into the shorter column, the left one on a tie", () => {
+  const heights = { a: 100, b: 100, c: 300, d: 100, e: 100 };
+  const cols = masonryColumns(Object.keys(heights), (k) => heights[k], 2);
+  // a -> L(112), b -> R(112), c -> L(424), d -> R(224), e -> R(336)
+  assert.deepEqual(cols, [["a", "c"], ["b", "d", "e"]]);
+});
+
+test("masonry keeps the order inside a column and loses nothing", () => {
+  const items = Array.from({ length: 11 }, (_, i) => i);
+  const cols = masonryColumns(items, (i) => 100 + (i % 3) * 50, 2);
+  assert.deepEqual(cols.flat().sort((x, y) => x - y), items);
+  for (const col of cols) assert.deepEqual(col, [...col].sort((x, y) => x - y));
+});
+
+test("one column keeps the order, an empty list gives empty columns", () => {
+  assert.deepEqual(masonryColumns([3, 1, 2], () => 100, 1), [[3, 1, 2]]);
+  assert.deepEqual(masonryColumns([], () => 100, 2), [[], []]);
+  assert.deepEqual(masonryColumns([1], () => 100, 0), [[1]], "never fewer than one column");
+});
+
+test("the height estimate grows with what a card shows, and is the same for the same card", () => {
+  const plain = pick(1);
+  const revealedLive = pick(2, {
+    status: "live",
+    predictions: { revealed: [
+      { is_bot: true, preliminary: true, rationale: {} },
+      { is_bot: false, preliminary: false, rationale: null },
+    ] },
+  });
+  assert.equal(estimateCardHeight(plain), estimateCardHeight(plain));
+  assert.ok(estimateCardHeight(revealedLive) > estimateCardHeight(plain) + 100);
+  assert.ok(estimateCardHeight(done(3)) > estimateCardHeight(plain), "result line");
+});
+
+test("a tall card sends the next ones to the other column until it is level", () => {
+  const tall = pick(3, { status: "live", predictions: { revealed: [
+    { is_bot: true, preliminary: true, rationale: {} }, { is_bot: true, preliminary: false, rationale: {} },
+  ] } });
+  const cards = [pick(1), pick(2), tall, pick(4), pick(5)];
+  const cols = masonryColumns(cards, estimateCardHeight, 2).map((c) => c.map((x) => x.id));
+  // 1 -> L, 2 -> R, 3 -> L (tie), 4 -> R, 5 -> R (R is still shorter than L)
+  assert.deepEqual(cols, [[1, 3], [2, 4, 5]]);
 });
