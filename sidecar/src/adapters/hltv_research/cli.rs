@@ -1,6 +1,7 @@
 //! `kallbet-ai hltv-collect`: fetch historical HLTV `/matches/*` map, veto and
 //! player statistics into the research archive format with an on-disk cache,
-//! rate limit (8-10 s), daily UTC budget (default 400), and hard stop rule.
+//! per-connection rate limit, optional concurrency, daily UTC budget, and
+//! global hard stop rule.
 //!
 //! Single-match mode:
 //!   kallbet-ai hltv-collect --match-id ID --url URL --out DIR
@@ -8,19 +9,19 @@
 //!
 //! Resumable archive batch mode:
 //!   kallbet-ai hltv-collect --archive DIR [--out DIR/hltv]
-//!       [--base-url https://www.hltv.org] [--min-interval-secs 9]
+//!       [--base-url https://www.hltv.org] [--concurrency 1] [--min-interval-secs 9]
 //!       [--daily-budget 400] [--max-requests N] [--ios-version 17.2.1]
 
 use super::collector::{
-    CollectorConfig, DEFAULT_DAILY_BUDGET, DEFAULT_MIN_INTERVAL_SECS, HltvCollector,
-    REMOTE_MIN_INTERVAL_SECS, ReqwestHttp, ResearchHttp, TokioPause, UaMode,
+    CollectorConfig, DEFAULT_CONCURRENCY, DEFAULT_DAILY_BUDGET, DEFAULT_MIN_INTERVAL_SECS,
+    HltvCollector, REMOTE_MIN_INTERVAL_SECS, ReqwestHttp, ResearchHttp, TokioPause, UaMode,
     discover_archive_targets,
 };
 use crate::{Result, adapters::baseline::SystemClock};
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
 pub const USAGE: &str = "usage: kallbet-ai hltv-collect (--match-id ID --url URL --out DIR | --archive DIR [--out DIR]) \
-[--base-url URL] [--min-interval-secs N] [--daily-budget N] [--max-requests N] [--ios-version MAJOR.MINOR.PATCH]";
+[--base-url URL] [--concurrency N] [--min-interval-secs N] [--daily-budget N] [--max-requests N] [--ios-version MAJOR.MINOR.PATCH]";
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Mode {
@@ -32,6 +33,7 @@ pub enum Mode {
 pub struct Options {
     pub mode: Mode,
     pub out: PathBuf,
+    pub concurrency: usize,
     pub min_interval_secs: u64,
     pub daily_budget: u32,
     pub max_requests: Option<u32>,
@@ -68,6 +70,7 @@ pub fn parse(args: &[String]) -> Result<Options> {
     let mut archive_dir: Option<PathBuf> = None;
     let mut base_url = "https://www.hltv.org".to_string();
     let mut out: Option<PathBuf> = None;
+    let mut concurrency: usize = DEFAULT_CONCURRENCY;
     let mut min_interval_secs: u64 = DEFAULT_MIN_INTERVAL_SECS;
     let mut daily_budget: u32 = DEFAULT_DAILY_BUDGET;
     let mut max_requests: Option<u32> = None;
@@ -82,12 +85,17 @@ pub fn parse(args: &[String]) -> Result<Options> {
             "--archive" => archive_dir = Some(value()?.into()),
             "--base-url" => base_url = value()?,
             "--out" => out = Some(value()?.into()),
+            "--concurrency" => concurrency = value()?.parse()?,
             "--min-interval-secs" => min_interval_secs = value()?.parse()?,
             "--daily-budget" => daily_budget = value()?.parse()?,
             "--max-requests" => max_requests = Some(value()?.parse()?),
             "--ios-version" => ios_version = Some(parse_ios_version(&value()?)?),
             other => return Err(format!("unknown hltv-collect option {other:?}\n{USAGE}").into()),
         }
+    }
+
+    if concurrency == 0 {
+        return Err("--concurrency must be at least 1".into());
     }
 
     let (mode, default_out, target_url_for_guard) = match (archive_dir, match_id, url) {
@@ -127,6 +135,7 @@ pub fn parse(args: &[String]) -> Result<Options> {
     Ok(Options {
         mode,
         out,
+        concurrency,
         min_interval_secs,
         daily_budget,
         max_requests,
@@ -180,6 +189,7 @@ pub async fn run(args: &[String]) -> Result<String> {
                 patch: o.ios_patch,
             },
             daily_budget: o.daily_budget,
+            concurrency: o.concurrency,
         },
         http,
         Arc::new(SystemClock),
@@ -213,7 +223,7 @@ pub async fn run(args: &[String]) -> Result<String> {
                 None => String::new(),
             };
             Ok(format!(
-                "hltv-collect: targets={} fetched={} cached={} parse_errors={} requests={} spent_today={}/{}{} out={}",
+                "hltv-collect: targets={} fetched={} cached={} parse_errors={} requests={} spent_today={}/{} concurrency={}{} out={}",
                 report.targets_total,
                 report.fetched_ok,
                 report.cached_hits,
@@ -221,6 +231,7 @@ pub async fn run(args: &[String]) -> Result<String> {
                 report.requests_made,
                 report.spent_today,
                 report.daily_budget,
+                o.concurrency,
                 stop_note,
                 o.out.display()
             ))
