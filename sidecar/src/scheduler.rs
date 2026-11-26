@@ -288,13 +288,18 @@ impl Sidecar {
                     market.clone(),
                 );
                 let live = promotion.live(&view)?;
+                let live_data = match (&live.available, &live.reason) {
+                    (true, _) => "available".to_string(),
+                    (false, Some(why)) => format!("unavailable ({why}): the anchor decided"),
+                    (false, None) => "unavailable: the anchor decided".to_string(),
+                };
                 if !live.available {
                     tracing::warn!(bot = %bot.bot_key, match_id = game.id, criterion = %promotion.label,
-                        "no live data for the promoted criterion; deciding from the anchor");
+                        live_data = %live_data, "no live data for the promoted criterion; deciding from the anchor");
                 }
                 facts.push(serde_json::json!({"promotion": {
                     "criterion": promotion.identity,
-                    "live_data": if live.available { "available" } else { "unavailable: the anchor decided" },
+                    "live_data": live_data,
                 }}));
                 Some((promotion, view, live))
             }
@@ -318,7 +323,7 @@ impl Sidecar {
                 let Some((promotion, view, live)) = &promoted else {
                     unreachable!()
                 };
-                let pick = promotion.prediction(view, *live, tier)?;
+                let pick = promotion.prediction(view, live, tier)?;
                 self.audit.decide(run_id, pick.as_ref()).await?;
                 let Some(pick) = pick else { return Ok(0) };
                 pick

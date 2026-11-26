@@ -14,8 +14,15 @@ use std::{fs, path::Path, sync::Arc};
 /// The name that selects the frozen combination of a lab run.
 pub const COMBINATION: &str = "combination";
 
+/// A member of a promotion: its fit, or why the live sidecar cannot give it
+/// its inputs (then every Match is decided by the anchor).
+struct Member {
+    signal: Arc<dyn CandidateSignal>,
+    fit: std::result::Result<Box<dyn FittedSignal>, String>,
+}
+
 pub struct Promotion {
-    members: Vec<(Arc<dyn CandidateSignal>, Box<dyn FittedSignal>)>,
+    members: Vec<Member>,
     combination: Option<Combiner>,
     /// `name/<sha-256 of the report>`: recorded in every dossier the bot decides on.
     pub identity: String,
@@ -24,17 +31,21 @@ pub struct Promotion {
 }
 
 /// Team A's probability from a promotion, and whether its own data was there.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Live {
     /// `None`: neither the signal nor the anchor could predict this Match.
     pub probability: Option<f64>,
     /// `false`: the signal's live data was missing and this is the anchor.
     pub available: bool,
+    /// Why the anchor decided, when it did.
+    pub reason: Option<String>,
 }
 
 /// The Candidate Signals whose inputs the live ports give (the market line and
-/// the Valve rating). The others read the archive's Match history, which the
-/// live sidecar has no port for.
+/// the Valve rating). Any other promoted one can be selected too, but the live
+/// sidecar has no port for what it reads (the results history, played maps
+/// and vetoes, the venue, rosters and player statistics, price histories), so
+/// the anchor decides each Match and says why.
 pub const LIVE: [&str; 2] = [signals::calibration::NAME, signals::learned_weights::NAME];
 
 fn decode(name: &str, parameters: Value) -> Result<Box<dyn FittedSignal>> {
@@ -97,18 +108,20 @@ impl Promotion {
                 )
                 .into());
             }
-            if !LIVE.contains(&key.as_str()) {
-                return Err(format!(
-                    "{key} cannot run live: it reads the archive's Match history, which the live                      sidecar has no port for"
-                )
-                .into());
-            }
             let signal = signals::by_name(key).ok_or_else(|| format!("{key} is not registered"))?;
-            let parameters = report["deployment"][key.as_str()].clone();
-            if parameters.is_null() {
-                return Err(format!("the report has no fitted parameters for {key}").into());
-            }
-            members.push((signal, decode(key, parameters)?));
+            let fit = if LIVE.contains(&key.as_str()) {
+                let parameters = report["deployment"][key.as_str()].clone();
+                if parameters.is_null() {
+                    return Err(format!("the report has no fitted parameters for {key}").into());
+                }
+                Ok(decode(key, parameters)?)
+            } else {
+                Err(format!(
+                    "{key} needs {}, which the live sidecar has no port for",
+                    signal.needs()
+                ))
+            };
+            members.push(Member { signal, fit });
         }
         let combination = if name == COMBINATION {
             let combiner: Combiner =
@@ -116,7 +129,7 @@ impl Promotion {
             if combiner.extras.len()
                 != members
                     .iter()
-                    .map(|(s, _)| s.feature_names().len())
+                    .map(|m| m.signal.feature_names().len())
                     .sum::<usize>()
             {
                 return Err("the combination's weights do not match its members".into());
@@ -134,17 +147,30 @@ impl Promotion {
     }
 
     /// Team A's probability for the Match, computed as the lab computes it;
-    /// the anchor when the signal has no value for it.
+    /// the anchor, with the reason, when the signal has no value for it or a
+    /// member needs an input the live sidecar has no port for.
     pub fn live(&self, view: &MatchView) -> Result<Live> {
+        let anchor = |reason: String| -> Result<Live> {
+            Ok(Live {
+                probability: view.anchor()?,
+                available: false,
+                reason: Some(reason),
+            })
+        };
+        let mut fits = Vec::new();
+        for m in &self.members {
+            match &m.fit {
+                Ok(fit) => fits.push((m.signal.as_ref(), fit.as_ref())),
+                Err(why) => return anchor(why.clone()),
+            }
+        }
         let value = match &self.combination {
             Some(combiner) => {
                 let mut inputs = Inputs::base(view.market()?, view.signal()?.map(|s| s.series));
-                for (signal, fit) in &self.members {
-                    inputs.extras.extend(lab::selection::features_of(
-                        signal.as_ref(),
-                        fit.as_ref(),
-                        view,
-                    )?);
+                for (signal, fit) in &fits {
+                    inputs
+                        .extras
+                        .extend(lab::selection::features_of(*signal, *fit, view)?);
                 }
                 if inputs.extras.iter().all(Option::is_some) {
                     combiner.predict(&inputs)
@@ -152,21 +178,22 @@ impl Promotion {
                     None
                 }
             }
-            None => match self.members[0].1.predict(view)? {
+            None => match fits[0].1.predict(view)? {
                 Some(p) => Some(*p.at(view.cutoff)?),
                 None => None,
             },
         };
-        Ok(match value {
-            Some(p) => Live {
+        match value {
+            Some(p) => Ok(Live {
                 probability: Some(p),
                 available: true,
-            },
-            None => Live {
-                probability: view.anchor()?,
-                available: false,
-            },
-        })
+                reason: None,
+            }),
+            None => anchor(format!(
+                "{} has no value for this Match: a live input is missing",
+                self.label
+            )),
+        }
     }
 
     /// The Prediction and its Rationale, which names the criterion in the three
@@ -174,13 +201,18 @@ impl Promotion {
     pub fn prediction(
         &self,
         view: &MatchView,
-        live: Live,
+        live: &Live,
         tier: Tier,
     ) -> Result<Option<Prediction>> {
         let Some(p) = live.probability else {
             return Ok(None);
         };
         let label = &self.label;
+        // The reason is the audit's English; the other languages say what happened.
+        let why = live
+            .reason
+            .as_ref()
+            .map_or(String::new(), |why| format!(" ({why})"));
         let summary = if live.available {
             json!({
                 "en": format!("Signal Lab criterion: {label}."),
@@ -189,7 +221,7 @@ impl Promotion {
             })
         } else {
             json!({
-                "en": format!("No live data for the Signal Lab criterion {label}: the anchor decided."),
+                "en": format!("No live data for the Signal Lab criterion {label}{why}: the anchor decided."),
                 "ru": format!("Нет данных для критерия лаборатории сигналов {label}: решила базовая оценка."),
                 "uk": format!("Немає даних для критерію лабораторії сигналів {label}: вирішила базова оцінка."),
             })

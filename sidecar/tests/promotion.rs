@@ -222,11 +222,6 @@ async fn selecting_a_name_the_lab_did_not_promote_is_a_configuration_error_with_
     );
     let e = load_error(promoted("combination"), &report).await;
     assert!(e.contains("froze no Candidate Signal"), "{e}");
-    let e = load_error(promoted("own_rating"), &report).await;
-    assert!(
-        e.contains("own_rating cannot run live: it reads the archive's Match history"),
-        "{e}"
-    );
 
     let mut old = serde_json::from_slice::<Value>(&std::fs::read(&report).unwrap()).unwrap();
     old["protocol_version"] = json!("signal-lab/1");
@@ -273,9 +268,17 @@ struct Live {
 /// One League with Match 42 (`team_a` vs `team_b`), a VrsOnly bot as before
 /// and a bot with `rating_calibration` promoted, built by `Sidecar::from_config`.
 async fn live(team_a: &str, team_b: &str) -> Live {
+    live_with(team_a, team_b, None).await
+}
+
+/// As `live`, the bot selecting `name` from `report` when given.
+async fn live_with(team_a: &str, team_b: &str, selected: Option<(&str, PathBuf)>) -> Live {
     let h = Harness::new().await;
     let dir = tempfile::tempdir().unwrap();
-    let (_, report) = promoted_report(dir.path()).await;
+    let (name, report) = match selected {
+        Some((name, report)) => (name.to_string(), report),
+        None => ("rating_calibration".to_string(), promoted_report(dir.path()).await.1),
+    };
     let now: Instant = "2026-11-24T00:00:00Z".parse().unwrap();
     h.app.clock.set(now);
     let start = now + Duration::hours(4);
@@ -304,7 +307,7 @@ async fn live(team_a: &str, team_b: &str) -> Live {
             bot("vrs", json!("VrsOnly"), &invite),
             bot(
                 "lab",
-                json!({"Promoted": {"name": "rating_calibration", "report": report}}),
+                json!({"Promoted": {"name": name, "report": report}}),
                 &invite
             ),
         ]),
@@ -489,4 +492,51 @@ fn the_sample_configurations_select_no_promoted_criterion() {
         }
     }
     assert!(seen >= 3);
+}
+
+fn research_report() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../docs/lab/research/report.json")
+}
+
+// Finding 7 (review of 6eea194): every promoted Candidate Signal, and the
+// frozen combination, can be selected. One whose inputs the live sidecar has
+// no port for (the results history, played maps, the venue) decides by the
+// anchor for each Match and says why; nothing fails at startup.
+#[tokio::test]
+async fn the_research_reports_promoted_criteria_load_and_fall_back_per_match_with_the_reason() {
+    let report = research_report();
+    let lab = lab_from("Cologne");
+    let id = lab.archive.stages.iter().find(|s| s.id == 20708).unwrap().matches[0].game.id;
+    let view = live_view(&lab, id).await;
+    for (name, needs) in [
+        ("own_rating", "results history"),
+        ("per_map_rating", "played maps"),
+        ("lan_online", "no port"),
+        ("combination", "results history"),
+    ] {
+        let p = Promotion::load(name, &report).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let live = p.live(&view).unwrap();
+        assert!(!live.available, "{name}");
+        assert_eq!(live.probability, view.anchor().unwrap(), "{name}");
+        let reason = live.reason.clone().unwrap_or_default();
+        assert!(reason.contains(needs) && reason.contains("no port"), "{name}: {reason}");
+    }
+    let calibration = Promotion::load("rating_calibration", &report).unwrap();
+    let live = calibration.live(&view).unwrap();
+    assert!(live.available && live.reason.is_none());
+}
+
+#[tokio::test]
+async fn the_frozen_combination_of_the_research_report_runs_live_on_the_anchor() {
+    let mut l = live_with("Vitality", "Spirit", Some(("combination", research_report()))).await;
+    let at = l.start - Duration::minutes(22);
+    *l.h.scripts.market.lock().unwrap() =
+        Some(AsOf::new(0.62, at - Duration::minutes(5), at).unwrap());
+    assert!(l.h.tick(&mut l.sidecar, at).await.unwrap() >= 1);
+    assert!(l.sidecar.audit.failures().await.unwrap().is_empty());
+    l.reveal().await;
+    let picks = l.picks().await;
+    let lab = Live::by_summary(&picks, "No live data for the Signal Lab criterion own_rating");
+    let en = lab["rationale"]["summary"]["en"].as_str().unwrap();
+    assert!(en.contains("results history"), "{en}");
 }
