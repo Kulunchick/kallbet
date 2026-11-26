@@ -17,7 +17,7 @@ use super::collector::{
     HltvCollector, REMOTE_MIN_INTERVAL_SECS, ReqwestHttp, ResearchHttp, TokioPause, UaMode,
     discover_archive_targets,
 };
-use crate::{Result, adapters::baseline::SystemClock};
+use crate::{Clock, Result, adapters::baseline::SystemClock};
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
 pub const USAGE: &str = "usage: kallbet-ai hltv-collect (--match-id ID --url URL --out DIR | --archive DIR [--out DIR]) \
@@ -51,13 +51,17 @@ fn parse_ios_version(raw: &str) -> Result<(u8, u8, u8)> {
 }
 
 /// Picks one iOS version per run from the allowed pattern (major 14..=17,
-/// minor 0..=9, patch 0..=9) using the current clock nanos when `--ios-version`
-/// is omitted.
-fn random_ios_version_for_run() -> (u8, u8, u8) {
-    let seed = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos() as u64)
-        .unwrap_or(17_2_1);
+/// minor 0..=9, patch 0..=9) seeded from the injected [`Clock`] when
+/// `--ios-version` is omitted.
+fn random_ios_version_for_run(clock: &dyn Clock) -> (u8, u8, u8) {
+    let now = clock.now();
+    let seed = now
+        .timestamp_nanos_opt()
+        .map(|n| n as u64)
+        .unwrap_or_else(|| {
+            (now.timestamp() as u64).wrapping_mul(1_000_000_000)
+                ^ u64::from(now.timestamp_subsec_nanos())
+        });
     let major = 14 + (seed % 4) as u8;
     let minor = ((seed / 7) % 10) as u8;
     let patch = ((seed / 71) % 10) as u8;
@@ -65,6 +69,10 @@ fn random_ios_version_for_run() -> (u8, u8, u8) {
 }
 
 pub fn parse(args: &[String]) -> Result<Options> {
+    parse_with_clock(args, &SystemClock)
+}
+
+pub fn parse_with_clock(args: &[String], clock: &dyn Clock) -> Result<Options> {
     let mut match_id: Option<i64> = None;
     let mut url: Option<String> = None;
     let mut archive_dir: Option<PathBuf> = None;
@@ -130,7 +138,7 @@ pub fn parse(args: &[String]) -> Result<Options> {
     }
 
     let (ios_major, ios_minor, ios_patch) =
-        ios_version.unwrap_or_else(random_ios_version_for_run);
+        ios_version.unwrap_or_else(|| random_ios_version_for_run(clock));
 
     Ok(Options {
         mode,
@@ -173,7 +181,11 @@ fn build_transport(url: &str, ios_major: u8) -> Result<Arc<dyn ResearchHttp>> {
 }
 
 pub async fn run(args: &[String]) -> Result<String> {
-    let o = parse(args)?;
+    run_with_clock(args, Arc::new(SystemClock)).await
+}
+
+pub async fn run_with_clock(args: &[String], clock: Arc<dyn Clock>) -> Result<String> {
+    let o = parse_with_clock(args, clock.as_ref())?;
     let probe_url = match &o.mode {
         Mode::Single { url, .. } => url.as_str(),
         Mode::Archive { base_url, .. } => base_url.as_str(),
@@ -192,7 +204,7 @@ pub async fn run(args: &[String]) -> Result<String> {
             concurrency: o.concurrency,
         },
         http,
-        Arc::new(SystemClock),
+        clock,
         Arc::new(TokioPause),
     );
 

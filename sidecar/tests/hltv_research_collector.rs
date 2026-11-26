@@ -566,6 +566,24 @@ async fn cli_command_collects_from_local_stand_in_and_guards_remote_hltv_without
     assert_eq!(parsed.min_interval_secs, 4);
     assert_eq!(parsed.daily_budget, 4000);
 
+    // Default iOS version is deterministically seeded from the injected Clock.
+    let fixed_clock = FakeClock::new(Utc.with_ymd_and_hms(2026, 11, 26, 12, 0, 0).unwrap());
+    let seeded_a = cli::parse_with_clock(&["--archive".into(), out.clone()], &fixed_clock).unwrap();
+    let seeded_b = cli::parse_with_clock(&["--archive".into(), out.clone()], &fixed_clock).unwrap();
+    assert_eq!(
+        (seeded_a.ios_major, seeded_a.ios_minor, seeded_a.ios_patch),
+        (seeded_b.ios_major, seeded_b.ios_minor, seeded_b.ios_patch),
+    );
+    assert!(ios_user_agent(seeded_a.ios_major, seeded_a.ios_minor, seeded_a.ios_patch).is_ok());
+    let shifted_clock = FakeClock::new(
+        Utc.with_ymd_and_hms(2026, 11, 26, 12, 0, 0).unwrap() + chrono::Duration::nanoseconds(71),
+    );
+    let seeded_c = cli::parse_with_clock(&["--archive".into(), out.clone()], &shifted_clock).unwrap();
+    assert_ne!(
+        (seeded_a.ios_major, seeded_a.ios_minor, seeded_a.ios_patch),
+        (seeded_c.ios_major, seeded_c.ios_minor, seeded_c.ios_patch),
+    );
+
     // Without `--features hltv-impersonate`, pointing at remote hltv.org must be refused
     // rather than sending a mismatched default rustls fingerprint.
     #[cfg(not(feature = "hltv-impersonate"))]
