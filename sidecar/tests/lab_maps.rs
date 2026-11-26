@@ -188,3 +188,57 @@ async fn bo1_veto_uses_an_earlier_saved_veto_and_never_its_own() {
         Verdict::NoEvidence
     );
 }
+
+/// Ticket #48: the #36 collector saves post-Match Liquipedia revisions per
+/// PandaScore serie under `hltv/liquipedia/event-<serie>.json.gz` (one
+/// MediaWiki response, one page per Stage page). The loader links them to that
+/// serie's Stages exactly as a `maps-<tournament>` file is linked.
+#[test]
+fn a_serie_bundle_from_the_map_collector_links_like_a_maps_file() {
+    let dir = archive_with_maps();
+    let by_file = ReplayArchive::load(dir.path()).unwrap();
+    let serie = by_file
+        .stages
+        .iter()
+        .find(|s| s.id == 20710)
+        .unwrap()
+        .event_id;
+    let entries = |a: &ReplayArchive| -> Vec<(String, String, Vec<(String, bool)>, String)> {
+        a.map_history
+            .at(chrono::DateTime::<chrono::Utc>::MAX_UTC)
+            .map(|e| {
+                let (m, at) = e.unwrap();
+                (
+                    m.team_a.clone(),
+                    m.team_b.clone(),
+                    m.results.clone(),
+                    at.to_rfc3339(),
+                )
+            })
+            .collect()
+    };
+    assert!(!entries(&by_file).is_empty());
+
+    let bundle = tempfile::tempdir().unwrap();
+    for name in ["panda-20710.json.gz", "standings_global_2026_06_01.md.gz"] {
+        std::fs::copy(dir.path().join(name), bundle.path().join(name)).unwrap();
+    }
+    let liquipedia = bundle.path().join("hltv/liquipedia");
+    std::fs::create_dir_all(&liquipedia).unwrap();
+    let page = std::fs::read(dir.path().join("maps-20710.json")).unwrap();
+    let mut gz = flate2::write::GzEncoder::new(
+        std::fs::File::create(liquipedia.join(format!("event-{serie}.json.gz"))).unwrap(),
+        flate2::Compression::default(),
+    );
+    std::io::Write::write_all(&mut gz, &page).unwrap();
+    gz.finish().unwrap();
+    // Discovery caches next to it are not map revisions.
+    std::fs::write(liquipedia.join(format!("allpages-{serie}.json")), b"{}").unwrap();
+
+    let by_bundle = ReplayArchive::load(bundle.path()).unwrap();
+    assert_eq!(entries(&by_bundle), entries(&by_file));
+    assert_ne!(
+        by_bundle.digest, by_file.digest,
+        "the bundle is part of the digest"
+    );
+}

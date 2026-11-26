@@ -87,6 +87,29 @@ fn the_penalty_pulls_the_weights_towards_the_anchor() {
     assert!(dist(w(&weak)) > dist(w(&Combiner::fit(&["x".into()], &rows, LAMBDA))));
 }
 
+/// Ticket #48: on the research archive the rating-only fit flipped between
+/// -8.98 and 33.41 for ever (an undamped Newton step overshoots when the rating
+/// is near-certain and often wrong), and the learned weight sent log-loss to 3.
+/// Here: ten Matches with a rating logit of +/-8, six won by the side it
+/// favours. The penalised minimum, prior 1 and LAMBDA 10, is 0.1125 (found by
+/// golden-section search on the objective; at the prior the objective is far
+/// higher).
+#[test]
+fn a_near_certain_and_often_wrong_rating_is_fitted_to_its_minimum_not_a_cycle() {
+    let favourite = combiner::sigmoid(8.0);
+    let rows: Vec<(Inputs, bool)> = [(true, 3), (false, 2)]
+        .into_iter()
+        .flat_map(|(won, n)| {
+            std::iter::repeat_n((Inputs::base(None, Some(favourite)), won), n).chain(
+                std::iter::repeat_n((Inputs::base(None, Some(1.0 - favourite)), !won), n),
+            )
+        })
+        .collect();
+    let fit = Combiner::fit(&[], &rows, LAMBDA);
+    let w = fit.model(combiner::Pattern::RatingOnly).unwrap().weights[0];
+    assert!((w - 0.1125).abs() < 1e-3, "rating weight {w}");
+}
+
 #[test]
 fn each_availability_of_the_inputs_has_its_own_weights() {
     // Rating-only Matches where the rating is overconfident by half.
