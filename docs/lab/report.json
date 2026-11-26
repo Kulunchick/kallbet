@@ -1,5 +1,5 @@
 {
-  "protocol_version": "signal-lab/1",
+  "protocol_version": "signal-lab/2",
   "seed": 33,
   "resamples": 2000,
   "level": 0.9,
@@ -92,7 +92,8 @@
           "training_matches": 0,
           "computed": 0,
           "paired": 0,
-          "log_loss_difference": null
+          "log_loss_difference": null,
+          "parameters": null
         },
         {
           "event_id": 8751,
@@ -100,7 +101,8 @@
           "training_matches": 73,
           "computed": 0,
           "paired": 0,
-          "log_loss_difference": null
+          "log_loss_difference": null,
+          "parameters": null
         },
         {
           "event_id": 9309,
@@ -108,7 +110,8 @@
           "training_matches": 146,
           "computed": 106,
           "paired": 106,
-          "log_loss_difference": -0.20517919795095813
+          "log_loss_difference": -0.20517919795095813,
+          "parameters": null
         },
         {
           "event_id": 9822,
@@ -116,7 +119,8 @@
           "training_matches": 252,
           "computed": 106,
           "paired": 106,
-          "log_loss_difference": -0.150555129706644
+          "log_loss_difference": -0.150555129706644,
+          "parameters": null
         },
         {
           "event_id": 10488,
@@ -124,7 +128,8 @@
           "training_matches": 358,
           "computed": 106,
           "paired": 106,
-          "log_loss_difference": 0.014576415626723472
+          "log_loss_difference": 0.014576415626723472,
+          "parameters": null
         },
         {
           "event_id": 11176,
@@ -132,9 +137,602 @@
           "training_matches": 464,
           "computed": 24,
           "paired": 24,
-          "log_loss_difference": -0.012429521654218638
+          "log_loss_difference": -0.012429521654218638,
+          "parameters": null
+        }
+      ]
+    },
+    {
+      "name": "learned_weights",
+      "description": "the anchor's market and Valve rating weights (logit space) learned by the combiner on the Events that ended before, one set per availability of the two inputs, regularised towards 0.80 / 0.20",
+      "verdict": "no evidence",
+      "reason": "the interval of the log-loss difference includes zero",
+      "computed_on": 415,
+      "paired": 415,
+      "events": 5,
+      "baseline": {
+        "log_loss": 0.7484485791289924,
+        "brier": 0.24854105152393016,
+        "accuracy": 0.6216867469879518
+      },
+      "variant": {
+        "log_loss": 0.6701083187562005,
+        "brier": 0.23179338218818862,
+        "accuracy": 0.6216867469879518
+      },
+      "difference": {
+        "log_loss": -0.07834026037279196,
+        "brier": -0.01674766933574154,
+        "accuracy": 0.0
+      },
+      "interval": {
+        "low": -0.13608634511437753,
+        "high": 0.005098559090630593
+      },
+      "std_error": 0.039227505380966324,
+      "detectable": 0.09753820359663716,
+      "market": {
+        "matches": 112,
+        "log_loss_difference": 0.0019939198301347416
+      },
+      "per_event": [
+        {
+          "event_id": 7278,
+          "title": "PGL Major Copenhagen 2024",
+          "training_matches": 0,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": {
+            "market": {
+              "market": 1.0,
+              "matches": 0
+            },
+            "market+rating": {
+              "market": 0.8,
+              "matches": 0,
+              "rating": 0.2
+            },
+            "rating": {
+              "matches": 0,
+              "rating": 1.0
+            }
+          }
+        },
+        {
+          "event_id": 8751,
+          "title": "Perfect World Major Shanghai Major 2024",
+          "training_matches": 73,
+          "computed": 73,
+          "paired": 73,
+          "log_loss_difference": -3.0203199150226324e-17,
+          "parameters": {
+            "market": {
+              "market": 1.0,
+              "matches": 0
+            },
+            "market+rating": {
+              "market": 0.8,
+              "matches": 0,
+              "rating": 0.2
+            },
+            "rating": {
+              "matches": 0,
+              "rating": 1.0
+            }
+          }
+        },
+        {
+          "event_id": 9309,
+          "title": "BLAST.tv Major Austin 2025",
+          "training_matches": 146,
+          "computed": 106,
+          "paired": 106,
+          "log_loss_difference": -0.1701491633983675,
+          "parameters": {
+            "market": {
+              "market": 1.0,
+              "matches": 0
+            },
+            "market+rating": {
+              "market": 0.8,
+              "matches": 0,
+              "rating": 0.2
+            },
+            "rating": {
+              "matches": 73,
+              "rating": 0.608448
+            }
+          }
+        },
+        {
+          "event_id": 9822,
+          "title": "StarLadder Major Budapest 2025",
+          "training_matches": 252,
+          "computed": 106,
+          "paired": 106,
+          "log_loss_difference": -0.14888344755373453,
+          "parameters": {
+            "market": {
+              "market": 1.0,
+              "matches": 0
+            },
+            "market+rating": {
+              "market": 0.8,
+              "matches": 0,
+              "rating": 0.2
+            },
+            "rating": {
+              "matches": 179,
+              "rating": 0.329579
+            }
+          }
+        },
+        {
+          "event_id": 10488,
+          "title": "IEM Cologne Major 2026",
+          "training_matches": 358,
+          "computed": 106,
+          "paired": 106,
+          "log_loss_difference": 0.010216317785273587,
+          "parameters": {
+            "market": {
+              "market": 1.0,
+              "matches": 0
+            },
+            "market+rating": {
+              "market": 0.8,
+              "matches": 0,
+              "rating": 0.2
+            },
+            "rating": {
+              "matches": 285,
+              "rating": 0.317669
+            }
+          }
+        },
+        {
+          "event_id": 11176,
+          "title": "PGL Major Singapore 2026",
+          "training_matches": 464,
+          "computed": 24,
+          "paired": 24,
+          "log_loss_difference": 0.00930495920729546,
+          "parameters": {
+            "market": {
+              "market": 1.0,
+              "matches": 0
+            },
+            "market+rating": {
+              "market": 0.948886,
+              "matches": 88,
+              "rating": 0.131999
+            },
+            "rating": {
+              "matches": 303,
+              "rating": 0.330835
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "own_rating",
+      "description": "Glicko-2 team rating updated after every Match finished before the cutoff (teams joined by team_key), with format-calibrated map scale blended with the market as the anchor does",
+      "verdict": "no evidence",
+      "reason": "the interval of the log-loss difference includes zero",
+      "computed_on": 441,
+      "paired": 384,
+      "events": 5,
+      "baseline": {
+        "log_loss": 0.7458152315577228,
+        "brier": 0.246798271748321,
+        "accuracy": 0.625
+      },
+      "variant": {
+        "log_loss": 0.676440322920541,
+        "brier": 0.24187678162578877,
+        "accuracy": 0.5546875
+      },
+      "difference": {
+        "log_loss": -0.06937490863718176,
+        "brier": -0.004921490122532235,
+        "accuracy": -0.0703125
+      },
+      "interval": {
+        "low": -0.15391951893360895,
+        "high": 0.026178377061128043
+      },
+      "std_error": 0.050709605507249726,
+      "detectable": 0.12608815621171765,
+      "market": {
+        "matches": 103,
+        "log_loss_difference": 0.0020394620736480626
+      },
+      "vs_valve": {
+        "reference": "Valve Regional Standings (unblended)",
+        "paired": 384,
+        "events": 5,
+        "baseline": {
+          "log_loss": 0.7742926725040934,
+          "brier": 0.25722274504224574,
+          "accuracy": 0.6145833333333334
+        },
+        "variant": {
+          "log_loss": 0.6896515843933236,
+          "brier": 0.24826427243226298,
+          "accuracy": 0.546875
+        },
+        "difference": {
+          "log_loss": -0.08464108811076976,
+          "brier": -0.008958472609982754,
+          "accuracy": -0.06770833333333337
+        },
+        "interval": {
+          "low": -0.16257898040718113,
+          "high": -0.00562560382118156
+        },
+        "std_error": 0.045907533298123485,
+        "detectable": 0.11414792467594492,
+        "per_event": [
+          {
+            "event_id": 7278,
+            "title": "PGL Major Copenhagen 2024",
+            "training_matches": 0,
+            "computed": 57,
+            "paired": 0,
+            "log_loss_difference": null,
+            "parameters": null
+          },
+          {
+            "event_id": 8751,
+            "title": "Perfect World Major Shanghai Major 2024",
+            "training_matches": 73,
+            "computed": 66,
+            "paired": 66,
+            "log_loss_difference": 0.04902227699158112,
+            "parameters": null
+          },
+          {
+            "event_id": 9309,
+            "title": "BLAST.tv Major Austin 2025",
+            "training_matches": 146,
+            "computed": 96,
+            "paired": 96,
+            "log_loss_difference": -0.22163958759872016,
+            "parameters": null
+          },
+          {
+            "event_id": 9822,
+            "title": "StarLadder Major Budapest 2025",
+            "training_matches": 252,
+            "computed": 102,
+            "paired": 102,
+            "log_loss_difference": -0.11142849545746077,
+            "parameters": null
+          },
+          {
+            "event_id": 10488,
+            "title": "IEM Cologne Major 2026",
+            "training_matches": 358,
+            "computed": 99,
+            "paired": 99,
+            "log_loss_difference": -0.005912325579025309,
+            "parameters": null
+          },
+          {
+            "event_id": 11176,
+            "title": "PGL Major Singapore 2026",
+            "training_matches": 464,
+            "computed": 21,
+            "paired": 21,
+            "log_loss_difference": -0.11948671131039383,
+            "parameters": null
+          }
+        ]
+      },
+      "per_event": [
+        {
+          "event_id": 7278,
+          "title": "PGL Major Copenhagen 2024",
+          "training_matches": 0,
+          "computed": 57,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        },
+        {
+          "event_id": 8751,
+          "title": "Perfect World Major Shanghai Major 2024",
+          "training_matches": 73,
+          "computed": 66,
+          "paired": 66,
+          "log_loss_difference": 0.04902227699158112,
+          "parameters": null
+        },
+        {
+          "event_id": 9309,
+          "title": "BLAST.tv Major Austin 2025",
+          "training_matches": 146,
+          "computed": 96,
+          "paired": 96,
+          "log_loss_difference": -0.22163958759872016,
+          "parameters": null
+        },
+        {
+          "event_id": 9822,
+          "title": "StarLadder Major Budapest 2025",
+          "training_matches": 252,
+          "computed": 102,
+          "paired": 102,
+          "log_loss_difference": -0.11142849545746077,
+          "parameters": null
+        },
+        {
+          "event_id": 10488,
+          "title": "IEM Cologne Major 2026",
+          "training_matches": 358,
+          "computed": 99,
+          "paired": 99,
+          "log_loss_difference": 0.03328079968013038,
+          "parameters": null
+        },
+        {
+          "event_id": 11176,
+          "title": "PGL Major Singapore 2026",
+          "training_matches": 464,
+          "computed": 21,
+          "paired": 21,
+          "log_loss_difference": -0.025101305729379193,
+          "parameters": null
+        }
+      ]
+    },
+    {
+      "name": "recent_form",
+      "description": "Recent results over the last 45 days (14-day half-life) weighted by opponent strength from the point-in-time Glicko-2 rating, added as a fitted logit offset to the anchor",
+      "verdict": "no evidence",
+      "reason": "the interval of the log-loss difference includes zero",
+      "computed_on": 262,
+      "paired": 262,
+      "events": 4,
+      "baseline": {
+        "log_loss": 0.7333432959211527,
+        "brier": 0.24318672269149802,
+        "accuracy": 0.6259541984732825
+      },
+      "variant": {
+        "log_loss": 0.7350952413511427,
+        "brier": 0.24364803579016062,
+        "accuracy": 0.6259541984732825
+      },
+      "difference": {
+        "log_loss": 0.0017519454299900206,
+        "brier": 0.00046131309866259684,
+        "accuracy": 0.0
+      },
+      "interval": {
+        "low": -0.0004363638460203091,
+        "high": 0.004470726526534986
+      },
+      "std_error": 0.001590125166245001,
+      "detectable": 0.003953806154714005,
+      "market": {
+        "matches": 81,
+        "log_loss_difference": 0.0009338885588479032
+      },
+      "per_event": [
+        {
+          "event_id": 7278,
+          "title": "PGL Major Copenhagen 2024",
+          "training_matches": 0,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        },
+        {
+          "event_id": 8751,
+          "title": "Perfect World Major Shanghai Major 2024",
+          "training_matches": 73,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        },
+        {
+          "event_id": 9309,
+          "title": "BLAST.tv Major Austin 2025",
+          "training_matches": 146,
+          "computed": 82,
+          "paired": 82,
+          "log_loss_difference": -0.0008649811585735277,
+          "parameters": null
+        },
+        {
+          "event_id": 9822,
+          "title": "StarLadder Major Budapest 2025",
+          "training_matches": 252,
+          "computed": 82,
+          "paired": 82,
+          "log_loss_difference": 0.005881859397172508,
+          "parameters": null
+        },
+        {
+          "event_id": 10488,
+          "title": "IEM Cologne Major 2026",
+          "training_matches": 358,
+          "computed": 82,
+          "paired": 82,
+          "log_loss_difference": 0.00023732791462241888,
+          "parameters": null
+        },
+        {
+          "event_id": 11176,
+          "title": "PGL Major Singapore 2026",
+          "training_matches": 464,
+          "computed": 16,
+          "paired": 16,
+          "log_loss_difference": 0.0017602998808149365,
+          "parameters": null
+        }
+      ]
+    },
+    {
+      "name": "head_to_head",
+      "description": "Recency-weighted head-to-head series record between the two teams (180-day half-life, shrunk toward even), added as a fitted logit offset to the anchor",
+      "verdict": "no evidence",
+      "reason": "computed on 64 paired Matches, under the floor of 100",
+      "computed_on": 64,
+      "paired": 64,
+      "events": 3,
+      "baseline": {
+        "log_loss": 0.6625567382009074,
+        "brier": 0.22929726584459764,
+        "accuracy": 0.625
+      },
+      "variant": {
+        "log_loss": 0.6684064558970598,
+        "brier": 0.23069370443261025,
+        "accuracy": 0.609375
+      },
+      "difference": {
+        "log_loss": 0.00584971769615239,
+        "brier": 0.0013964385880126107,
+        "accuracy": -0.015625
+      },
+      "interval": {
+        "low": -0.005732934375954002,
+        "high": 0.01639511734389037
+      },
+      "std_error": 0.007546859179789628,
+      "detectable": 0.01876507516969558,
+      "market": {
+        "matches": 32,
+        "log_loss_difference": -0.004168739149432821
+      },
+      "per_event": [
+        {
+          "event_id": 7278,
+          "title": "PGL Major Copenhagen 2024",
+          "training_matches": 0,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        },
+        {
+          "event_id": 8751,
+          "title": "Perfect World Major Shanghai Major 2024",
+          "training_matches": 73,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        },
+        {
+          "event_id": 9309,
+          "title": "BLAST.tv Major Austin 2025",
+          "training_matches": 146,
+          "computed": 0,
+          "paired": 0,
+          "log_loss_difference": null,
+          "parameters": null
+        },
+        {
+          "event_id": 9822,
+          "title": "StarLadder Major Budapest 2025",
+          "training_matches": 252,
+          "computed": 30,
+          "paired": 30,
+          "log_loss_difference": 0.01767245549954295,
+          "parameters": null
+        },
+        {
+          "event_id": 10488,
+          "title": "IEM Cologne Major 2026",
+          "training_matches": 358,
+          "computed": 27,
+          "paired": 27,
+          "log_loss_difference": -0.00718212090743096,
+          "parameters": null
+        },
+        {
+          "event_id": 11176,
+          "title": "PGL Major Singapore 2026",
+          "training_matches": 464,
+          "computed": 7,
+          "paired": 7,
+          "log_loss_difference": 0.005446504581153965,
+          "parameters": null
         }
       ]
     }
-  ]
+  ],
+  "selection": {
+    "considered": [],
+    "matches": 415,
+    "anchor_log_loss": 0.7484485791289924,
+    "final_log_loss": null,
+    "steps": [],
+    "frozen": [],
+    "per_event": [
+      {
+        "event_id": 7278,
+        "title": "PGL Major Copenhagen 2024",
+        "training_matches": 0,
+        "parameters": null
+      },
+      {
+        "event_id": 8751,
+        "title": "Perfect World Major Shanghai Major 2024",
+        "training_matches": 73,
+        "parameters": null
+      },
+      {
+        "event_id": 9309,
+        "title": "BLAST.tv Major Austin 2025",
+        "training_matches": 146,
+        "parameters": null
+      },
+      {
+        "event_id": 9822,
+        "title": "StarLadder Major Budapest 2025",
+        "training_matches": 252,
+        "parameters": null
+      },
+      {
+        "event_id": 10488,
+        "title": "IEM Cologne Major 2026",
+        "training_matches": 358,
+        "parameters": null
+      },
+      {
+        "event_id": 11176,
+        "title": "PGL Major Singapore 2026",
+        "training_matches": 464,
+        "parameters": null
+      }
+    ]
+  },
+  "holdout": {
+    "status": "pending",
+    "rule": "every Stage that begins at or after 2026-11-25 23:46:46 UTC, or whose Event has a result at or after it (except PandaScore tournament 22378, kept on the training side)",
+    "stages": [],
+    "combination": [],
+    "statement": "The Holdout is pending: no Holdout Match has been played in this archive, so the frozen combination was not evaluated.",
+    "matches": 0,
+    "events": 0,
+    "played_from": null,
+    "played_to": null,
+    "baseline": null,
+    "variant": null,
+    "difference": null,
+    "interval": null,
+    "std_error": null,
+    "market": null,
+    "verdict": null,
+    "reason": "",
+    "per_event": []
+  }
 }
