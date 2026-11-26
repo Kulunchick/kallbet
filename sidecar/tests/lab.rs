@@ -41,6 +41,21 @@ fn whole() -> ReplayArchive {
     ReplayArchive::load(&fixtures()).unwrap()
 }
 
+/// The lab over the saved archive with every registered Candidate Signal,
+/// run once for the tests that read it.
+fn whole_run() -> &'static LabOutcome {
+    static RUN: std::sync::OnceLock<LabOutcome> = std::sync::OnceLock::new();
+    RUN.get_or_init(|| {
+        std::thread::spawn(|| {
+            tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(async { Lab::new(whole()).unwrap().run().await.unwrap() })
+        })
+        .join()
+        .unwrap()
+    })
+}
+
 fn calibration(outcome: &LabOutcome) -> &kallbet_ai::adapters::lab::CandidateReport {
     outcome
         .report
@@ -53,7 +68,7 @@ fn calibration(outcome: &LabOutcome) -> &kallbet_ai::adapters::lab::CandidateRep
 #[tokio::test]
 async fn the_report_compares_the_calibration_with_the_anchor_under_the_protocol() {
     let lab = Lab::new(whole()).unwrap();
-    let outcome = lab.run().await.unwrap();
+    let outcome = whole_run();
     let report = &outcome.report;
     assert_eq!(report.protocol_version, PROTOCOL_VERSION);
     assert_eq!(report.archive_digest, lab.archive.digest);
@@ -234,8 +249,7 @@ async fn a_port_datum_at_the_cutoff_aborts_the_run_too() {
 
 #[tokio::test]
 async fn a_result_injected_into_a_later_event_changes_nothing_in_an_earlier_one() {
-    let before = Lab::new(whole()).unwrap();
-    let base = before.run().await.unwrap();
+    let base = whole_run();
 
     // Reverse every result of IEM Cologne Major 2026, the Event before Singapore.
     let mut archive = whole();
@@ -382,6 +396,8 @@ fn run_lab(archive: &Path, out: &Path, extra: &[&str]) -> std::process::Output {
         .arg(archive)
         .arg("--out")
         .arg(out)
+        // The catch-up and Pick'em simulations are not what these tests check.
+        .args(["--catch-up-trials", "8", "--pickem-simulations", "20"])
         .args(extra)
         .env_remove("SIDECAR_CONFIG")
         .env_remove("ODDSPAPI_API_KEY")
@@ -393,7 +409,7 @@ fn run_lab(archive: &Path, out: &Path, extra: &[&str]) -> std::process::Output {
 fn the_lab_subcommand_writes_a_reproducible_report_and_records_each_run() {
     let (one, two) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
     for out in [&one, &two] {
-        let run = run_lab(&fixtures(), out.path(), &["--seed", "7"]);
+        let run = run_lab(&fixtures(), out.path(), &["--seed", "7", "--signal", "rating_calibration"]);
         assert!(
             run.status.success(),
             "{}",
@@ -429,7 +445,7 @@ fn the_lab_subcommand_writes_a_reproducible_report_and_records_each_run() {
     }
 
     // A second run into the same directory is appended to the same audit store.
-    let again = run_lab(&fixtures(), one.path(), &["--seed", "8"]);
+    let again = run_lab(&fixtures(), one.path(), &["--seed", "8", "--signal", "rating_calibration"]);
     assert!(
         again.status.success(),
         "{}",

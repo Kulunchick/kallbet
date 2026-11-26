@@ -171,6 +171,28 @@ fn setup(work: &tempfile::TempDir, seatings: Vec<Seating>) -> Setup {
         work_dir: work.path().to_path_buf(),
     }
 }
+/// The two-seating track over the saved archive with the scripted CLIs, run
+/// once for the tests that only read it, with how many CLI runs it started.
+fn shared_track() -> &'static (Track, usize) {
+    static TRACK: std::sync::OnceLock<(Track, usize)> = std::sync::OnceLock::new();
+    TRACK.get_or_init(|| {
+        std::thread::spawn(|| {
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                let work = tempfile::tempdir().unwrap().keep();
+                let clis = Arc::new(Clis::default());
+                let s = Setup {
+                    work_dir: work,
+                    ..setup(&tempfile::tempdir().unwrap(), two_seatings())
+                };
+                let track = llm::run(&whole(), &s, clis.clone()).await.unwrap();
+                (track, clis.started().len())
+            })
+        })
+        .join()
+        .unwrap()
+    })
+}
+
 fn two_seatings() -> Vec<Seating> {
     vec![
         seating("claude-codex-claude", "claude", "codex", "claude"),
@@ -350,11 +372,10 @@ async fn the_first_quota_error_stops_the_llm_track_and_the_rest_of_the_lab_compl
     // has no answer and says so.
     let mut lab = Lab::new(whole()).unwrap();
     lab.protocol.resamples = 300;
-    for signal in &mut lab.signals {
-        if signal.name() == llm::NAME {
-            *signal = Arc::new(track.adjustment());
-        }
-    }
+    lab.signals = vec![
+        kallbet_ai::adapters::lab::signals::by_name("rating_calibration").unwrap(),
+        Arc::new(track.adjustment()),
+    ];
     let outcome = lab.run().await.unwrap();
     let names: Vec<_> = outcome
         .report
@@ -403,12 +424,8 @@ async fn the_first_quota_error_stops_the_llm_track_and_the_rest_of_the_lab_compl
 #[tokio::test]
 async fn recorded_answers_reproduce_the_tables_without_a_provider_call() {
     let archive = whole();
-    let work = tempfile::tempdir().unwrap();
-    let first = Arc::new(Clis::default());
-    let track = llm::run(&archive, &setup(&work, two_seatings()), first.clone())
-        .await
-        .unwrap();
-    assert!(!first.started().is_empty());
+    let (track, started) = shared_track();
+    assert!(*started > 0);
     let recorded: Recorded =
         serde_json::from_str(&serde_json::to_string(&track.recorded).unwrap()).unwrap();
 
@@ -425,11 +442,11 @@ async fn recorded_answers_reproduce_the_tables_without_a_provider_call() {
     };
     let replayed = llm::run(&archive, &rerun, again.clone()).await.unwrap();
     assert!(again.started().is_empty(), "no provider was called");
-    assert_eq!(replayed.single, track.single);
-    assert_eq!(replayed.debate, track.debate);
+    assert_eq!(&replayed.single, &track.single);
+    assert_eq!(&replayed.debate, &track.debate);
 
     let (a, b) = (
-        compare(&archive, &track).await,
+        compare(&archive, track).await,
         compare(&archive, &replayed).await,
     );
     assert_eq!(
@@ -441,21 +458,13 @@ async fn recorded_answers_reproduce_the_tables_without_a_provider_call() {
 
 #[tokio::test]
 async fn the_report_compares_single_debate_and_anchor_with_intervals_and_judges_the_adjustment() {
-    let archive = whole();
-    let work = tempfile::tempdir().unwrap();
-    let track = llm::run(
-        &archive,
-        &setup(&work, two_seatings()),
-        Arc::new(Clis::default()),
-    )
-    .await
-    .unwrap();
+    let (track, _) = shared_track();
     assert_eq!(track.single.len(), 57);
     assert!(track.seatings.iter().all(|s| s.answered == 57 && s.ran));
 
     let mut lab = Lab::new(whole()).unwrap();
     lab.protocol.resamples = 300;
-    let report = llm::compare(&mut lab, &track, String::new()).await.unwrap();
+    let report = llm::compare(&mut lab, track, String::new()).await.unwrap();
     let names: Vec<_> = report.profiles.iter().map(|c| c.name.as_str()).collect();
     assert_eq!(
         names,
@@ -486,11 +495,7 @@ async fn the_report_compares_single_debate_and_anchor_with_intervals_and_judges_
 
     // `llm_adjustment` in the lab's own table is the first seating's debate,
     // judged by the same runner.
-    for signal in &mut lab.signals {
-        if signal.name() == llm::NAME {
-            *signal = Arc::new(track.adjustment());
-        }
-    }
+    lab.signals = vec![Arc::new(track.adjustment())];
     let outcome = lab.run().await.unwrap();
     let adjustment = outcome
         .report
@@ -671,6 +676,8 @@ fn run_lab(out: &Path, extra: &[&str]) -> std::process::Output {
         .arg(fixtures())
         .arg("--out")
         .arg(out)
+        // The catch-up and Pick'em simulations are not what these tests check.
+        .args(["--catch-up-trials", "8", "--pickem-simulations", "20"])
         .args(extra)
         .env_remove("SIDECAR_CONFIG")
         .env_remove("ODDSPAPI_API_KEY")
@@ -680,21 +687,21 @@ fn run_lab(out: &Path, extra: &[&str]) -> std::process::Output {
 
 #[tokio::test]
 async fn the_lab_subcommand_replays_recorded_answers_and_writes_the_llm_report() {
-    let archive = whole();
+    let (track, _) = shared_track();
     let work = tempfile::tempdir().unwrap();
-    let track = llm::run(
-        &archive,
-        &setup(&work, two_seatings()),
-        Arc::new(Clis::default()),
-    )
-    .await
-    .unwrap();
     let answers = work.path().join("answers.json");
     std::fs::write(&answers, serde_json::to_string(&track.recorded).unwrap()).unwrap();
     let out = tempfile::tempdir().unwrap();
     let run = run_lab(
         out.path(),
-        &["--resamples", "200", "--answers", answers.to_str().unwrap()],
+        &[
+            "--resamples",
+            "200",
+            "--signal",
+            llm::NAME,
+            "--answers",
+            answers.to_str().unwrap(),
+        ],
     );
     assert!(
         run.status.success(),

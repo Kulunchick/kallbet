@@ -57,10 +57,10 @@ impl ReplayOdds {
 
     fn oddspapi_points(&self, game: &Match, cutoff: Instant) -> Result<Vec<(Instant, f64)>> {
         for list in &self.lists {
-            if let Some(fixture) = oddspapi::match_settled_fixture(list, game)?
-                && let Some(body) = self.histories.get(fixture.id())
+            if let Some(fixture) = oddspapi::match_settled_in(list.as_ref().map_err(|e| e.clone())?, game)
+                && let Some(history) = self.histories.get(fixture.id())
             {
-                return fixture.points(body, cutoff);
+                return fixture.points_parsed(history.as_ref().map_err(|e| e.clone())?, cutoff);
             }
         }
         Ok(vec![])

@@ -4,8 +4,13 @@
 //!
 //! ```text
 //! kallbet-ai lab [--archive DIR] [--out DIR] [--seed N] [--resamples N] [--signal NAME]...
+//!               [--catch-up-trials N] [--pickem-simulations N]
 //!               [--llm FILE --budget NAME=RUNS...] [--answers FILE] [--training-cutoff RFC3339]
 //! ```
+//!
+//! `--catch-up-trials` (default 2000) and `--pickem-simulations` (default
+//! 5000) size the catch-up and Pick'em experiments' own simulations; the
+//! protocol's verdicts do not depend on them.
 //!
 //! The LLM track (`llm.rs`, ticket #43) runs only with `--llm` (providers,
 //! which need a `--budget` each) or `--answers` (recorded answers, no call).
@@ -17,7 +22,8 @@ use std::path::PathBuf;
 use tracing::info;
 
 pub const USAGE: &str = "usage: kallbet-ai lab [--archive DIR] [--out DIR] [--seed N] \
-[--resamples N] [--signal NAME]... [--llm FILE --budget NAME=RUNS...] [--answers FILE] [--training-cutoff RFC3339]";
+[--resamples N] [--signal NAME]... [--catch-up-trials N] [--pickem-simulations N] \
+[--llm FILE --budget NAME=RUNS...] [--answers FILE] [--training-cutoff RFC3339]";
 
 #[derive(Debug, PartialEq)]
 pub struct Options {
@@ -27,6 +33,10 @@ pub struct Options {
     pub resamples: Option<usize>,
     /// Candidate Signals to evaluate, by registry name (default: all).
     pub signals: Vec<String>,
+    /// Paired trials of the catch-up experiment.
+    pub catch_up_trials: usize,
+    /// Swiss Monte-Carlo runs per Pick'em of the Pick'em comparison.
+    pub pickem_simulations: usize,
     pub llm: super::llm::Options,
 }
 impl Default for Options {
@@ -37,6 +47,8 @@ impl Default for Options {
             seed: None,
             resamples: None,
             signals: vec![],
+            catch_up_trials: 2000,
+            pickem_simulations: super::pickem::PickemOptions::default().simulations,
             llm: Default::default(),
         }
     }
@@ -63,6 +75,8 @@ pub fn parse(args: &[String]) -> Result<Options> {
                 o.resamples = Some(n);
             }
             "--signal" => o.signals.push(value()?),
+            "--catch-up-trials" => o.catch_up_trials = value()?.parse()?,
+            "--pickem-simulations" => o.pickem_simulations = value()?.parse()?,
             flag if super::llm::FLAGS.contains(&flag) => o.llm.set(flag, value()?)?,
             other => return Err(format!("unknown lab option {other:?}\n{USAGE}").into()),
         }
@@ -128,8 +142,12 @@ pub async fn run(args: &[String]) -> Result<String> {
     let runner = std::sync::Arc::new(crate::adapters::llm::TokioRunner);
     let track = super::llm::prepare(&mut lab, &o.llm, runner, &o.out).await?;
     let outcome = lab.run().await?;
-    let leagues = super::leagues::report(&lab, lab.protocol.seed, 2000).await?;
-    let pickem = super::pickem::run(&lab, &super::pickem::PickemOptions::default()).await?;
+    let leagues = super::leagues::report(&lab, lab.protocol.seed, o.catch_up_trials).await?;
+    let pickem_options = super::pickem::PickemOptions {
+        simulations: o.pickem_simulations,
+        ..Default::default()
+    };
+    let pickem = super::pickem::run(&lab, &pickem_options).await?;
     record_lab_run(&audit, started_at, SystemClock.now(), &outcome.report).await?;
     let report = &outcome.report;
     std::fs::write(o.out.join("catch-up.md"), leagues)?;

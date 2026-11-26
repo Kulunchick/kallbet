@@ -80,8 +80,10 @@ impl MarketSource {
 /// strictly before the cutoff (the histories hold in-play points too), for a
 /// listing of the same two teams within six hours of the Scheduled Start.
 pub struct ReplayOdds {
-    lists: Vec<Vec<u8>>,
-    histories: BTreeMap<String, Vec<u8>>,
+    /// The settled fixture lists and their histories, parsed once (a saved
+    /// response that is not JSON is the error of every read that needs it).
+    lists: Vec<std::result::Result<Vec<Value>, String>>,
+    histories: BTreeMap<String, std::result::Result<Value, String>>,
     polymarket: Vec<Value>,
     polymarket_histories: BTreeMap<String, Value>,
     kalshi: Vec<Value>,
@@ -90,8 +92,16 @@ pub struct ReplayOdds {
 impl ReplayOdds {
     pub fn new(archive: &ReplayArchive) -> Self {
         Self {
-            lists: archive.fixture_lists.clone(),
-            histories: archive.histories.clone(),
+            lists: archive
+                .fixture_lists
+                .iter()
+                .map(|l| serde_json::from_slice(l).map_err(|e| e.to_string()))
+                .collect(),
+            histories: archive
+                .histories
+                .iter()
+                .map(|(id, h)| (id.clone(), serde_json::from_slice(h).map_err(|e| e.to_string())))
+                .collect(),
             polymarket: archive.polymarket_events.clone(),
             polymarket_histories: archive.polymarket_histories.clone(),
             kalshi: archive.kalshi_markets.clone(),
@@ -115,10 +125,10 @@ impl ReplayOdds {
 
     fn oddspapi(&self, game: &Match, cutoff: Instant) -> Result<Option<AsOf<f64>>> {
         for list in &self.lists {
-            if let Some(fixture) = oddspapi::match_settled_fixture(list, game)?
-                && let Some(body) = self.histories.get(fixture.id())
+            if let Some(fixture) = oddspapi::match_settled_in(list.as_ref().map_err(|e| e.clone())?, game)
+                && let Some(history) = self.histories.get(fixture.id())
             {
-                return fixture.quote(body, cutoff);
+                return fixture.quote_parsed(history.as_ref().map_err(|e| e.clone())?, cutoff);
             }
         }
         Ok(None)

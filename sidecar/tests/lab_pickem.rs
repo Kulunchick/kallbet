@@ -24,8 +24,11 @@ fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/backtest")
 }
 
+/// The lab with the two Candidate Signals the Pick'em variants use.
 fn lab() -> Lab {
-    Lab::new(ReplayArchive::load(&fixtures()).unwrap()).unwrap()
+    let mut lab = Lab::new(ReplayArchive::load(&fixtures()).unwrap()).unwrap();
+    lab.signals.retain(|s| ["rating_calibration", "learned_weights"].contains(&s.name()));
+    lab
 }
 
 /// Few simulations: the tests look at structure, not at the solver's accuracy.
@@ -41,10 +44,20 @@ async fn outcome() -> PickemOutcome {
     pickem::run(&lab(), &options()).await.unwrap()
 }
 
+/// `outcome()`, computed once for the tests that only read it.
+fn shared() -> &'static PickemOutcome {
+    static RUN: std::sync::OnceLock<PickemOutcome> = std::sync::OnceLock::new();
+    RUN.get_or_init(|| {
+        std::thread::spawn(|| tokio::runtime::Runtime::new().unwrap().block_on(outcome()))
+            .join()
+            .unwrap()
+    })
+}
+
 #[tokio::test]
 async fn the_report_gives_total_and_per_stage_points_for_each_variant_with_an_interval() {
     let lab = lab();
-    let out = pickem::run(&lab, &options()).await.unwrap();
+    let out = shared();
     let report = &out.report;
     let names: Vec<_> = report.variants.iter().map(|v| v.name.as_str()).collect();
     assert_eq!(
@@ -93,7 +106,7 @@ async fn the_report_gives_total_and_per_stage_points_for_each_variant_with_an_in
 #[tokio::test]
 async fn every_submitted_pickem_is_valid_by_the_servers_rules() {
     let lab = lab();
-    let out = pickem::run(&lab, &options()).await.unwrap();
+    let out = shared();
     assert!(!out.submitted.is_empty());
     let (mut swiss, mut playoffs) = (0, 0);
     for sub in &out.submitted {
@@ -257,7 +270,7 @@ async fn a_view_holding_a_result_or_a_later_round_pairing_aborts_the_run() {
 
 #[tokio::test]
 async fn a_later_result_changes_no_pickem_made_before_it() {
-    let base = pickem::run(&lab(), &options()).await.unwrap();
+    let base = shared();
     // Flip every result of the last Stage of the archive: nothing submitted for
     // an earlier Stage of another Event can move.
     let mut archive = ReplayArchive::load(&fixtures()).unwrap();
@@ -293,7 +306,7 @@ async fn a_later_result_changes_no_pickem_made_before_it() {
 
 #[tokio::test]
 async fn the_simulation_is_seeded_so_the_same_seed_gives_the_same_pickems() {
-    let first = outcome().await;
+    let first = shared();
     let second = outcome().await;
     let payloads = |o: &PickemOutcome| {
         o.submitted
@@ -301,7 +314,7 @@ async fn the_simulation_is_seeded_so_the_same_seed_gives_the_same_pickems() {
             .map(|s| (s.variant.clone(), s.stage_id, s.payload.clone()))
             .collect::<Vec<_>>()
     };
-    assert_eq!(payloads(&first), payloads(&second));
+    assert_eq!(payloads(first), payloads(&second));
     assert_eq!(
         serde_json::to_string(&first.report).unwrap(),
         serde_json::to_string(&second.report).unwrap()
@@ -318,7 +331,7 @@ async fn the_simulation_is_seeded_so_the_same_seed_gives_the_same_pickems() {
 
 #[tokio::test]
 async fn the_variance_seeking_variant_changes_a_pickem_only_where_the_bot_trails() {
-    let out = outcome().await;
+    let out = shared();
     let baseline = |stage: i64| {
         out.submitted
             .iter()
