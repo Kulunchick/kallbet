@@ -689,6 +689,7 @@ impl Lab {
             variant: None,
             difference: None,
             interval: None,
+            accuracy_interval: None,
             std_error: None,
             detectable: None,
             market: None,
@@ -739,6 +740,12 @@ impl Lab {
         report.interval = Some(boot.interval);
         report.std_error = Some(boot.std_error);
         report.detectable = Some(stats::detectable_effect(boot.std_error));
+        // Winners picked: the same paired Matches, resamples and seed.
+        let accuracy = stats::accuracy_bootstrap(
+            paired.iter().map(|r| (r.0, r.1, r.2, r.3)),
+            &self.protocol,
+        );
+        report.accuracy_interval = accuracy;
         let market: Vec<f64> = paired
             .iter()
             .zip(&diffs)
@@ -752,6 +759,7 @@ impl Lab {
         let (verdict, reason) = stats::verdict(
             report.paired,
             boot.interval,
+            accuracy,
             report.market.as_ref().map(|m| m.log_loss_difference),
             &self.protocol,
         );

@@ -120,7 +120,7 @@ A manual correction by a League Admin to a Match's time, result, teams or visibi
 ### Research
 
 **Signal Lab**:
-The sidecar's evaluation of Candidate Signals over completed Matches under one fixed protocol (walk-forward by Event, log-loss against the anchor, an Event-level bootstrap and a written verdict rule), with no network. Only its LLM track calls an LLM provider, and only under a Run Budget; a rerun from recorded answers calls none.
+The sidecar's evaluation of Candidate Signals over completed Matches under one fixed protocol (walk-forward by Event, log-loss against the anchor, an Event-level bootstrap and a written verdict rule; since `signal-lab/3` a signal is promoted only if it also picks no fewer winners: its accuracy interval may not lie wholly below zero), with no network. Only its LLM track calls an LLM provider, and only under a Run Budget; a rerun from recorded answers calls none.
 _Avoid_: Experiment, A/B test
 
 **Candidate Signal**:

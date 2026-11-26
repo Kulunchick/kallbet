@@ -522,8 +522,8 @@ async fn the_research_reports_promoted_criteria_load_and_fall_back_per_match_wit
     let view = live_view(&lab, id).await;
     for (name, needs) in [
         ("own_rating", "results history"),
-        ("per_map_rating", "played maps"),
-        ("lan_online", "no port"),
+        ("lineup_strength", "no port"),
+        ("bo1_veto_sim", "no port"),
         ("combination", "results history"),
     ] {
         let p = Promotion::load(name, &report).unwrap_or_else(|e| panic!("{name}: {e}"));
@@ -532,6 +532,11 @@ async fn the_research_reports_promoted_criteria_load_and_fall_back_per_match_wit
         assert_eq!(live.probability, view.anchor().unwrap(), "{name}");
         let reason = live.reason.clone().unwrap_or_default();
         assert!(reason.contains(needs) && reason.contains("no port"), "{name}: {reason}");
+    }
+    // signal-lab/3: better probabilities but fewer winners picked is not promoted.
+    for name in ["per_map_rating", "bo3_veto_sim", "lan_online"] {
+        let e = Promotion::load(name, &report).err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(e.contains("fewer winners picked"), "{name}: {e}");
     }
     let calibration = Promotion::load("rating_calibration", &report).unwrap();
     let live = calibration.live(&view).unwrap();

@@ -1,37 +1,37 @@
 # Signal Lab report
 
-Archive SHA-256 `25459d150e1fac87409e38d17a73ab2110444401703a056b1c4d4c846c4df782` (272 files), protocol `signal-lab/2`, seed 33, 2000 Event resamples, 90% intervals, floor 100 paired Matches.
+Archive SHA-256 `25459d150e1fac87409e38d17a73ab2110444401703a056b1c4d4c846c4df782` (272 files), protocol `signal-lab/3`, seed 33, 2000 Event resamples, 90% intervals, floor 100 paired Matches.
 
-Baseline: the anchor: HybridAnchored without LLM, 0.80 market and 0.20 Valve rating logit (`debate::base`). Each Candidate Signal is fitted, for each Event, only on the Matches of the Events that ended before it began, and every datum it reads is observed before the Match cutoff. Differences are variant − anchor on the Matches both predicted (log-loss and Brier: below zero is better). The interval resamples whole Events. Verdict: `promote` when the interval of the log-loss difference is below zero and the Matches with a market line are not worse; `harmful` when it is above zero; `no evidence` otherwise or under the floor; `not testable` when the data could not be had. "Detectable" is the smallest log-loss difference these Matches would show with 80% probability: an effect smaller than it can hide as `no evidence`.
+Baseline: the anchor: HybridAnchored without LLM, 0.80 market and 0.20 Valve rating logit (`debate::base`). Each Candidate Signal is fitted, for each Event, only on the Matches of the Events that ended before it began, and every datum it reads is observed before the Match cutoff. Differences are variant − anchor on the Matches both predicted (log-loss and Brier: below zero is better). The interval resamples whole Events. Verdict: `promote` when the interval of the log-loss difference is below zero, the Matches with a market line are not worse and the interval of the accuracy difference (same Matches and resamples) is not wholly below zero, since KallBet scores only the picked winner (else `no evidence`: better probabilities but fewer winners picked); `harmful` when it is above zero; `no evidence` otherwise or under the floor; `not testable` when the data could not be had. "Detectable" is the smallest log-loss difference these Matches would show with 80% probability: an effect smaller than it can hide as `no evidence`.
 
-| Candidate Signal | Verdict | Computed on | Paired | Events | Δ log-loss | 90% interval | Detectable | Δ Brier | Δ accuracy | Market subset (n, Δ log-loss) |
-|---|---|---|---|---|---|---|---|---|---|---|
-| `rating_calibration` | no evidence | 342 | 342 | 4 | -0.1066 | [-0.1779, +0.0037] | 0.1274 | -0.0230 | +0.0058 | 112, -0.0005 |
-| `learned_weights` | no evidence | 415 | 415 | 5 | -0.0783 | [-0.1361, +0.0051] | 0.0975 | -0.0167 | +0.0000 | 112, +0.0020 |
-| `market_source_pinnacle` | no evidence | 19 | 19 | 1 | +0.0000 | [+0.0000, +0.0000] | 0.0000 | +0.0000 | +0.0000 | 19, +0.0000 |
-| `market_source_polymarket` | no evidence | 19 | 19 | 1 | -0.0003 | [-0.0003, -0.0003] | 0.0000 | -0.0001 | +0.0000 | 19, -0.0003 |
-| `market_source_kalshi` | no evidence | 19 | 19 | 1 | -0.0049 | [-0.0049, -0.0049] | 0.0000 | -0.0024 | +0.0526 | 19, -0.0049 |
-| `market_source_average` | no evidence | 19 | 19 | 1 | -0.0018 | [-0.0018, -0.0018] | 0.0000 | -0.0009 | +0.0526 | 19, -0.0018 |
-| `line_movement` | no evidence | 24 | 24 | 1 | -0.0349 | [-0.0349, -0.0349] | 0.0000 | -0.0149 | +0.0417 | 24, -0.0349 |
-| `favourite_longshot` | no evidence | 24 | 24 | 1 | +0.0441 | [+0.0441, +0.0441] | 0.0000 | +0.0169 | +0.0000 | 24, +0.0441 |
-| `own_rating` | no evidence | 441 | 384 | 5 | -0.0694 | [-0.1539, +0.0262] | 0.1261 | -0.0049 | -0.0703 | 103, +0.0020 |
-| `recent_form` | no evidence | 262 | 262 | 4 | +0.0018 | [-0.0004, +0.0045] | 0.0040 | +0.0005 | +0.0000 | 81, +0.0009 |
-| `head_to_head` | no evidence | 64 | 64 | 3 | +0.0058 | [-0.0057, +0.0164] | 0.0188 | +0.0014 | -0.0156 | 32, -0.0042 |
-| `llm_adjustment` | not testable | 0 | 0 | 0 | — | — | — | — | — | — |
-| `lineup_strength` | not testable | 0 | 0 | 0 | — | — | — | — | — | — |
-| `player_form` | not testable | 0 | 0 | 0 | — | — | — | — | — | — |
-| `per_map_rating` | not testable | 0 | 0 | 0 | — | — | — | — | — | — |
-| `bo1_veto_sim` | not testable | 0 | 0 | 0 | — | — | — | — | — | — |
-| `bo3_veto_sim` | not testable (added after list fixed) | 0 | 0 | 0 | — | — | — | — | — | — |
-| `roster_stand_in` | no evidence | 203 | 203 | 3 | -0.0008 | [-0.0040, +0.0068] | 0.0112 | -0.0005 | +0.0099 | 112, -0.0004 |
-| `roster_change_30d` | no evidence | 14 | 14 | 2 | -0.0711 | [-0.3319, +0.0000] | 0.3128 | -0.0345 | +0.0714 | 13, -0.0766 |
-| `roster_stability` | no evidence | 115 | 115 | 2 | +0.0066 | [+0.0000, +0.0362] | 0.0346 | +0.0031 | -0.0087 | 100, +0.0076 |
-| `roster_coach_change` | no evidence | 69 | 69 | 2 | -0.0074 | [-0.0243, +0.0000] | 0.0220 | -0.0030 | +0.0000 | 62, -0.0082 |
-| `rest_schedule_load` | no evidence | 318 | 318 | 4 | -0.0039 | [-0.0125, +0.0065] | 0.0141 | +0.0003 | +0.0000 | 103, +0.0090 |
-| `stakes` | no evidence | 342 | 342 | 4 | -0.0336 | [-0.0593, -0.0009] | 0.0481 | -0.0053 | +0.0000 | 112, +0.0086 |
-| `lan_online` | no evidence | 120 | 120 | 2 | -0.0000 | [-0.0002, +0.0000] | 0.0003 | -0.0000 | +0.0000 | 103, -0.0001 |
-| `series_format` | no evidence | 254 | 254 | 4 | +0.0013 | [-0.0001, +0.0027] | 0.0022 | +0.0005 | +0.0000 | 87, +0.0009 |
-| `region_travel` | not testable | 0 | 0 | 0 | — | — | — | — | — | — |
+| Candidate Signal | Verdict | Computed on | Paired | Events | Δ log-loss | 90% interval | Detectable | Δ Brier | Δ accuracy | Δ accuracy 90% interval | Market subset (n, Δ log-loss) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `rating_calibration` | no evidence | 342 | 342 | 4 | -0.1066 | [-0.1779, +0.0037] | 0.1274 | -0.0230 | +0.0058 | [+0.0000, +0.0142] | 112, -0.0005 |
+| `learned_weights` | no evidence | 415 | 415 | 5 | -0.0783 | [-0.1361, +0.0051] | 0.0975 | -0.0167 | +0.0000 | [+0.0000, +0.0000] | 112, +0.0020 |
+| `market_source_pinnacle` | no evidence | 19 | 19 | 1 | +0.0000 | [+0.0000, +0.0000] | 0.0000 | +0.0000 | +0.0000 | [+0.0000, +0.0000] | 19, +0.0000 |
+| `market_source_polymarket` | no evidence | 19 | 19 | 1 | -0.0003 | [-0.0003, -0.0003] | 0.0000 | -0.0001 | +0.0000 | [+0.0000, +0.0000] | 19, -0.0003 |
+| `market_source_kalshi` | no evidence | 19 | 19 | 1 | -0.0049 | [-0.0049, -0.0049] | 0.0000 | -0.0024 | +0.0526 | [+0.0526, +0.0526] | 19, -0.0049 |
+| `market_source_average` | no evidence | 19 | 19 | 1 | -0.0018 | [-0.0018, -0.0018] | 0.0000 | -0.0009 | +0.0526 | [+0.0526, +0.0526] | 19, -0.0018 |
+| `line_movement` | no evidence | 24 | 24 | 1 | -0.0349 | [-0.0349, -0.0349] | 0.0000 | -0.0149 | +0.0417 | [+0.0417, +0.0417] | 24, -0.0349 |
+| `favourite_longshot` | no evidence | 24 | 24 | 1 | +0.0441 | [+0.0441, +0.0441] | 0.0000 | +0.0169 | +0.0000 | [+0.0000, +0.0000] | 24, +0.0441 |
+| `own_rating` | no evidence | 441 | 384 | 5 | -0.0694 | [-0.1539, +0.0262] | 0.1261 | -0.0049 | -0.0703 | [-0.1090, -0.0377] | 103, +0.0020 |
+| `recent_form` | no evidence | 262 | 262 | 4 | +0.0018 | [-0.0004, +0.0045] | 0.0040 | +0.0005 | +0.0000 | [+0.0000, +0.0000] | 81, +0.0009 |
+| `head_to_head` | no evidence | 64 | 64 | 3 | +0.0058 | [-0.0057, +0.0164] | 0.0188 | +0.0014 | -0.0156 | [-0.0299, +0.0000] | 32, -0.0042 |
+| `llm_adjustment` | not testable | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `lineup_strength` | not testable | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `player_form` | not testable | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `per_map_rating` | not testable | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `bo1_veto_sim` | not testable | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `bo3_veto_sim` | not testable (added after list fixed) | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `roster_stand_in` | no evidence | 203 | 203 | 3 | -0.0008 | [-0.0040, +0.0068] | 0.0112 | -0.0005 | +0.0099 | [-0.0165, +0.0212] | 112, -0.0004 |
+| `roster_change_30d` | no evidence | 14 | 14 | 2 | -0.0711 | [-0.3319, +0.0000] | 0.3128 | -0.0345 | +0.0714 | [+0.0000, +0.3333] | 13, -0.0766 |
+| `roster_stability` | no evidence | 115 | 115 | 2 | +0.0066 | [+0.0000, +0.0362] | 0.0346 | +0.0031 | -0.0087 | [-0.0476, +0.0000] | 100, +0.0076 |
+| `roster_coach_change` | no evidence | 69 | 69 | 2 | -0.0074 | [-0.0243, +0.0000] | 0.0220 | -0.0030 | +0.0000 | [+0.0000, +0.0000] | 62, -0.0082 |
+| `rest_schedule_load` | no evidence | 318 | 318 | 4 | -0.0039 | [-0.0125, +0.0065] | 0.0141 | +0.0003 | +0.0000 | [+0.0000, +0.0000] | 103, +0.0090 |
+| `stakes` | no evidence | 342 | 342 | 4 | -0.0336 | [-0.0593, -0.0009] | 0.0481 | -0.0053 | +0.0000 | [+0.0000, +0.0000] | 112, +0.0086 |
+| `lan_online` | no evidence | 120 | 120 | 2 | -0.0000 | [-0.0002, +0.0000] | 0.0003 | -0.0000 | +0.0000 | [+0.0000, +0.0000] | 103, -0.0001 |
+| `series_format` | no evidence | 254 | 254 | 4 | +0.0013 | [-0.0001, +0.0027] | 0.0022 | +0.0005 | +0.0000 | [+0.0000, +0.0000] | 87, +0.0009 |
+| `region_travel` | not testable | 0 | 0 | 0 | — | — | — | — | — | — | — |
 
 ## `rating_calibration`: no evidence
 

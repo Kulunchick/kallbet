@@ -145,6 +145,7 @@ async fn the_report_compares_the_calibration_with_the_anchor_under_the_protocol(
     let (verdict, reason) = stats::verdict(
         c.paired,
         interval,
+        c.accuracy_interval,
         c.market.as_ref().map(|m| m.log_loss_difference),
         &lab.protocol,
     );

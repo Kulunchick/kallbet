@@ -728,6 +728,7 @@ async fn walk_forward_lab_run_evaluates_player_signals_and_isolates_later_events
         let (verdict, reason) = stats::verdict(
             c.paired,
             c.interval.unwrap(),
+            c.accuracy_interval,
             c.market.as_ref().map(|m| m.log_loss_difference),
             &lab.protocol,
         );

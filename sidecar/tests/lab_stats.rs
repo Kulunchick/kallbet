@@ -84,34 +84,34 @@ fn the_verdict_is_the_written_rule() {
     let i = |low, high| Interval { low, high };
     // Improvement (a lower log-loss) whose interval excludes zero, market subset not worse.
     assert_eq!(
-        stats::verdict(floor, i(-0.03, -0.001), Some(-0.01), &p).0,
+        stats::verdict(floor, i(-0.03, -0.001), None, Some(-0.01), &p).0,
         Verdict::Promote
     );
     // No Match with a market line: nothing there is worsened.
     assert_eq!(
-        stats::verdict(floor, i(-0.03, -0.001), None, &p).0,
+        stats::verdict(floor, i(-0.03, -0.001), None, None, &p).0,
         Verdict::Promote
     );
     // The market subset is worse: not promoted, and the reason says why.
-    let (v, why) = stats::verdict(floor, i(-0.03, -0.001), Some(0.002), &p);
+    let (v, why) = stats::verdict(floor, i(-0.03, -0.001), None, Some(0.002), &p);
     assert_eq!(v, Verdict::NoEvidence);
     assert!(why.contains("market"), "{why}");
     // Worse, interval excluding zero.
     assert_eq!(
-        stats::verdict(floor, i(0.001, 0.02), None, &p).0,
+        stats::verdict(floor, i(0.001, 0.02), None, None, &p).0,
         Verdict::Harmful
     );
     // Straddles zero.
     assert_eq!(
-        stats::verdict(floor, i(-0.02, 0.01), None, &p).0,
+        stats::verdict(floor, i(-0.02, 0.01), None, None, &p).0,
         Verdict::NoEvidence
     );
     // Below the floor, whatever the interval says.
-    let (v, why) = stats::verdict(floor - 1, i(-0.5, -0.4), None, &p);
+    let (v, why) = stats::verdict(floor - 1, i(-0.5, -0.4), None, None, &p);
     assert_eq!(v, Verdict::NoEvidence);
     assert!(why.contains(&floor.to_string()), "{why}");
     assert_eq!(
-        stats::verdict(floor - 1, i(0.4, 0.5), None, &p).0,
+        stats::verdict(floor - 1, i(0.4, 0.5), None, None, &p).0,
         Verdict::NoEvidence
     );
 }
@@ -159,4 +159,34 @@ fn zero_resamples_give_no_interval_and_are_refused() {
     assert!(kallbet_ai::adapters::lab::stats::event_bootstrap(&diffs, 0, 0.9, 33).is_none());
     let args: Vec<String> = ["--resamples", "0"].iter().map(|s| s.to_string()).collect();
     assert!(kallbet_ai::adapters::lab::cli::parse(&args).is_err());
+}
+
+// signal-lab/3: KallBet scores only the picked winner. Better probabilities
+// with an accuracy interval wholly below zero are not promoted; an accuracy
+// interval that reaches zero does not stop a promotion; harmful is unchanged.
+#[test]
+fn promote_also_needs_the_accuracy_interval_not_wholly_below_zero() {
+    let p = Protocol::default();
+    let i = |low, high| Interval { low, high };
+    let better = i(-0.03, -0.001);
+    let (v, why) = stats::verdict(150, better, Some(i(-0.05, -0.01)), None, &p);
+    assert_eq!(v, Verdict::NoEvidence);
+    assert!(why.contains("better probabilities but fewer winners picked"), "{why}");
+    assert_eq!(stats::verdict(150, better, Some(i(-0.05, 0.0)), None, &p).0, Verdict::Promote);
+    assert_eq!(stats::verdict(150, better, Some(i(0.01, 0.05)), None, &p).0, Verdict::Promote);
+    assert_eq!(
+        stats::verdict(150, i(0.001, 0.02), Some(i(-0.05, -0.01)), None, &p).0,
+        Verdict::Harmful
+    );
+
+    // The accuracy interval by hand: every row of one Event has the variant
+    // right and the anchor wrong (+1), or the reverse (-1).
+    let right = (0..3).map(|_| (1, true, 0.4, 0.6));
+    assert_eq!(stats::accuracy_bootstrap(right, &p), Some(i(1.0, 1.0)));
+    let wrong = (0..3).map(|_| (1, true, 0.6, 0.4));
+    assert_eq!(stats::accuracy_bootstrap(wrong, &p), Some(i(-1.0, -1.0)));
+    // Two Events, +1 and 0: each resample's mean is 0, 1/2 or 1.
+    let mixed = [(1, true, 0.4, 0.6), (2, true, 0.6, 0.7)].into_iter();
+    let a = stats::accuracy_bootstrap(mixed, &p).unwrap();
+    assert!(a.low >= 0.0 && a.high <= 1.0 && a.low < a.high, "{a:?}");
 }

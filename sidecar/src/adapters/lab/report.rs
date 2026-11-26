@@ -78,6 +78,9 @@ pub struct CandidateReport {
     pub difference: Option<Metrics>,
     /// The interval of the log-loss difference, from the Event bootstrap.
     pub interval: Option<Interval>,
+    /// The interval of the accuracy difference, from the same bootstrap
+    /// (same paired Matches, resamples and seed).
+    pub accuracy_interval: Option<Interval>,
     pub std_error: Option<f64>,
     /// The smallest log-loss difference these Matches could have detected.
     pub detectable: Option<f64>,
@@ -188,6 +191,8 @@ pub struct HoldoutReport {
     pub combination: Vec<String>,
     /// When and on what the Holdout was evaluated, or that it is pending.
     pub statement: String,
+    /// The interval of the accuracy difference, from the same bootstrap.
+    pub accuracy_interval: Option<Interval>,
     /// When it was evaluated: the start of the first run that evaluated it
     /// (a reproduction keeps that date). `None`: pending, or not run by the CLI.
     pub evaluated_at: Option<Instant>,
@@ -249,7 +254,10 @@ impl LabReport {
              before the Match cutoff. Differences are variant − anchor on the Matches both \
              predicted (log-loss and Brier: below zero is better). The interval resamples whole \
              Events. Verdict: `promote` when the interval of the log-loss difference is below \
-             zero and the Matches with a market line are not worse; `harmful` when it is above \
+             zero, the Matches with a market line are not worse and the interval of the \
+             accuracy difference (same Matches and resamples) is not wholly below zero, since \
+             KallBet scores only the picked winner (else `no evidence`: better probabilities \
+             but fewer winners picked); `harmful` when it is above \
              zero; `no evidence` otherwise or under the floor; `not testable` when the data \
              could not be had. \"Detectable\" is the smallest log-loss difference these Matches \
              would show with 80% probability: an effect smaller than it can hide as \
@@ -259,9 +267,9 @@ impl LabReport {
         let _ = writeln!(
             md,
             "| Candidate Signal | Verdict | Computed on | Paired | Events | Δ log-loss | \
-             {level}% interval | Detectable | Δ Brier | Δ accuracy | Market subset (n, Δ log-loss) |"
+             {level}% interval | Detectable | Δ Brier | Δ accuracy | Δ accuracy {level}% interval | Market subset (n, Δ log-loss) |"
         );
-        let _ = writeln!(md, "|---|---|---|---|---|---|---|---|---|---|---|");
+        let _ = writeln!(md, "|---|---|---|---|---|---|---|---|---|---|---|---|");
         for c in &self.candidates {
             let d = c.difference;
             let verdict = if c.added_after_list_fixed {
@@ -271,7 +279,7 @@ impl LabReport {
             };
             let _ = writeln!(
                 md,
-                "| `{}` | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
+                "| `{}` | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
                 c.name,
                 verdict,
                 c.computed_on,
@@ -283,6 +291,8 @@ impl LabReport {
                 c.detectable.map_or("—".into(), |v| format!("{v:.4}")),
                 num(d.map(|d| d.brier)),
                 num(d.map(|d| d.accuracy)),
+                c.accuracy_interval
+                    .map_or("—".into(), |i| format!("[{:+.4}, {:+.4}]", i.low, i.high)),
                 c.market.as_ref().map_or("—".into(), |m| format!(
                     "{}, {:+.4}",
                     m.matches, m.log_loss_difference
@@ -510,12 +520,13 @@ impl LabReport {
             }
             let _ = writeln!(
                 md,
-                "\nΔ log-loss {} ({level}% interval {}), Δ Brier {}, Δ accuracy {}; market subset \
-                 {}. By the written rule: {} ({}).",
+                "\nΔ log-loss {} ({level}% interval {}), Δ Brier {}, Δ accuracy {} ({level}% \
+                 interval {}); market subset {}. By the written rule: {} ({}).",
                 num(Some(d.log_loss)),
                 interval(h.interval),
                 num(Some(d.brier)),
                 num(Some(d.accuracy)),
+                interval(h.accuracy_interval),
                 h.market.as_ref().map_or("—".into(), |m| format!(
                     "{}, {:+.4}",
                     m.matches, m.log_loss_difference

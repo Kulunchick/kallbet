@@ -371,6 +371,7 @@ pub(crate) fn holdout(
         combination: names.clone(),
         statement: String::new(),
         evaluated_at: None,
+        accuracy_interval: None,
         matches: 0,
         events: 0,
         played_from: None,
@@ -516,9 +517,13 @@ pub(crate) fn holdout(
     {
         report.interval = Some(boot.interval);
         report.std_error = Some(boot.std_error);
+        let accuracy =
+            stats::accuracy_bootstrap(pairs.iter().map(|r| (r.0, r.1, r.2, r.3)), protocol);
+        report.accuracy_interval = accuracy;
         let (verdict, reason) = stats::verdict(
             pairs.len(),
             boot.interval,
+            accuracy,
             report.market.as_ref().map(|m| m.log_loss_difference),
             protocol,
         );

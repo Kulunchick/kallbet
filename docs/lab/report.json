@@ -1,5 +1,5 @@
 {
-  "protocol_version": "signal-lab/2",
+  "protocol_version": "signal-lab/3",
   "seed": 33,
   "resamples": 2000,
   "level": 0.9,
@@ -79,6 +79,10 @@
       "interval": {
         "low": -0.17786716382880108,
         "high": 0.0036526657153311574
+      },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.014150943396226415
       },
       "std_error": 0.05123531900894256,
       "detectable": 0.12739532958569666,
@@ -169,6 +173,10 @@
       "interval": {
         "low": -0.1360863451498871,
         "high": 0.005098559090629822
+      },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
       },
       "std_error": 0.03922750539177404,
       "detectable": 0.09753820362351028,
@@ -344,6 +352,10 @@
         "low": 0.0,
         "high": 0.0
       },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
+      },
       "std_error": 0.0,
       "detectable": 0.0,
       "market": {
@@ -433,6 +445,10 @@
       "interval": {
         "low": -0.0002811371925961671,
         "high": -0.0002811371925961671
+      },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
       },
       "std_error": 0.0,
       "detectable": 0.0,
@@ -524,6 +540,10 @@
         "low": -0.004868056249528267,
         "high": -0.004868056249528267
       },
+      "accuracy_interval": {
+        "low": 0.05263157894736842,
+        "high": 0.05263157894736842
+      },
       "std_error": 0.0,
       "detectable": 0.0,
       "market": {
@@ -613,6 +633,10 @@
       "interval": {
         "low": -0.0017991953449717913,
         "high": -0.0017991953449717913
+      },
+      "accuracy_interval": {
+        "low": 0.05263157894736842,
+        "high": 0.05263157894736842
       },
       "std_error": 0.0,
       "detectable": 0.0,
@@ -704,6 +728,10 @@
         "low": -0.03493439475520763,
         "high": -0.03493439475520763
       },
+      "accuracy_interval": {
+        "low": 0.041666666666666664,
+        "high": 0.041666666666666664
+      },
       "std_error": 0.0,
       "detectable": 0.0,
       "market": {
@@ -794,6 +822,10 @@
         "low": 0.04410459662807611,
         "high": 0.04410459662807611
       },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
+      },
       "std_error": 0.0,
       "detectable": 0.0,
       "market": {
@@ -883,6 +915,10 @@
       "interval": {
         "low": -0.15391951893360895,
         "high": 0.026178377061128043
+      },
+      "accuracy_interval": {
+        "low": -0.10903426791277258,
+        "high": -0.037675035721575836
       },
       "std_error": 0.050709605507249726,
       "detectable": 0.12608815621171765,
@@ -1056,6 +1092,10 @@
         "low": -0.0004363638460203091,
         "high": 0.004470726526534986
       },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
+      },
       "std_error": 0.001590125166245001,
       "detectable": 0.003953806154714005,
       "market": {
@@ -1146,6 +1186,10 @@
         "low": -0.005732934375954002,
         "high": 0.01639511734389037
       },
+      "accuracy_interval": {
+        "low": -0.029850746268656716,
+        "high": 0.0
+      },
       "std_error": 0.007546859179789628,
       "detectable": 0.01876507516969558,
       "market": {
@@ -1221,6 +1265,7 @@
       "variant": null,
       "difference": null,
       "interval": null,
+      "accuracy_interval": null,
       "std_error": null,
       "detectable": null,
       "market": null,
@@ -1293,6 +1338,7 @@
       "variant": null,
       "difference": null,
       "interval": null,
+      "accuracy_interval": null,
       "std_error": null,
       "detectable": null,
       "market": null,
@@ -1365,6 +1411,7 @@
       "variant": null,
       "difference": null,
       "interval": null,
+      "accuracy_interval": null,
       "std_error": null,
       "detectable": null,
       "market": null,
@@ -1437,6 +1484,7 @@
       "variant": null,
       "difference": null,
       "interval": null,
+      "accuracy_interval": null,
       "std_error": null,
       "detectable": null,
       "market": null,
@@ -1509,6 +1557,7 @@
       "variant": null,
       "difference": null,
       "interval": null,
+      "accuracy_interval": null,
       "std_error": null,
       "detectable": null,
       "market": null,
@@ -1582,6 +1631,7 @@
       "variant": null,
       "difference": null,
       "interval": null,
+      "accuracy_interval": null,
       "std_error": null,
       "detectable": null,
       "market": null,
@@ -1668,6 +1718,10 @@
       "interval": {
         "low": -0.004020803103419897,
         "high": 0.006797921693549633
+      },
+      "accuracy_interval": {
+        "low": -0.01652892561983471,
+        "high": 0.0211864406779661
       },
       "std_error": 0.004503185261103394,
       "detectable": 0.011197056671465009,
@@ -1759,6 +1813,10 @@
         "low": -0.3318830295566343,
         "high": 0.0
       },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.3333333333333333
+      },
       "std_error": 0.125795515583133,
       "detectable": 0.31278737945046753,
       "market": {
@@ -1848,6 +1906,10 @@
       "interval": {
         "low": 0.0,
         "high": 0.036172216355905396
+      },
+      "accuracy_interval": {
+        "low": -0.047619047619047616,
+        "high": 0.0
       },
       "std_error": 0.013934690703423663,
       "detectable": 0.03464825727985721,
@@ -1939,6 +2001,10 @@
         "low": -0.024270027586167323,
         "high": 0.0
       },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
+      },
       "std_error": 0.008849245035631266,
       "detectable": 0.02200342478012224,
       "market": {
@@ -2028,6 +2094,10 @@
       "interval": {
         "low": -0.012474998407106702,
         "high": 0.006512235200793161
+      },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
       },
       "std_error": 0.005671787019721074,
       "detectable": 0.014102755495503553,
@@ -2170,6 +2240,10 @@
       "interval": {
         "low": -0.05927731915063057,
         "high": -0.0008986070315872887
+      },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
       },
       "std_error": 0.019331577505758604,
       "detectable": 0.04806748031231562,
@@ -2345,6 +2419,10 @@
         "low": -0.00023686203545660365,
         "high": 0.00002628340196876206
       },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
+      },
       "std_error": 0.0001017851768574102,
       "detectable": 0.00025308627726949363,
       "market": {
@@ -2471,6 +2549,10 @@
         "low": -0.00014697249771030698,
         "high": 0.002664716827461821
       },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
+      },
       "std_error": 0.0008715056189710421,
       "detectable": 0.002166976759629898,
       "market": {
@@ -2582,6 +2664,7 @@
       "variant": null,
       "difference": null,
       "interval": null,
+      "accuracy_interval": null,
       "std_error": null,
       "detectable": null,
       "market": null,
@@ -2702,6 +2785,7 @@
     "stages": [],
     "combination": [],
     "statement": "The Holdout is pending: no Holdout Match has been played in this archive, so the frozen combination was not evaluated.",
+    "accuracy_interval": null,
     "evaluated_at": null,
     "matches": 0,
     "events": 0,

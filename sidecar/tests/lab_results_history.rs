@@ -498,6 +498,7 @@ async fn all_three_signals_are_reported_and_own_rating_is_compared_directly_with
         let (verdict, reason) = stats::verdict(
             c.paired,
             c.interval.unwrap(),
+            c.accuracy_interval,
             c.market.as_ref().map(|m| m.log_loss_difference),
             &lab.protocol,
         );

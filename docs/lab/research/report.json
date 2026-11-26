@@ -1,5 +1,5 @@
 {
-  "protocol_version": "signal-lab/2",
+  "protocol_version": "signal-lab/3",
   "seed": 33,
   "resamples": 2000,
   "level": 0.9,
@@ -447,9 +447,7 @@
     "combination": {
       "extras": [
         "own_rating.shift",
-        "lineup_strength.lineup_strength",
-        "lan_online.lan_win_rate",
-        "lan_online.online_win_rate"
+        "lineup_strength.lineup_strength"
       ],
       "models": [
         [
@@ -457,12 +455,10 @@
           {
             "matches": 776,
             "weights": [
-              0.9342627779293412,
-              -0.018588699010956704,
-              -0.12654134871589334,
-              0.023855295018638246,
-              0.13786564722548092,
-              0.0
+              0.9457546853677616,
+              -0.016739205817424333,
+              -0.1231489411348254,
+              0.026285298064839042
             ]
           }
         ],
@@ -471,10 +467,8 @@
           {
             "matches": 1,
             "weights": [
-              1.0234040993586675,
-              -0.011699150471831695,
-              0.0,
-              -0.0040698762891164236,
+              1.0234122119079494,
+              -0.01170320574152204,
               0.0
             ]
           }
@@ -484,11 +478,9 @@
           {
             "matches": 1466,
             "weights": [
-              0.4094426547456688,
-              0.22390242826375378,
-              0.4342238865624498,
-              0.2499309958464897,
-              0.023993349249213074
+              0.4333042152937447,
+              0.2448739978317328,
+              0.44773115932253643
             ]
           }
         ]
@@ -562,6 +554,10 @@
       "interval": {
         "low": -0.24029856051126963,
         "high": -0.12169686930100158
+      },
+      "accuracy_interval": {
+        "low": -0.003727742428174678,
+        "high": 0.002183884930667279
       },
       "std_error": 0.03566767379576414,
       "detectable": 0.08868677206778787,
@@ -1156,6 +1152,10 @@
       "interval": {
         "low": -0.22974662632268386,
         "high": -0.11479205788868656
+      },
+      "accuracy_interval": {
+        "low": -0.004448695796907323,
+        "high": 0.00195242396868413
       },
       "std_error": 0.035070448107361776,
       "detectable": 0.08720178544366275,
@@ -2619,6 +2619,10 @@
         "low": 0.0,
         "high": 0.0
       },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
+      },
       "std_error": 0.0,
       "detectable": 0.0,
       "market": {
@@ -3212,6 +3216,10 @@
       "interval": {
         "low": 0.023012113057933162,
         "high": 0.023012113057933162
+      },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
       },
       "std_error": 0.0,
       "detectable": 0.0,
@@ -3807,6 +3815,10 @@
         "low": 0.015970661865564003,
         "high": 0.015970661865564003
       },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
+      },
       "std_error": 0.0,
       "detectable": 0.0,
       "market": {
@@ -4400,6 +4412,10 @@
       "interval": {
         "low": 0.012401992525816677,
         "high": 0.012401992525816677
+      },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
       },
       "std_error": 0.0,
       "detectable": 0.0,
@@ -4995,6 +5011,10 @@
         "low": -0.0034752926203293288,
         "high": 0.0065741102509722545
       },
+      "accuracy_interval": {
+        "low": -0.007905451043178066,
+        "high": 0.01019303761382703
+      },
       "std_error": 0.003045933571294629,
       "detectable": 0.007573637067498098,
       "market": {
@@ -5589,6 +5609,10 @@
         "low": -0.00030391770814181343,
         "high": 0.0021325879073750397
       },
+      "accuracy_interval": {
+        "low": -0.006260763604827991,
+        "high": 0.0
+      },
       "std_error": 0.0007643518150129822,
       "detectable": 0.0019005415263640417,
       "market": {
@@ -6182,6 +6206,10 @@
       "interval": {
         "low": -0.23288201616886373,
         "high": -0.10791446182614817
+      },
+      "accuracy_interval": {
+        "low": -0.025972001029495793,
+        "high": 0.0005106000145517866
       },
       "std_error": 0.03736874783311081,
       "detectable": 0.09291644979458463,
@@ -7363,6 +7391,10 @@
         "low": -0.005349193437270216,
         "high": 0.003560405723331837
       },
+      "accuracy_interval": {
+        "low": -0.009779735834306696,
+        "high": 0.004023718288424169
+      },
       "std_error": 0.002751677514222969,
       "detectable": 0.006841976796842054,
       "market": {
@@ -7957,6 +7989,10 @@
         "low": -0.01268956650790213,
         "high": 0.0047466624185332025
       },
+      "accuracy_interval": {
+        "low": -0.021995874500735757,
+        "high": 0.004164388480639243
+      },
       "std_error": 0.005250215098332274,
       "detectable": 0.013054527536582719,
       "market": {
@@ -8536,6 +8572,7 @@
       "variant": null,
       "difference": null,
       "interval": null,
+      "accuracy_interval": null,
       "std_error": null,
       "detectable": null,
       "market": null,
@@ -9126,6 +9163,10 @@
       "interval": {
         "low": -0.004534357343628257,
         "high": -0.0008311306819853966
+      },
+      "accuracy_interval": {
+        "low": -0.009250164290599897,
+        "high": 0.0005950335510641872
       },
       "std_error": 0.001122480999699138,
       "detectable": 0.0027910207192307144,
@@ -9907,6 +9948,10 @@
         "low": -0.00022297262982467323,
         "high": 0.00030755818483113644
       },
+      "accuracy_interval": {
+        "low": -0.0026179725937159055,
+        "high": 0.0011596903935917886
+      },
       "std_error": 0.0001639181723092922,
       "detectable": 0.0004075784047091128,
       "market": {
@@ -10663,8 +10708,8 @@
     {
       "name": "per_map_rating",
       "description": "Per-map Elo from completed Liquipedia series, averaged over equally likely map sets and blended with the market",
-      "verdict": "promote",
-      "reason": "the interval of the log-loss improvement excludes zero and the Matches with a market line are not worse",
+      "verdict": "no evidence",
+      "reason": "better probabilities but fewer winners picked: the interval of the log-loss difference is below zero, that of the accuracy difference too",
       "computed_on": 2117,
       "paired": 2109,
       "events": 61,
@@ -10686,6 +10731,10 @@
       "interval": {
         "low": -0.23346079650794985,
         "high": -0.10348569986434292
+      },
+      "accuracy_interval": {
+        "low": -0.034737783390515996,
+        "high": -0.0004408686125213476
       },
       "std_error": 0.03901963087397928,
       "detectable": 0.09702132887345144,
@@ -11281,6 +11330,10 @@
         "low": -0.13147998021700757,
         "high": -0.034248176265778085
       },
+      "accuracy_interval": {
+        "low": -0.008771929824561403,
+        "high": 0.027978578798250924
+      },
       "std_error": 0.029675510622666608,
       "detectable": 0.07378740934039282,
       "market": {
@@ -11851,9 +11904,9 @@
     {
       "name": "bo3_veto_sim",
       "description": "Bo3 veto simulation from past HLTV vetoes and per-map Elo ratings, blended with the market",
-      "verdict": "promote",
+      "verdict": "no evidence",
       "added_after_list_fixed": true,
-      "reason": "the interval of the log-loss improvement excludes zero and the Matches with a market line are not worse",
+      "reason": "better probabilities but fewer winners picked: the interval of the log-loss difference is below zero, that of the accuracy difference too",
       "computed_on": 1882,
       "paired": 1850,
       "events": 61,
@@ -11875,6 +11928,10 @@
       "interval": {
         "low": -0.24905963301265516,
         "high": -0.10054023621818695
+      },
+      "accuracy_interval": {
+        "low": -0.04581572447260698,
+        "high": -0.014122088966706603
       },
       "std_error": 0.04484548099741892,
       "detectable": 0.111507158393961,
@@ -12470,6 +12527,10 @@
         "low": -0.0018716384301263507,
         "high": 0.001480344611271526
       },
+      "accuracy_interval": {
+        "low": 0.0011427268284736928,
+        "high": 0.006010414385478259
+      },
       "std_error": 0.0010092994309642872,
       "detectable": 0.00250959760074704,
       "market": {
@@ -13063,6 +13124,10 @@
       "interval": {
         "low": 0.0015039741791999224,
         "high": 0.007970152085924635
+      },
+      "accuracy_interval": {
+        "low": -0.002046664663517617,
+        "high": 0.0021310614835093624
       },
       "std_error": 0.0019379007073852066,
       "detectable": 0.00481854127381549,
@@ -13658,6 +13723,10 @@
         "low": -0.000567448883901585,
         "high": 0.009758220220448198
       },
+      "accuracy_interval": {
+        "low": -0.003929504945597653,
+        "high": 0.006187040679681942
+      },
       "std_error": 0.003151809716523642,
       "detectable": 0.007836895434531178,
       "market": {
@@ -14252,6 +14321,10 @@
         "low": 0.00011946100670317714,
         "high": 0.009381204250338539
       },
+      "accuracy_interval": {
+        "low": -0.006964365984499416,
+        "high": -0.0005310252079638717
+      },
       "std_error": 0.0029096834005784885,
       "detectable": 0.007234854451516717,
       "market": {
@@ -14845,6 +14918,10 @@
       "interval": {
         "low": -0.00429128893836216,
         "high": 0.004040695963146161
+      },
+      "accuracy_interval": {
+        "low": -0.0058969109761977485,
+        "high": 0.006730269474056908
       },
       "std_error": 0.0024839500828268916,
       "detectable": 0.006176279285406978,
@@ -16219,6 +16296,10 @@
       "interval": {
         "low": -0.064963418777465,
         "high": -0.012140451671532845
+      },
+      "accuracy_interval": {
+        "low": 0.0,
+        "high": 0.0
       },
       "std_error": 0.015960520310420567,
       "detectable": 0.03968543154674892,
@@ -17966,8 +18047,8 @@
     {
       "name": "lan_online",
       "description": "Team win rates in the current environment, with separate weights for LAN and online",
-      "verdict": "promote",
-      "reason": "the interval of the log-loss improvement excludes zero and the Matches with a market line are not worse",
+      "verdict": "no evidence",
+      "reason": "better probabilities but fewer winners picked: the interval of the log-loss difference is below zero, that of the accuracy difference too",
       "computed_on": 2078,
       "paired": 2078,
       "events": 59,
@@ -17989,6 +18070,10 @@
       "interval": {
         "low": -0.0077262401300679925,
         "high": -0.0023710318384847686
+      },
+      "accuracy_interval": {
+        "low": -0.009324130101332173,
+        "high": -0.0015225730417568538
       },
       "std_error": 0.0016561859077553072,
       "detectable": 0.004118064523748696,
@@ -19124,6 +19209,10 @@
         "low": -0.0010407587640364167,
         "high": 0.0015376141266563912
       },
+      "accuracy_interval": {
+        "low": -0.006336405529953917,
+        "high": 0.0013160066006600657
+      },
       "std_error": 0.000784245506701547,
       "detectable": 0.0019500066894266276,
       "market": {
@@ -20213,6 +20302,10 @@
         "low": 0.0,
         "high": 0.0009804780419039687
       },
+      "accuracy_interval": {
+        "low": -0.009433962264150943,
+        "high": 0.0
+      },
       "std_error": 0.0004210597929892363,
       "detectable": 0.0010469545645609526,
       "market": {
@@ -20948,14 +21041,11 @@
       "learned_weights",
       "own_rating",
       "lineup_strength",
-      "per_map_rating",
-      "bo1_veto_sim",
-      "bo3_veto_sim",
-      "lan_online"
+      "bo1_veto_sim"
     ],
     "matches": 2243,
     "anchor_log_loss": 0.8043537145562815,
-    "final_log_loss": 0.6321794039231977,
+    "final_log_loss": 0.6322654614283383,
     "steps": [
       {
         "entered": "own_rating",
@@ -20983,20 +21073,8 @@
             "log_loss": 0.6334265338978912
           },
           {
-            "name": "per_map_rating",
-            "log_loss": 0.6329057408529233
-          },
-          {
             "name": "bo1_veto_sim",
             "log_loss": 0.6342320258970858
-          },
-          {
-            "name": "bo3_veto_sim",
-            "log_loss": 0.6338876850494611
-          },
-          {
-            "name": "lan_online",
-            "log_loss": 0.6334261033803056
           }
         ]
       },
@@ -21022,63 +21100,15 @@
             "log_loss": 0.6322654614283383
           },
           {
-            "name": "per_map_rating",
-            "log_loss": 0.6328663008932771
-          },
-          {
             "name": "bo1_veto_sim",
             "log_loss": 0.6329972865935025
-          },
-          {
-            "name": "bo3_veto_sim",
-            "log_loss": 0.632942011471423
-          },
-          {
-            "name": "lan_online",
-            "log_loss": 0.6325952122834986
-          }
-        ]
-      },
-      {
-        "entered": "lan_online",
-        "log_loss": 0.6321794039231977,
-        "added": -0.00008605750514056876,
-        "interval": {
-          "low": -0.00024679917208300905,
-          "high": 0.00007032841120269885
-        },
-        "tried": [
-          {
-            "name": "rating_calibration",
-            "log_loss": 0.6324616166163196
-          },
-          {
-            "name": "learned_weights",
-            "log_loss": 0.6324444620631187
-          },
-          {
-            "name": "per_map_rating",
-            "log_loss": 0.6324011233125232
-          },
-          {
-            "name": "bo1_veto_sim",
-            "log_loss": 0.6325564764619691
-          },
-          {
-            "name": "bo3_veto_sim",
-            "log_loss": 0.6325150108268124
-          },
-          {
-            "name": "lan_online",
-            "log_loss": 0.6321794039231977
           }
         ]
       }
     ],
     "frozen": [
       "own_rating",
-      "lineup_strength",
-      "lan_online"
+      "lineup_strength"
     ],
     "per_event": [
       {
@@ -21087,16 +21117,12 @@
         "training_matches": 0,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21104,8 +21130,6 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "matches": 0,
             "own_rating.shift": 0.0,
@@ -21119,16 +21143,12 @@
         "training_matches": 26,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21136,8 +21156,6 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "matches": 0,
             "own_rating.shift": 0.0,
@@ -21151,16 +21169,12 @@
         "training_matches": 75,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21168,12 +21182,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": -0.001429,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.00303,
+            "lineup_strength.lineup_strength": 0.003024,
             "matches": 49,
-            "own_rating.shift": 0.266177,
-            "rating": 0.505066
+            "own_rating.shift": 0.26611,
+            "rating": 0.505019
           }
         }
       },
@@ -21183,16 +21195,12 @@
         "training_matches": 75,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21200,12 +21208,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": -0.001429,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.00303,
+            "lineup_strength.lineup_strength": 0.003024,
             "matches": 49,
-            "own_rating.shift": 0.266177,
-            "rating": 0.505066
+            "own_rating.shift": 0.26611,
+            "rating": 0.505019
           }
         }
       },
@@ -21215,16 +21221,12 @@
         "training_matches": 115,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21232,12 +21234,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.048914,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": -0.000459,
+            "lineup_strength.lineup_strength": -0.000218,
             "matches": 89,
-            "own_rating.shift": 0.17907,
-            "rating": 0.466298
+            "own_rating.shift": 0.181457,
+            "rating": 0.467909
           }
         }
       },
@@ -21247,16 +21247,12 @@
         "training_matches": 194,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21264,12 +21260,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.045413,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.001704,
+            "lineup_strength.lineup_strength": 0.002167,
             "matches": 165,
-            "own_rating.shift": 0.116357,
-            "rating": 0.383072
+            "own_rating.shift": 0.118175,
+            "rating": 0.384939
           }
         }
       },
@@ -21279,16 +21273,12 @@
         "training_matches": 207,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21296,12 +21286,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.06477,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.010505,
+            "lineup_strength.lineup_strength": 0.011251,
             "matches": 178,
-            "own_rating.shift": 0.117252,
-            "rating": 0.395143
+            "own_rating.shift": 0.11985,
+            "rating": 0.398084
           }
         }
       },
@@ -21311,16 +21299,12 @@
         "training_matches": 236,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21328,12 +21312,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.009082,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.001722,
+            "lineup_strength.lineup_strength": 0.001857,
             "matches": 207,
-            "own_rating.shift": 0.096375,
-            "rating": 0.366636
+            "own_rating.shift": 0.096718,
+            "rating": 0.367084
           }
         }
       },
@@ -21343,16 +21325,12 @@
         "training_matches": 236,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21360,12 +21338,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.009082,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.001722,
+            "lineup_strength.lineup_strength": 0.001857,
             "matches": 207,
-            "own_rating.shift": 0.096375,
-            "rating": 0.366636
+            "own_rating.shift": 0.096718,
+            "rating": 0.367084
           }
         }
       },
@@ -21375,16 +21351,12 @@
         "training_matches": 277,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21392,12 +21364,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": -0.017885,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.001241,
+            "lineup_strength.lineup_strength": 0.000946,
             "matches": 248,
-            "own_rating.shift": 0.12163,
-            "rating": 0.364871
+            "own_rating.shift": 0.120956,
+            "rating": 0.363989
           }
         }
       },
@@ -21407,16 +21377,12 @@
         "training_matches": 311,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21424,12 +21390,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": -0.020233,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.003677,
+            "lineup_strength.lineup_strength": 0.003335,
             "matches": 282,
-            "own_rating.shift": 0.12357,
-            "rating": 0.382961
+            "own_rating.shift": 0.122784,
+            "rating": 0.38194
           }
         }
       },
@@ -21439,16 +21403,12 @@
         "training_matches": 346,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21456,12 +21416,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": -0.029805,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.038249,
+            "lineup_strength.lineup_strength": 0.037721,
             "matches": 312,
-            "own_rating.shift": 0.097928,
-            "rating": 0.377704
+            "own_rating.shift": 0.096835,
+            "rating": 0.376179
           }
         }
       },
@@ -21471,16 +21429,12 @@
         "training_matches": 380,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21488,12 +21442,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": -0.037754,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.042682,
+            "lineup_strength.lineup_strength": 0.041947,
             "matches": 346,
-            "own_rating.shift": 0.121293,
-            "rating": 0.377055
+            "own_rating.shift": 0.119883,
+            "rating": 0.375112
           }
         }
       },
@@ -21503,16 +21455,12 @@
         "training_matches": 453,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21520,12 +21468,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": -0.030403,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.063903,
+            "lineup_strength.lineup_strength": 0.063245,
             "matches": 419,
-            "own_rating.shift": 0.104809,
-            "rating": 0.386101
+            "own_rating.shift": 0.103587,
+            "rating": 0.384419
           }
         }
       },
@@ -21535,16 +21481,12 @@
         "training_matches": 477,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21552,12 +21494,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": -0.025424,
-            "lan_online.online_win_rate": -0.019359,
-            "lineup_strength.lineup_strength": 0.084118,
+            "lineup_strength.lineup_strength": 0.083568,
             "matches": 442,
-            "own_rating.shift": 0.132411,
-            "rating": 0.394959
+            "own_rating.shift": 0.131371,
+            "rating": 0.393559
           }
         }
       },
@@ -21567,16 +21507,12 @@
         "training_matches": 484,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21584,12 +21520,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": -0.036005,
-            "lan_online.online_win_rate": -0.018864,
-            "lineup_strength.lineup_strength": 0.081889,
+            "lineup_strength.lineup_strength": 0.081101,
             "matches": 449,
-            "own_rating.shift": 0.137114,
-            "rating": 0.393625
+            "own_rating.shift": 0.135645,
+            "rating": 0.391635
           }
         }
       },
@@ -21599,16 +21533,12 @@
         "training_matches": 533,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21616,12 +21546,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": -0.006553,
-            "lan_online.online_win_rate": -0.018283,
-            "lineup_strength.lineup_strength": 0.101115,
+            "lineup_strength.lineup_strength": 0.10096,
             "matches": 496,
-            "own_rating.shift": 0.156037,
-            "rating": 0.404617
+            "own_rating.shift": 0.155776,
+            "rating": 0.404233
           }
         }
       },
@@ -21631,16 +21559,12 @@
         "training_matches": 574,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21648,12 +21572,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": -0.019531,
-            "lan_online.online_win_rate": -0.019245,
-            "lineup_strength.lineup_strength": 0.110874,
+            "lineup_strength.lineup_strength": 0.110438,
             "matches": 534,
-            "own_rating.shift": 0.14113,
-            "rating": 0.401505
+            "own_rating.shift": 0.140244,
+            "rating": 0.400324
           }
         }
       },
@@ -21663,16 +21585,12 @@
         "training_matches": 614,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21680,12 +21598,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.015232,
-            "lan_online.online_win_rate": -0.020252,
-            "lineup_strength.lineup_strength": 0.131404,
+            "lineup_strength.lineup_strength": 0.131762,
             "matches": 574,
-            "own_rating.shift": 0.141095,
-            "rating": 0.413331
+            "own_rating.shift": 0.141879,
+            "rating": 0.414294
           }
         }
       },
@@ -21695,16 +21611,12 @@
         "training_matches": 643,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21712,12 +21624,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.054201,
-            "lan_online.online_win_rate": -0.020538,
-            "lineup_strength.lineup_strength": 0.148494,
+            "lineup_strength.lineup_strength": 0.149915,
             "matches": 603,
-            "own_rating.shift": 0.151895,
-            "rating": 0.42694
+            "own_rating.shift": 0.154773,
+            "rating": 0.430519
           }
         }
       },
@@ -21727,16 +21637,12 @@
         "training_matches": 684,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21744,12 +21650,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.016502,
-            "lan_online.online_win_rate": -0.017473,
-            "lineup_strength.lineup_strength": 0.167589,
+            "lineup_strength.lineup_strength": 0.168056,
             "matches": 644,
-            "own_rating.shift": 0.166562,
-            "rating": 0.40438
+            "own_rating.shift": 0.167452,
+            "rating": 0.405465
           }
         }
       },
@@ -21759,16 +21663,12 @@
         "training_matches": 719,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21776,12 +21676,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.033386,
-            "lan_online.online_win_rate": 0.022504,
-            "lineup_strength.lineup_strength": 0.171015,
+            "lineup_strength.lineup_strength": 0.172013,
             "matches": 679,
-            "own_rating.shift": 0.182344,
-            "rating": 0.40453
+            "own_rating.shift": 0.184106,
+            "rating": 0.406721
           }
         }
       },
@@ -21791,16 +21689,12 @@
         "training_matches": 748,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21808,12 +21702,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.031932,
-            "lan_online.online_win_rate": 0.022086,
-            "lineup_strength.lineup_strength": 0.192752,
+            "lineup_strength.lineup_strength": 0.193723,
             "matches": 708,
-            "own_rating.shift": 0.178476,
-            "rating": 0.406589
+            "own_rating.shift": 0.180198,
+            "rating": 0.408744
           }
         }
       },
@@ -21823,16 +21715,12 @@
         "training_matches": 761,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21840,12 +21728,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.032105,
-            "lan_online.online_win_rate": 0.02183,
-            "lineup_strength.lineup_strength": 0.201581,
+            "lineup_strength.lineup_strength": 0.202567,
             "matches": 721,
-            "own_rating.shift": 0.182926,
-            "rating": 0.412155
+            "own_rating.shift": 0.184686,
+            "rating": 0.414371
           }
         }
       },
@@ -21855,16 +21741,12 @@
         "training_matches": 802,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21872,12 +21754,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.025134,
-            "lan_online.online_win_rate": 0.023076,
-            "lineup_strength.lineup_strength": 0.225966,
+            "lineup_strength.lineup_strength": 0.226787,
             "matches": 762,
-            "own_rating.shift": 0.22256,
-            "rating": 0.422249
+            "own_rating.shift": 0.224006,
+            "rating": 0.424036
           }
         }
       },
@@ -21887,16 +21767,12 @@
         "training_matches": 831,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21904,12 +21780,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.054053,
-            "lan_online.online_win_rate": 0.022138,
-            "lineup_strength.lineup_strength": 0.233458,
+            "lineup_strength.lineup_strength": 0.235237,
             "matches": 791,
-            "own_rating.shift": 0.233821,
-            "rating": 0.439555
+            "own_rating.shift": 0.237074,
+            "rating": 0.443523
           }
         }
       },
@@ -21919,16 +21793,12 @@
         "training_matches": 937,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21936,12 +21806,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.029141,
-            "lan_online.online_win_rate": 0.022574,
-            "lineup_strength.lineup_strength": 0.245641,
+            "lineup_strength.lineup_strength": 0.246868,
             "matches": 897,
-            "own_rating.shift": 0.224759,
-            "rating": 0.428785
+            "own_rating.shift": 0.2267,
+            "rating": 0.431083
           }
         }
       },
@@ -21951,16 +21819,12 @@
         "training_matches": 964,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -21968,12 +21832,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.021476,
-            "lan_online.online_win_rate": 0.023096,
-            "lineup_strength.lineup_strength": 0.250366,
+            "lineup_strength.lineup_strength": 0.251285,
             "matches": 924,
-            "own_rating.shift": 0.233104,
-            "rating": 0.42828
+            "own_rating.shift": 0.234552,
+            "rating": 0.429995
           }
         }
       },
@@ -21983,16 +21845,12 @@
         "training_matches": 1013,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22000,12 +21858,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.061051,
-            "lan_online.online_win_rate": 0.022321,
-            "lineup_strength.lineup_strength": 0.26618,
+            "lineup_strength.lineup_strength": 0.268822,
             "matches": 973,
-            "own_rating.shift": 0.236124,
-            "rating": 0.438369
+            "own_rating.shift": 0.240345,
+            "rating": 0.443335
           }
         }
       },
@@ -22015,16 +21871,12 @@
         "training_matches": 1044,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22032,12 +21884,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.067441,
-            "lan_online.online_win_rate": 0.021428,
-            "lineup_strength.lineup_strength": 0.255318,
+            "lineup_strength.lineup_strength": 0.258178,
             "matches": 1003,
-            "own_rating.shift": 0.243691,
-            "rating": 0.453293
+            "own_rating.shift": 0.248498,
+            "rating": 0.458942
           }
         }
       },
@@ -22047,16 +21897,12 @@
         "training_matches": 1060,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22064,12 +21910,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.030286,
-            "lan_online.online_win_rate": 0.021737,
-            "lineup_strength.lineup_strength": 0.250336,
+            "lineup_strength.lineup_strength": 0.251649,
             "matches": 1019,
-            "own_rating.shift": 0.237487,
-            "rating": 0.446027
+            "own_rating.shift": 0.239665,
+            "rating": 0.448597
           }
         }
       },
@@ -22079,16 +21923,12 @@
         "training_matches": 1089,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22096,12 +21936,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.041177,
-            "lan_online.online_win_rate": 0.022116,
-            "lineup_strength.lineup_strength": 0.262372,
+            "lineup_strength.lineup_strength": 0.264128,
             "matches": 1048,
-            "own_rating.shift": 0.235019,
-            "rating": 0.440021
+            "own_rating.shift": 0.238,
+            "rating": 0.443556
           }
         }
       },
@@ -22111,16 +21949,12 @@
         "training_matches": 1129,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22128,12 +21962,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.054212,
-            "lan_online.online_win_rate": 0.022003,
-            "lineup_strength.lineup_strength": 0.28364,
+            "lineup_strength.lineup_strength": 0.285959,
             "matches": 1088,
-            "own_rating.shift": 0.245582,
-            "rating": 0.447526
+            "own_rating.shift": 0.249603,
+            "rating": 0.452255
           }
         }
       },
@@ -22143,16 +21975,12 @@
         "training_matches": 1202,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22160,12 +21988,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.203653,
-            "lan_online.online_win_rate": 0.025092,
-            "lineup_strength.lineup_strength": 0.357735,
+            "lineup_strength.lineup_strength": 0.36738,
             "matches": 1161,
-            "own_rating.shift": 0.200939,
-            "rating": 0.384517
+            "own_rating.shift": 0.215375,
+            "rating": 0.40153
           }
         }
       },
@@ -22175,16 +22001,12 @@
         "training_matches": 1202,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22192,12 +22014,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.203653,
-            "lan_online.online_win_rate": 0.025092,
-            "lineup_strength.lineup_strength": 0.357735,
+            "lineup_strength.lineup_strength": 0.36738,
             "matches": 1161,
-            "own_rating.shift": 0.200939,
-            "rating": 0.384517
+            "own_rating.shift": 0.215375,
+            "rating": 0.40153
           }
         }
       },
@@ -22207,16 +22027,12 @@
         "training_matches": 1246,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22224,12 +22040,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.230337,
-            "lan_online.online_win_rate": 0.025021,
-            "lineup_strength.lineup_strength": 0.367414,
+            "lineup_strength.lineup_strength": 0.378619,
             "matches": 1205,
-            "own_rating.shift": 0.206035,
-            "rating": 0.388379
+            "own_rating.shift": 0.222566,
+            "rating": 0.407758
           }
         }
       },
@@ -22239,16 +22053,12 @@
         "training_matches": 1287,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22256,12 +22066,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.225241,
-            "lan_online.online_win_rate": 0.025115,
-            "lineup_strength.lineup_strength": 0.369589,
+            "lineup_strength.lineup_strength": 0.38057,
             "matches": 1246,
-            "own_rating.shift": 0.208221,
-            "rating": 0.388773
+            "own_rating.shift": 0.224536,
+            "rating": 0.407842
           }
         }
       },
@@ -22271,16 +22079,12 @@
         "training_matches": 1317,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22288,12 +22092,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.210068,
-            "lan_online.online_win_rate": 0.02475,
-            "lineup_strength.lineup_strength": 0.377361,
+            "lineup_strength.lineup_strength": 0.388016,
             "matches": 1276,
-            "own_rating.shift": 0.211211,
-            "rating": 0.394362
+            "own_rating.shift": 0.226984,
+            "rating": 0.412687
           }
         }
       },
@@ -22303,16 +22105,12 @@
         "training_matches": 1330,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22320,12 +22118,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.191479,
-            "lan_online.online_win_rate": 0.02458,
-            "lineup_strength.lineup_strength": 0.386504,
+            "lineup_strength.lineup_strength": 0.396266,
             "matches": 1289,
-            "own_rating.shift": 0.2116,
-            "rating": 0.396223
+            "own_rating.shift": 0.226127,
+            "rating": 0.413054
           }
         }
       },
@@ -22335,16 +22131,12 @@
         "training_matches": 1436,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 0.8,
             "matches": 0,
@@ -22352,12 +22144,10 @@
             "rating": 0.2
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.230553,
-            "lan_online.online_win_rate": 0.024512,
-            "lineup_strength.lineup_strength": 0.419364,
+            "lineup_strength.lineup_strength": 0.431604,
             "matches": 1395,
-            "own_rating.shift": 0.209878,
-            "rating": 0.39523
+            "own_rating.shift": 0.228188,
+            "rating": 0.416352
           }
         }
       },
@@ -22367,29 +22157,23 @@
         "training_matches": 1467,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": -0.018743,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": -0.011738,
-            "market": 0.747125,
+            "lineup_strength.lineup_strength": -0.011763,
+            "market": 0.746982,
             "matches": 31,
-            "own_rating.shift": -0.05216,
-            "rating": -0.009345
+            "own_rating.shift": -0.052091,
+            "rating": -0.009712
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.230553,
-            "lan_online.online_win_rate": 0.024512,
-            "lineup_strength.lineup_strength": 0.419364,
+            "lineup_strength.lineup_strength": 0.431604,
             "matches": 1395,
-            "own_rating.shift": 0.209878,
-            "rating": 0.39523
+            "own_rating.shift": 0.228188,
+            "rating": 0.416352
           }
         }
       },
@@ -22399,29 +22183,23 @@
         "training_matches": 1517,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.003833,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.00297,
-            "market": 0.813731,
+            "lineup_strength.lineup_strength": 0.002983,
+            "market": 0.813822,
             "matches": 81,
-            "own_rating.shift": -0.063639,
-            "rating": -0.003554
+            "own_rating.shift": -0.063646,
+            "rating": -0.003465
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.230553,
-            "lan_online.online_win_rate": 0.024512,
-            "lineup_strength.lineup_strength": 0.419364,
+            "lineup_strength.lineup_strength": 0.431604,
             "matches": 1395,
-            "own_rating.shift": 0.209878,
-            "rating": 0.39523
+            "own_rating.shift": 0.228188,
+            "rating": 0.416352
           }
         }
       },
@@ -22431,29 +22209,23 @@
         "training_matches": 1558,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.042578,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.004932,
-            "market": 0.832963,
+            "lineup_strength.lineup_strength": 0.005152,
+            "market": 0.834566,
             "matches": 122,
-            "own_rating.shift": -0.047904,
-            "rating": 0.062992
+            "own_rating.shift": -0.047701,
+            "rating": 0.063817
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.230553,
-            "lan_online.online_win_rate": 0.024512,
-            "lineup_strength.lineup_strength": 0.419364,
+            "lineup_strength.lineup_strength": 0.431604,
             "matches": 1395,
-            "own_rating.shift": 0.209878,
-            "rating": 0.39523
+            "own_rating.shift": 0.228188,
+            "rating": 0.416352
           }
         }
       },
@@ -22463,29 +22235,23 @@
         "training_matches": 1632,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.049167,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.008305,
-            "market": 0.785828,
+            "lineup_strength.lineup_strength": 0.008588,
+            "market": 0.788058,
             "matches": 196,
-            "own_rating.shift": -0.016977,
-            "rating": 0.035291
+            "own_rating.shift": -0.016635,
+            "rating": 0.036103
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.230553,
-            "lan_online.online_win_rate": 0.024512,
-            "lineup_strength.lineup_strength": 0.419364,
+            "lineup_strength.lineup_strength": 0.431604,
             "matches": 1395,
-            "own_rating.shift": 0.209878,
-            "rating": 0.39523
+            "own_rating.shift": 0.228188,
+            "rating": 0.416352
           }
         }
       },
@@ -22495,29 +22261,23 @@
         "training_matches": 1661,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.043769,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.000454,
-            "market": 0.751244,
+            "lineup_strength.lineup_strength": 0.00079,
+            "market": 0.753719,
             "matches": 225,
-            "own_rating.shift": -0.012147,
-            "rating": 0.047087
+            "own_rating.shift": -0.011698,
+            "rating": 0.0478
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.230553,
-            "lan_online.online_win_rate": 0.024512,
-            "lineup_strength.lineup_strength": 0.419364,
+            "lineup_strength.lineup_strength": 0.431604,
             "matches": 1395,
-            "own_rating.shift": 0.209878,
-            "rating": 0.39523
+            "own_rating.shift": 0.228188,
+            "rating": 0.416352
           }
         }
       },
@@ -22527,29 +22287,23 @@
         "training_matches": 1700,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.061464,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": -0.001839,
-            "market": 0.790903,
+            "lineup_strength.lineup_strength": -0.001341,
+            "market": 0.794848,
             "matches": 264,
-            "own_rating.shift": -0.063734,
-            "rating": 0.046987
+            "own_rating.shift": -0.062781,
+            "rating": 0.047673
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.230553,
-            "lan_online.online_win_rate": 0.024512,
-            "lineup_strength.lineup_strength": 0.419364,
+            "lineup_strength.lineup_strength": 0.431604,
             "matches": 1395,
-            "own_rating.shift": 0.209878,
-            "rating": 0.39523
+            "own_rating.shift": 0.228188,
+            "rating": 0.416352
           }
         }
       },
@@ -22559,29 +22313,23 @@
         "training_matches": 1730,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.065932,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.008142,
-            "market": 0.836467,
+            "lineup_strength.lineup_strength": 0.008686,
+            "market": 0.840838,
             "matches": 292,
-            "own_rating.shift": -0.068162,
-            "rating": 0.05124
+            "own_rating.shift": -0.067077,
+            "rating": 0.052008
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.235345,
-            "lan_online.online_win_rate": 0.024479,
-            "lineup_strength.lineup_strength": 0.420587,
+            "lineup_strength.lineup_strength": 0.433075,
             "matches": 1397,
-            "own_rating.shift": 0.210876,
-            "rating": 0.396204
+            "own_rating.shift": 0.229621,
+            "rating": 0.417814
           }
         }
       },
@@ -22591,29 +22339,23 @@
         "training_matches": 1743,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.067455,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.008378,
-            "market": 0.819424,
+            "lineup_strength.lineup_strength": 0.008959,
+            "market": 0.824,
             "matches": 305,
-            "own_rating.shift": -0.071291,
-            "rating": 0.051878
+            "own_rating.shift": -0.070123,
+            "rating": 0.052658
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.235345,
-            "lan_online.online_win_rate": 0.024479,
-            "lineup_strength.lineup_strength": 0.420587,
+            "lineup_strength.lineup_strength": 0.433075,
             "matches": 1397,
-            "own_rating.shift": 0.210876,
-            "rating": 0.396204
+            "own_rating.shift": 0.229621,
+            "rating": 0.417814
           }
         }
       },
@@ -22623,29 +22365,23 @@
         "training_matches": 1743,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.067455,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.008378,
-            "market": 0.819424,
+            "lineup_strength.lineup_strength": 0.008959,
+            "market": 0.824,
             "matches": 305,
-            "own_rating.shift": -0.071291,
-            "rating": 0.051878
+            "own_rating.shift": -0.070123,
+            "rating": 0.052658
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.235345,
-            "lan_online.online_win_rate": 0.024479,
-            "lineup_strength.lineup_strength": 0.420587,
+            "lineup_strength.lineup_strength": 0.433075,
             "matches": 1397,
-            "own_rating.shift": 0.210876,
-            "rating": 0.396204
+            "own_rating.shift": 0.229621,
+            "rating": 0.417814
           }
         }
       },
@@ -22655,29 +22391,23 @@
         "training_matches": 1814,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.054163,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": -0.003867,
-            "market": 0.829734,
+            "lineup_strength.lineup_strength": -0.00336,
+            "market": 0.833551,
             "matches": 376,
-            "own_rating.shift": -0.050278,
-            "rating": 0.054491
+            "own_rating.shift": -0.049271,
+            "rating": 0.055166
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.235345,
-            "lan_online.online_win_rate": 0.024479,
-            "lineup_strength.lineup_strength": 0.420587,
+            "lineup_strength.lineup_strength": 0.433075,
             "matches": 1397,
-            "own_rating.shift": 0.210876,
-            "rating": 0.396204
+            "own_rating.shift": 0.229621,
+            "rating": 0.417814
           }
         }
       },
@@ -22687,29 +22417,23 @@
         "training_matches": 1844,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.054163,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": -0.003867,
-            "market": 0.829734,
+            "lineup_strength.lineup_strength": -0.00336,
+            "market": 0.833551,
             "matches": 376,
-            "own_rating.shift": -0.050278,
-            "rating": 0.054491
+            "own_rating.shift": -0.049271,
+            "rating": 0.055166
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.250999,
-            "lan_online.online_win_rate": 0.024307,
-            "lineup_strength.lineup_strength": 0.427271,
+            "lineup_strength.lineup_strength": 0.440706,
             "matches": 1427,
-            "own_rating.shift": 0.215625,
-            "rating": 0.400945
+            "own_rating.shift": 0.23603,
+            "rating": 0.424399
           }
         }
       },
@@ -22719,29 +22443,23 @@
         "training_matches": 1950,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0435,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.000937,
-            "market": 0.923029,
+            "lineup_strength.lineup_strength": 0.00133,
+            "market": 0.926241,
             "matches": 480,
-            "own_rating.shift": -0.080648,
-            "rating": 0.039213
+            "own_rating.shift": -0.079771,
+            "rating": 0.03978
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.239966,
-            "lan_online.online_win_rate": 0.024267,
-            "lineup_strength.lineup_strength": 0.427621,
+            "lineup_strength.lineup_strength": 0.440491,
             "matches": 1429,
-            "own_rating.shift": 0.214145,
-            "rating": 0.400401
+            "own_rating.shift": 0.23367,
+            "rating": 0.422826
           }
         }
       },
@@ -22751,29 +22469,23 @@
         "training_matches": 1990,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": 0.0,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
             "market": 1.0,
             "matches": 0,
             "own_rating.shift": 0.0
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.0435,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.000937,
-            "market": 0.923029,
+            "lineup_strength.lineup_strength": 0.00133,
+            "market": 0.926241,
             "matches": 480,
-            "own_rating.shift": -0.080648,
-            "rating": 0.039213
+            "own_rating.shift": -0.079771,
+            "rating": 0.03978
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.249931,
-            "lan_online.online_win_rate": 0.023993,
-            "lineup_strength.lineup_strength": 0.434224,
+            "lineup_strength.lineup_strength": 0.447731,
             "matches": 1466,
-            "own_rating.shift": 0.223902,
-            "rating": 0.409443
+            "own_rating.shift": 0.244874,
+            "rating": 0.433304
           }
         }
       },
@@ -22783,29 +22495,23 @@
         "training_matches": 2021,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": -0.00407,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
-            "market": 1.023404,
+            "market": 1.023412,
             "matches": 1,
-            "own_rating.shift": -0.011699
+            "own_rating.shift": -0.011703
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.050001,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.01777,
-            "market": 0.884657,
+            "lineup_strength.lineup_strength": 0.018261,
+            "market": 0.888321,
             "matches": 509,
-            "own_rating.shift": -0.153098,
-            "rating": 0.018956
+            "own_rating.shift": -0.152217,
+            "rating": 0.019605
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.249931,
-            "lan_online.online_win_rate": 0.023993,
-            "lineup_strength.lineup_strength": 0.434224,
+            "lineup_strength.lineup_strength": 0.447731,
             "matches": 1466,
-            "own_rating.shift": 0.223902,
-            "rating": 0.409443
+            "own_rating.shift": 0.244874,
+            "rating": 0.433304
           }
         }
       },
@@ -22815,29 +22521,23 @@
         "training_matches": 2077,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": -0.00407,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
-            "market": 1.023404,
+            "market": 1.023412,
             "matches": 1,
-            "own_rating.shift": -0.011699
+            "own_rating.shift": -0.011703
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.130143,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.036343,
-            "market": 0.848642,
+            "lineup_strength.lineup_strength": 0.037858,
+            "market": 0.858581,
             "matches": 565,
-            "own_rating.shift": -0.213557,
-            "rating": 0.026556
+            "own_rating.shift": -0.210734,
+            "rating": 0.028329
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.249931,
-            "lan_online.online_win_rate": 0.023993,
-            "lineup_strength.lineup_strength": 0.434224,
+            "lineup_strength.lineup_strength": 0.447731,
             "matches": 1466,
-            "own_rating.shift": 0.223902,
-            "rating": 0.409443
+            "own_rating.shift": 0.244874,
+            "rating": 0.433304
           }
         }
       },
@@ -22847,29 +22547,23 @@
         "training_matches": 2106,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": -0.00407,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
-            "market": 1.023404,
+            "market": 1.023412,
             "matches": 1,
-            "own_rating.shift": -0.011699
+            "own_rating.shift": -0.011703
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.136698,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.047949,
-            "market": 0.877069,
+            "lineup_strength.lineup_strength": 0.049579,
+            "market": 0.888226,
             "matches": 594,
-            "own_rating.shift": -0.215984,
-            "rating": 0.02396
+            "own_rating.shift": -0.212839,
+            "rating": 0.025702
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.249931,
-            "lan_online.online_win_rate": 0.023993,
-            "lineup_strength.lineup_strength": 0.434224,
+            "lineup_strength.lineup_strength": 0.447731,
             "matches": 1466,
-            "own_rating.shift": 0.223902,
-            "rating": 0.409443
+            "own_rating.shift": 0.244874,
+            "rating": 0.433304
           }
         }
       },
@@ -22879,29 +22573,23 @@
         "training_matches": 2135,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": -0.00407,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
-            "market": 1.023404,
+            "market": 1.023412,
             "matches": 1,
-            "own_rating.shift": -0.011699
+            "own_rating.shift": -0.011703
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.161582,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.045497,
-            "market": 0.821832,
+            "lineup_strength.lineup_strength": 0.047462,
+            "market": 0.834754,
             "matches": 623,
-            "own_rating.shift": -0.178427,
-            "rating": 0.03502
+            "own_rating.shift": -0.174405,
+            "rating": 0.037063
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.249931,
-            "lan_online.online_win_rate": 0.023993,
-            "lineup_strength.lineup_strength": 0.434224,
+            "lineup_strength.lineup_strength": 0.447731,
             "matches": 1466,
-            "own_rating.shift": 0.223902,
-            "rating": 0.409443
+            "own_rating.shift": 0.244874,
+            "rating": 0.433304
           }
         }
       },
@@ -22911,29 +22599,23 @@
         "training_matches": 2149,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": -0.00407,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
-            "market": 1.023404,
+            "market": 1.023412,
             "matches": 1,
-            "own_rating.shift": -0.011699
+            "own_rating.shift": -0.011703
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.150946,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.047306,
-            "market": 0.832065,
+            "lineup_strength.lineup_strength": 0.049181,
+            "market": 0.844287,
             "matches": 637,
-            "own_rating.shift": -0.18274,
-            "rating": 0.027998
+            "own_rating.shift": -0.178921,
+            "rating": 0.029973
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.249931,
-            "lan_online.online_win_rate": 0.023993,
-            "lineup_strength.lineup_strength": 0.434224,
+            "lineup_strength.lineup_strength": 0.447731,
             "matches": 1466,
-            "own_rating.shift": 0.223902,
-            "rating": 0.409443
+            "own_rating.shift": 0.244874,
+            "rating": 0.433304
           }
         }
       },
@@ -22943,29 +22625,23 @@
         "training_matches": 2190,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": -0.00407,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
-            "market": 1.023404,
+            "market": 1.023412,
             "matches": 1,
-            "own_rating.shift": -0.011699
+            "own_rating.shift": -0.011703
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.127004,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.051272,
-            "market": 0.894095,
+            "lineup_strength.lineup_strength": 0.053094,
+            "market": 0.904382,
             "matches": 678,
-            "own_rating.shift": -0.155918,
-            "rating": 0.008917
+            "own_rating.shift": -0.15292,
+            "rating": 0.010627
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.249931,
-            "lan_online.online_win_rate": 0.023993,
-            "lineup_strength.lineup_strength": 0.434224,
+            "lineup_strength.lineup_strength": 0.447731,
             "matches": 1466,
-            "own_rating.shift": 0.223902,
-            "rating": 0.409443
+            "own_rating.shift": 0.244874,
+            "rating": 0.433304
           }
         }
       },
@@ -22975,29 +22651,23 @@
         "training_matches": 2204,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": -0.00407,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
-            "market": 1.023404,
+            "market": 1.023412,
             "matches": 1,
-            "own_rating.shift": -0.011699
+            "own_rating.shift": -0.011703
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.138837,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.053164,
-            "market": 0.886278,
+            "lineup_strength.lineup_strength": 0.055159,
+            "market": 0.897485,
             "matches": 692,
-            "own_rating.shift": -0.155861,
-            "rating": 0.011948
+            "own_rating.shift": -0.152552,
+            "rating": 0.013835
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.249931,
-            "lan_online.online_win_rate": 0.023993,
-            "lineup_strength.lineup_strength": 0.434224,
+            "lineup_strength.lineup_strength": 0.447731,
             "matches": 1466,
-            "own_rating.shift": 0.223902,
-            "rating": 0.409443
+            "own_rating.shift": 0.244874,
+            "rating": 0.433304
           }
         }
       },
@@ -23007,29 +22677,23 @@
         "training_matches": 2245,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": -0.00407,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
-            "market": 1.023404,
+            "market": 1.023412,
             "matches": 1,
-            "own_rating.shift": -0.011699
+            "own_rating.shift": -0.011703
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.134176,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.038432,
-            "market": 0.889118,
+            "lineup_strength.lineup_strength": 0.040703,
+            "market": 0.900187,
             "matches": 733,
-            "own_rating.shift": -0.141401,
-            "rating": -0.00448
+            "own_rating.shift": -0.138288,
+            "rating": -0.002627
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.249931,
-            "lan_online.online_win_rate": 0.023993,
-            "lineup_strength.lineup_strength": 0.434224,
+            "lineup_strength.lineup_strength": 0.447731,
             "matches": 1466,
-            "own_rating.shift": 0.223902,
-            "rating": 0.409443
+            "own_rating.shift": 0.244874,
+            "rating": 0.433304
           }
         }
       },
@@ -23039,29 +22703,23 @@
         "training_matches": 2275,
         "parameters": {
           "market": {
-            "lan_online.lan_win_rate": -0.00407,
-            "lan_online.online_win_rate": 0.0,
             "lineup_strength.lineup_strength": 0.0,
-            "market": 1.023404,
+            "market": 1.023412,
             "matches": 1,
-            "own_rating.shift": -0.011699
+            "own_rating.shift": -0.011703
           },
           "market+rating": {
-            "lan_online.lan_win_rate": 0.147535,
-            "lan_online.online_win_rate": 0.0,
-            "lineup_strength.lineup_strength": 0.029023,
-            "market": 0.937836,
+            "lineup_strength.lineup_strength": 0.03156,
+            "market": 0.950086,
             "matches": 763,
-            "own_rating.shift": -0.120573,
-            "rating": -0.02015
+            "own_rating.shift": -0.116993,
+            "rating": -0.018158
           },
           "rating": {
-            "lan_online.lan_win_rate": 0.249931,
-            "lan_online.online_win_rate": 0.023993,
-            "lineup_strength.lineup_strength": 0.434224,
+            "lineup_strength.lineup_strength": 0.447731,
             "matches": 1466,
-            "own_rating.shift": 0.223902,
-            "rating": 0.409443
+            "own_rating.shift": 0.244874,
+            "rating": 0.433304
           }
         }
       }
@@ -23073,10 +22731,10 @@
     "stages": [],
     "combination": [
       "own_rating",
-      "lineup_strength",
-      "lan_online"
+      "lineup_strength"
     ],
     "statement": "The Holdout is pending: no Holdout Match has been played in this archive, so the frozen combination was not evaluated.",
+    "accuracy_interval": null,
     "evaluated_at": null,
     "matches": 0,
     "events": 0,

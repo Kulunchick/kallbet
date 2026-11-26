@@ -133,13 +133,22 @@ impl Verdict {
 /// `market_difference` the mean log-loss difference on the paired Matches with
 /// a market line (`None`: there are none, so none is made worse).
 ///
+/// `accuracy` is the interval of the accuracy difference (variant − anchor:
+/// above zero is better) on the same paired Matches, from the same bootstrap.
+/// KallBet scores only the picked winner, so a Candidate Signal that gives
+/// better probabilities but picks fewer winners is not promoted.
+///
 /// - fewer than `min_matches` paired Matches: `no evidence`, whatever the numbers;
-/// - the interval below zero and the market subset not worse: `promote`;
+/// - the interval below zero, the market subset not worse and the accuracy
+///   interval not wholly below zero: `promote`; with the accuracy interval
+///   wholly below zero: `no evidence` ("better probabilities but fewer winners
+///   picked");
 /// - the interval above zero: `harmful`;
 /// - anything else: `no evidence`.
 pub fn verdict(
     paired: usize,
     interval: Interval,
+    accuracy: Option<Interval>,
     market_difference: Option<f64>,
     protocol: &Protocol,
 ) -> (Verdict, String) {
@@ -157,6 +166,11 @@ pub fn verdict(
             Some(d) if d > 0.0 => (
                 Verdict::NoEvidence,
                 format!("better overall, but worse on the Matches with a market line ({d:+.4})"),
+            ),
+            _ if accuracy.is_some_and(|a| a.high < 0.0) => (
+                Verdict::NoEvidence,
+                "better probabilities but fewer winners picked: the interval of the log-loss difference is below zero, that of the accuracy difference too"
+                    .into(),
             ),
             _ => (
                 Verdict::Promote,
@@ -176,4 +190,20 @@ pub fn verdict(
         Verdict::NoEvidence,
         "the interval of the log-loss difference includes zero".into(),
     )
+}
+
+/// The Event-bootstrap interval of the accuracy difference (variant − anchor)
+/// over `(event, team A won, anchor, variant)` rows, with the protocol's
+/// resamples, level and seed: the winners-picked side of the verdict.
+pub fn accuracy_bootstrap(
+    rows: impl Iterator<Item = (i64, bool, f64, f64)>,
+    protocol: &Protocol,
+) -> Option<Interval> {
+    let diffs: Vec<(i64, f64)> = rows
+        .map(|(event, won, anchor, variant)| {
+            let hit = |p: f64| f64::from(u8::from(correct(p, won)));
+            (event, hit(variant) - hit(anchor))
+        })
+        .collect();
+    event_bootstrap(&diffs, protocol.resamples, protocol.level, protocol.seed).map(|b| b.interval)
 }

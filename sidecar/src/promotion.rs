@@ -76,7 +76,7 @@ impl Promotion {
         let report: Value = serde_json::from_slice(&bytes)?;
         if report["protocol_version"] != lab::PROTOCOL_VERSION {
             return Err(format!(
-                "the report's protocol is {}, not {}",
+                "the report's protocol is {}, not {}: its verdicts were decided by another rule (signal-lab/3 also requires that a promoted signal picks no fewer winners); rerun the lab",
                 report["protocol_version"],
                 lab::PROTOCOL_VERSION
             )

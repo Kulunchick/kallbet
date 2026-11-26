@@ -42,7 +42,7 @@ pub use signals::{CandidateSignal, FittedSignal, MatchView, Observed};
 /// The protocol's version, named in every report and run record. Bump it when
 /// the metric, the resampling, the verdict rule or the walk-forward boundary
 /// changes; a new Candidate Signal does not change it.
-pub const PROTOCOL_VERSION: &str = "signal-lab/2";
+pub const PROTOCOL_VERSION: &str = "signal-lab/3";
 
 /// The fixed settings of the protocol (spec #33, "Protocol").
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]

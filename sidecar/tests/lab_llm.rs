@@ -482,6 +482,7 @@ async fn the_report_compares_single_debate_and_anchor_with_intervals_and_judges_
         let (verdict, _) = stats::verdict(
             c.paired,
             interval,
+            c.accuracy_interval,
             c.market.as_ref().map(|m| m.log_loss_difference),
             &lab.protocol,
         );

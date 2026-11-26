@@ -67,6 +67,7 @@ async fn the_learned_weights_are_reported_under_the_protocol_with_the_weights_of
     let (verdict, reason) = stats::verdict(
         c.paired,
         interval,
+        c.accuracy_interval,
         c.market.as_ref().map(|m| m.log_loss_difference),
         &lab.protocol,
     );
