@@ -390,7 +390,7 @@ def main():
     parser.add_argument("command", choices=["collect", "tournaments", "audit", "report"])
     args = parser.parse_args()
     backtest = load_backtest_collector()
-    needs_odds = args.command == "tournaments" or (
+    needs_odds = args.command in ("tournaments", "audit") or (
         args.command == "collect" and {"oddspapi-fixtures", "oddspapi-history"} & set(args.only.split(",")))
     if needs_odds:
         backtest.load_secrets(args.env)
