@@ -332,7 +332,10 @@ impl Lab {
         };
         let excluded = if holdout_side { BTreeSet::new() } else { holdout_ids.clone() };
         let map_history = self.archive.map_history.without_stages(&excluded);
-        let veto_history = self.archive.veto_history.without_stages(&excluded);
+        let mut veto_history = self.archive.veto_history.without_stages(&excluded);
+        if holdout_side {
+            veto_history.exclude_round_scores(holdout_ids);
+        }
         let mut by_id: BTreeMap<i64, Event> = BTreeMap::new();
         for stage in &self.archive.stages {
             if holdout_ids.contains(&stage.id) != holdout_side {
