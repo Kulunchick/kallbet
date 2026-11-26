@@ -1,6 +1,7 @@
 //! Ticket #37 (spec #33): the Holdout boundary. The Holdout is PGL Major
 //! Singapore 2026 Stage 2, Stage 3 and Playoffs, and any Event completed after
-//! spec #33 was published (2026-11-25 23:46:46 UTC). Singapore Stage 1 had been
+//! spec #33 was published (2026-11-25 23:46:46 UTC) or not complete in the
+//! archive (its last result may come after it). Singapore Stage 1 had been
 //! looked at and belongs to the training side. No fitting and no selection
 //! reads a Holdout Match: the runner keeps them apart and only the final step
 //! (`selection::holdout`) sees them, once, after the selection is frozen.
@@ -29,11 +30,13 @@ impl Default for Holdout {
     }
 }
 impl Holdout {
-    /// Whether `stage` is in the Holdout; `event_last_result` is the latest
-    /// result of any Stage of its Event.
-    pub fn contains(&self, stage: &ReplayStage, event_last_result: Instant) -> bool {
+    /// Whether `stage` is in the Holdout; `event_last_result` is when the last
+    /// result of its Event became known, `None` while the Event is not
+    /// complete: its last result may yet come after the boundary, so it is in
+    /// the Holdout.
+    pub fn contains(&self, stage: &ReplayStage, event_last_result: Option<Instant>) -> bool {
         !self.training_stages.contains(&stage.id)
-            && (stage.cutoff >= self.from || event_last_result >= self.from)
+            && (stage.cutoff >= self.from || event_last_result.is_none_or(|t| t >= self.from))
     }
     pub fn describe(&self) -> String {
         let kept = if self.training_stages.is_empty() {
@@ -55,7 +58,7 @@ impl Holdout {
         };
         format!(
             "every Stage that begins at or after {}, or whose Event has a result at or after \
-             it{kept}",
+             it or is not complete{kept}",
             self.from.format("%Y-%m-%d %H:%M:%S UTC")
         )
     }

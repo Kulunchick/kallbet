@@ -445,3 +445,78 @@ fn the_run_record_says_whether_the_holdout_was_evaluated() {
     assert_eq!(json["holdout"]["status"], "pending");
     assert!(json["selection"]["steps"].is_array());
 }
+
+/// Records every training Match each fit is given.
+struct Recorder {
+    inner: Arc<dyn CandidateSignal>,
+    fitted_on: Arc<Mutex<BTreeSet<i64>>>,
+}
+impl CandidateSignal for Recorder {
+    fn name(&self) -> &'static str {
+        "recorder"
+    }
+    fn description(&self) -> &'static str {
+        "the rating calibration, recording its training Matches"
+    }
+    fn needs(&self) -> &'static str {
+        self.inner.needs()
+    }
+    fn fit(&self, training: &[Observed]) -> Result<Box<dyn FittedSignal>> {
+        self.fitted_on
+            .lock()
+            .unwrap()
+            .extend(training.iter().map(|o| o.view.game.id));
+        self.inner.fit(training)
+    }
+}
+
+fn recorded(lab: &mut Lab) -> Arc<Mutex<BTreeSet<i64>>> {
+    let fitted_on = Arc::new(Mutex::new(BTreeSet::new()));
+    lab.signals = vec![Arc::new(Recorder {
+        inner: signals::by_name("rating_calibration").unwrap(),
+        fitted_on: fitted_on.clone(),
+    })];
+    fitted_on
+}
+
+const AUSTIN: i64 = 9309;
+
+fn event_matches(archive: &ReplayArchive, event: i64) -> BTreeSet<i64> {
+    archive
+        .stages
+        .iter()
+        .filter(|s| s.event_id == event)
+        .flat_map(|s| s.matches.iter().map(|m| m.game.id))
+        .collect()
+}
+
+// Finding 9 (review of 6eea194): only complete Events train. An Event with a
+// Stage still in play, or a result whose finish is unknown, has no known end:
+// it trains no other Event, and as its last result may fall after the
+// boundary, it is not on the training side either.
+#[tokio::test]
+async fn an_event_without_a_known_end_trains_nothing() {
+    for break_it in [
+        (|a: &mut ReplayArchive| {
+            a.stages.iter_mut().find(|s| s.id == 16725).unwrap().complete = false
+        }) as fn(&mut ReplayArchive),
+        |a: &mut ReplayArchive| {
+            let s = a.stages.iter_mut().find(|s| s.id == 16658).unwrap();
+            s.matches[0].reported_finish = None;
+        },
+    ] {
+        let mut archive = whole();
+        break_it(&mut archive);
+        let austin = event_matches(&archive, AUSTIN);
+        let mut lab = Lab::new(archive).unwrap();
+        let fitted_on = recorded(&mut lab);
+        let outcome = lab.run().await.unwrap();
+        assert!(fitted_on.lock().unwrap().is_disjoint(&austin));
+        assert!(outcome.report.events.iter().all(|e| e.id != AUSTIN));
+        assert!(
+            outcome.report.holdout.stages.iter().any(|s| s.contains("Austin")),
+            "{:?}",
+            outcome.report.holdout.stages
+        );
+    }
+}

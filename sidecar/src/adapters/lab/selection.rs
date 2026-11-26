@@ -138,7 +138,7 @@ fn extra_names(signals: &[&Arc<dyn CandidateSignal>]) -> Vec<String> {
 
 /// The training-side Events that ended before `begins`: the walk-forward boundary.
 fn before(events: &[Event], begins: Instant) -> impl Iterator<Item = usize> + '_ {
-    (0..events.len()).filter(move |&j| events[j].info.ends < begins)
+    (0..events.len()).filter(move |&j| events[j].ended_before(begins))
 }
 
 /// Training rows of the combiner for an Event that begins at `begins`.

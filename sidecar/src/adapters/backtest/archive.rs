@@ -93,6 +93,9 @@ pub struct ReplayStage {
     pub results: Vec<(i64, i64)>,
     /// Every Match of the Stage is finished or cancelled.
     pub complete: bool,
+    /// The latest reported `end_at` of its finished Matches that are not
+    /// scored (forfeits), which `known_end` adds to the scored ones.
+    pub unscored_end: Option<Instant>,
     /// Start of the Stage's first Match: earliest Scheduled Start or actual start.
     pub cutoff: Instant,
     /// The Pick'em view the server would show before the Stage, dated by the
@@ -104,6 +107,19 @@ pub struct ReplayStage {
     pub opening_problem: Option<String>,
 }
 impl ReplayStage {
+    /// When its last result became known: `None` while any Match is still to
+    /// play or any scored result has no reported finish.
+    pub fn known_end(&self) -> Option<Instant> {
+        if !self.complete {
+            return None;
+        }
+        let scored = self
+            .matches
+            .iter()
+            .map(ReplayMatch::known_finish)
+            .collect::<Option<Vec<_>>>()?;
+        scored.into_iter().chain(self.unscored_end).max()
+    }
     pub fn title(&self) -> String {
         format!("{} / {}", self.event, self.name)
     }
@@ -462,6 +478,7 @@ fn stage_from_pandascore(
     let mut complete = true;
     let mut opening_rows = Vec::new();
     let mut results = Vec::new();
+    let mut unscored_end: Option<Instant> = None;
     for row in rows {
         let status = row["status"].as_str().unwrap_or("");
         complete &= matches!(status, "finished" | "canceled");
@@ -534,7 +551,14 @@ fn stage_from_pandascore(
                     bracket_round: super::match_context::BracketRound::parse(row["name"].as_str()),
                 })
             }
-            _ => unscored += 1,
+            _ => {
+                unscored += 1;
+                if status == "finished"
+                    && let Some(end) = instant(&row["end_at"])
+                {
+                    unscored_end = Some(unscored_end.map_or(end, |e| e.max(end)));
+                }
+            }
         }
     }
     matches.sort_by_key(|m| (m.cutoff(), m.game.id));
@@ -551,6 +575,7 @@ fn stage_from_pandascore(
         unscored,
         results,
         complete,
+        unscored_end,
         cutoff,
         opening: None,
         opening_matches: vec![],

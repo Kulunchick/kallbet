@@ -58,6 +58,17 @@ pub struct LabOutcome {
 pub(crate) struct Event {
     pub(crate) info: EventInfo,
     pub(crate) matches: Vec<Observed>,
+    /// When its last result became known; `None`: not complete (a Stage
+    /// still in play, or a result without a reported finish), so it trains
+    /// nothing.
+    pub(crate) ended: Option<Instant>,
+}
+impl Event {
+    /// Whether this Event's Matches may train a fit for an Event that begins
+    /// at `begins`: it is complete and ended before.
+    pub(crate) fn ended_before(&self, begins: Instant) -> bool {
+        self.ended.is_some_and(|end| end < begins)
+    }
 }
 
 /// The training side and, apart, the Holdout.
@@ -183,6 +194,29 @@ impl Lab {
         Ok(view)
     }
 
+    /// When each Event's last result became known (`None`: not complete).
+    fn event_ends(&self) -> BTreeMap<i64, Option<Instant>> {
+        let mut ends: BTreeMap<i64, Option<Instant>> = BTreeMap::new();
+        for stage in &self.archive.stages {
+            let end = stage.known_end();
+            ends.entry(stage.event_id)
+                .and_modify(|e| *e = e.zip(end).map(|(a, b)| a.max(b)))
+                .or_insert(end);
+        }
+        ends
+    }
+
+    /// The PandaScore ids of the archive's Holdout Stages.
+    pub fn holdout_stages(&self) -> BTreeSet<i64> {
+        let ends = self.event_ends();
+        self.archive
+            .stages
+            .iter()
+            .filter(|stage| self.holdout.contains(stage, ends[&stage.event_id]))
+            .map(|stage| stage.id)
+            .collect()
+    }
+
     /// The archive's Events, the Holdout's Stages kept apart from the training side.
     pub(super) async fn events(&self) -> Result<Split> {
         let rosters = self
@@ -191,26 +225,8 @@ impl Lab {
             .any(|signal| signal.uses_rosters())
             .then(|| RosterHistory::new(&self.archive))
             .transpose()?;
-        let mut last_result: BTreeMap<i64, Instant> = BTreeMap::new();
-        for stage in &self.archive.stages {
-            for m in &stage.matches {
-                let e = last_result.entry(stage.event_id).or_insert(m.finished_at);
-                *e = (*e).max(m.finished_at);
-            }
-        }
-        let holdout_ids: BTreeSet<_> = self
-            .archive
-            .stages
-            .iter()
-            .filter(|stage| {
-                let last = last_result
-                    .get(&stage.event_id)
-                    .copied()
-                    .unwrap_or(stage.cutoff);
-                self.holdout.contains(stage, last)
-            })
-            .map(|stage| stage.id)
-            .collect();
+        let ends = self.event_ends();
+        let holdout_ids = self.holdout_stages();
         let map_history = self.archive.map_history.without_stages(&holdout_ids);
         let veto_history = self.archive.veto_history.without_stages(&holdout_ids);
         let mut sides: [BTreeMap<i64, Event>; 2] = [BTreeMap::new(), BTreeMap::new()];
@@ -235,10 +251,12 @@ impl Lab {
                     matches: 0,
                 },
                 matches: vec![],
+                // The whole Event's end, both sides of the boundary.
+                ended: ends[&stage.event_id],
             });
             event.info.begins = event.info.begins.min(stage.cutoff);
             for m in &stage.matches {
-                event.info.ends = event.info.ends.max(m.finished_at);
+                event.info.ends = event.info.ends.max(m.known_finish().unwrap_or(m.finished_at));
                 let mut view = self.view(stage, m, rosters.as_ref()).await?;
                 view.map_history = map_history.before(view.cutoff);
                 view.veto_history = veto_history.before(view.cutoff);
@@ -359,7 +377,7 @@ impl Lab {
     pub(super) fn training(events: &[Event], event: &Event) -> Vec<Observed> {
         events
             .iter()
-            .filter(|e| e.info.ends < event.info.begins)
+            .filter(|e| e.ended_before(event.info.begins))
             .flat_map(|e| e.matches.iter().cloned())
             .collect()
     }
