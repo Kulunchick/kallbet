@@ -214,17 +214,16 @@ def main():
     caps = {source: getattr(args, source + "_cap") for source in DEFAULT_CAPS}
     if caps["panda"] and not token:
         parser.error("PANDASCORE_TOKEN is required for PandaScore")
-    last_lp = 0.0
+    last_request = {}
     def fetch(source, request):
-        nonlocal last_lp
         headers = {"User-Agent": USER_AGENT, "Accept-Encoding": "gzip"}
         if source == "panda":
             headers["Authorization"] = "Bearer " + token
         if source == "valve" and "/git/blobs/" in request:
             headers["Accept"] = "application/vnd.github.raw+json"
-        if source == "liquipedia":
-            time.sleep(max(0, last_lp + 2.1 - time.monotonic()))
-            last_lp = time.monotonic()
+        spacing = {"liquipedia": 2.1, "panda": 1.1}.get(source, 0)
+        time.sleep(max(0, last_request.get(source, 0) + spacing - time.monotonic()))
+        last_request[source] = time.monotonic()
         with urllib.request.urlopen(urllib.request.Request(request, headers=headers), timeout=45) as response:
             body = response.read()
             return gzip.decompress(body) if body.startswith(b"\x1f\x8b") else body
@@ -237,12 +236,19 @@ def main():
     if args.titles:
         titles.update(json.loads(args.titles.read_text(encoding="utf8")))
     partial = False
-    for step in (lambda: collect_panda(archive, args.until), lambda: collect_valve(archive, args.until),
-                 lambda: collect_rosters(archive, args.until, titles)):
+    for source, step in (("panda", lambda: collect_panda(archive, args.until)),
+                         ("valve", lambda: collect_valve(archive, args.until)),
+                         ("liquipedia", lambda: collect_rosters(archive, args.until, titles))):
         try:
             if step():
                 partial = True
-        except (Budget, urllib.error.URLError) as exc:
+        except urllib.error.HTTPError as exc:
+            print(f"{source}: HTTP {exc.code}; stopping this source for this run", file=sys.stderr)
+            partial = True
+        except urllib.error.URLError as exc:
+            print(f"{source}: transport error ({exc.reason}); stopping this source for this run", file=sys.stderr)
+            partial = True
+        except Budget as exc:
             print(exc, file=sys.stderr)
             partial = True
     for source, cap in caps.items():

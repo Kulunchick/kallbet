@@ -126,3 +126,49 @@ pub struct LiquipediaStageMaps {
     pub revision_timestamp: DateTime<Utc>,
     pub matches: Vec<LiquipediaMatchMaps>,
 }
+
+/// Summary index entry for one parsed HLTV match inside `manifest.json`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ManifestMatchEntry {
+    pub match_id: i64,
+    pub json_file: String,
+    pub raw_file: String,
+    pub url: String,
+    pub event_id: Option<i64>,
+    pub event_name: Option<String>,
+    pub started_at: DateTime<Utc>,
+    pub format: String,
+    pub team_a: String,
+    pub team_b: String,
+    pub maps: usize,
+    pub veto_steps: usize,
+    pub players: usize,
+}
+
+/// Details recorded when the stop rule halts collection (403, 429, or challenge).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StopRecord {
+    pub at: DateTime<Utc>,
+    pub match_id: i64,
+    pub url: String,
+    pub status: u16,
+    pub reason: String,
+    pub saved_file: String,
+}
+
+/// Persistent resumable manifest stored at `<out_dir>/manifest.json`.
+/// Tracks UTC daily request spending, indexed matches for #44/#45, parse errors,
+/// and any stop-rule event.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HltvArchiveManifest {
+    pub updated_at: Option<DateTime<Utc>>,
+    pub last_ios_user_agent: Option<String>,
+    /// UTC date (`YYYY-MM-DD`) -> total HTTP requests sent to HLTV on that day.
+    pub daily_requests: std::collections::BTreeMap<String, u32>,
+    /// HLTV match_id -> indexed metadata of parsed archive JSON.
+    pub matches: std::collections::BTreeMap<i64, ManifestMatchEntry>,
+    /// HLTV match_id -> parse error (raw HTML is still cached so it is never refetched).
+    pub parse_errors: std::collections::BTreeMap<i64, String>,
+    /// Set if the hard stop rule (403, 429, or Cloudflare challenge) triggered.
+    pub last_stop: Option<StopRecord>,
+}
