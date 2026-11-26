@@ -283,3 +283,24 @@ fn a_raw_only_page_supplies_its_veto() {
     assert!(!archive.veto_history.is_empty(), "the complete Bo1 veto is linked");
 }
 
+// Finding 15 (review of 6eea194): two parsed records with one HLTV Match id
+// and different content are an error, never one silently kept; the same
+// record saved twice is one.
+#[test]
+fn conflicting_hltv_records_of_one_match_are_an_error() {
+    let dir = stage_with_raw_page();
+    let hltv = dir.path().join("hltv");
+    std::fs::remove_file(hltv.join("hltv-match-2394774-heroic-vs-sharks.html.gz")).unwrap();
+    let matches = hltv.join("matches");
+    std::fs::create_dir_all(&matches).unwrap();
+    let record = heroic_sharks_record();
+    std::fs::write(hltv.join("hltv-match-2394774.json"), serde_json::to_vec(&record).unwrap()).unwrap();
+    std::fs::write(matches.join("hltv-match-2394774.json"), serde_json::to_vec(&record).unwrap()).unwrap();
+    assert_eq!(ReplayArchive::load(dir.path()).unwrap().hltv_matches.len(), 1);
+
+    let mut other = record.clone();
+    other.veto.reverse();
+    std::fs::write(matches.join("hltv-match-2394774.json"), serde_json::to_vec(&other).unwrap()).unwrap();
+    let e = ReplayArchive::load(dir.path()).err().expect("refused");
+    assert!(e.to_string().contains("2394774"), "{e}");
+}

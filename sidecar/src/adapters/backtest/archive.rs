@@ -403,10 +403,32 @@ impl ReplayArchive {
         }
         load_hltv_dir(dir, &mut archive, &mut digest)?;
         let serie_maps = load_liquipedia_bundles(dir, &mut archive, &mut digest)?;
-        archive
-            .hltv_matches
-            .sort_by_key(|r| (r.started_at, r.match_id));
-        archive.hltv_matches.dedup_by_key(|r| r.match_id);
+        // One record per HLTV Match: the same page saved twice is one (the
+        // earliest fetch kept); two whose content differs are an error, never
+        // one silently kept.
+        archive.hltv_matches.sort_by_key(|r| (r.match_id, r.fetched_at));
+        let content = |r: &HltvMatchRecord| -> Result<Value> {
+            let mut v = serde_json::to_value(r)?;
+            v.as_object_mut().map(|o| o.remove("fetched_at"));
+            Ok(v)
+        };
+        let mut unique: Vec<HltvMatchRecord> = Vec::with_capacity(archive.hltv_matches.len());
+        for record in std::mem::take(&mut archive.hltv_matches) {
+            match unique.last() {
+                Some(last) if last.match_id == record.match_id => {
+                    if content(last)? != content(&record)? {
+                        return Err(format!(
+                            "HLTV Match {}: two saved records differ; keep one",
+                            record.match_id
+                        )
+                        .into());
+                    }
+                }
+                _ => unique.push(record),
+            }
+        }
+        unique.sort_by_key(|r| (r.started_at, r.match_id));
+        archive.hltv_matches = unique;
         for revisions in archive.event_pages.values_mut() {
             revisions.sort_by_key(|r| r.timestamp);
         }
