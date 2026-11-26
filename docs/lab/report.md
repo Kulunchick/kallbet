@@ -265,7 +265,7 @@ Verdict: computed on 64 paired Matches, under the floor of 100.
 
 The three-seat debate's adjustment (HybridAnchored, debate mode `always`, the first seating) on the Matches with a roster flag, from recorded answers.
 
-Verdict: no LLM answers in this run; produce them with `cargo run -p kallbet-ai -- lab --llm <LLM_FILE> --answers <ANSWERS_FILE> --budget claude=<RUNS> --budget codex=<RUNS> --budget antigravity=<RUNS>`.
+Verdict: no LLM answers in this run; produce them with `cargo run -p kallbet-ai -- lab --archive <ARCHIVE> --llm <LLM_FILE> --answers <ANSWERS_FILE> --budget claude=<RUNS> --budget codex=<RUNS> --budget antigravity=<RUNS>`.
 
 | Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |
 |---|---|---|---|---|---|
@@ -519,7 +519,7 @@ No Candidate Signal is marked `promote`: nothing enters, and the frozen combinat
 
 ## Holdout: pending
 
-The Holdout is every Stage that begins at or after 2026-11-25 23:46:46 UTC, or whose Event has a result at or after it (except PandaScore tournament 22378, kept on the training side). No fitting and no selection step reads it; the frozen combination is evaluated on it once, last.
+The Holdout is every Stage that begins at or after 2026-11-25 23:46:46 UTC, or whose Event has a result at or after it or is not complete (except PandaScore tournament 22378, kept on the training side). No fitting and no selection step reads it; the frozen combination is evaluated on it once, last.
 
 The Holdout is pending: no Holdout Match has been played in this archive, so the frozen combination was not evaluated.
 
