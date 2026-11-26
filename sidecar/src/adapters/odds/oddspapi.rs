@@ -90,6 +90,17 @@ impl SettledFixture {
         let team_a = if self.side == 0 { first } else { 1.0 - first };
         Ok(Some(AsOf::new(team_a, quote.observed_at(), cutoff)?))
     }
+
+    /// Every pre-cutoff series price of team A, oldest first, capped at Hard Lock
+    /// like `quote` (a price point is one tick time at which both sides were active).
+    pub fn points(&self, body: &[u8], cutoff: Instant) -> Result<Vec<(Instant, f64)>> {
+        let cutoff = cutoff.min(self.hard_lock);
+        let points = parse_history_points(body, &self.id, cutoff)?;
+        Ok(points
+            .into_iter()
+            .map(|(at, p)| (at, if self.side == 0 { p } else { 1.0 - p }))
+            .collect())
+    }
 }
 
 /// Link a canonical Match to an OddsPapi fixture from the Event's settled
@@ -146,4 +157,59 @@ pub fn parse_history(body: &[u8], fixture_id: &str, cutoff: Instant) -> Result<O
     Ok(fair
         .map(|(p, time)| AsOf::new(p, time, cutoff))
         .transpose()?)
+}
+
+/// Every active pre-cutoff series price (OddsPapi participant order), oldest
+/// first: merges both outcome tick streams in time order and emits one point
+/// whenever both sides are active, from the first bookmaker that has any.
+pub fn parse_history_points(
+    body: &[u8],
+    fixture_id: &str,
+    cutoff: Instant,
+) -> Result<Vec<(Instant, f64)>> {
+    let history: Value = serde_json::from_slice(body)?;
+    if history["fixtureId"] != fixture_id {
+        return Err("OddsPapi history returned a different fixture".into());
+    }
+    for book in [PINNACLE, FREE_PINNACLE] {
+        // At each tick timestamp, record the update (Some(price) when active,
+        // None when suspended/inactive) for each participant side.
+        let mut events: std::collections::BTreeMap<Instant, [Option<Option<f64>>; 2]> =
+            std::collections::BTreeMap::new();
+        for (side, outcome) in PARTICIPANTS.iter().enumerate() {
+            let ticks = history["bookmakers"][book]["markets"][WINNER]["outcomes"][outcome]
+                ["players"]["0"]
+                .as_array();
+            for tick in ticks.into_iter().flatten() {
+                let Some(time) = timestamp(&tick["createdAt"]) else {
+                    continue;
+                };
+                if time >= cutoff {
+                    continue;
+                }
+                let active_price = (tick["active"] == true)
+                    .then(|| tick["price"].as_f64())
+                    .flatten();
+                events.entry(time).or_default()[side] = Some(active_price);
+            }
+        }
+        let mut current: [Option<f64>; 2] = [None, None];
+        let mut points = Vec::new();
+        for (time, update) in events {
+            for side in 0..2 {
+                if let Some(state) = update[side] {
+                    current[side] = state;
+                }
+            }
+            if let [Some(pa), Some(pb)] = current
+                && let Some([fair_a, _]) = normalize(pa.recip(), pb.recip())
+            {
+                points.push((time, fair_a));
+            }
+        }
+        if !points.is_empty() {
+            return Ok(points);
+        }
+    }
+    Ok(vec![])
 }
