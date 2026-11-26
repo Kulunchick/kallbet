@@ -9,6 +9,7 @@ use super::selection::{self, Member};
 use super::signals::{self, CandidateSignal, FittedSignal, MatchView, Observed};
 use super::stats::{self, Verdict};
 use super::{PROTOCOL_VERSION, Protocol};
+use crate::adapters::backtest::feeds::{MarketSource, PriceHistory, ReplayOdds};
 use crate::adapters::backtest::{Feeds, ReplayArchive};
 use crate::*;
 use std::{
@@ -20,6 +21,8 @@ pub struct Lab {
     pub archive: ReplayArchive,
     /// The replay ports. Tests replace one to inject a datum.
     pub feeds: Feeds,
+    /// Price points of each market source (replay: the saved histories).
+    pub price_history: Arc<dyn PriceHistory>,
     pub protocol: Protocol,
     /// The Candidate Signals evaluated, in report order (default: the registry).
     pub signals: Vec<Arc<dyn CandidateSignal>>,
@@ -67,6 +70,7 @@ impl Lab {
     pub fn new(archive: ReplayArchive) -> Result<Self> {
         Ok(Self {
             feeds: Feeds::replay(&archive)?,
+            price_history: Arc::new(ReplayOdds::new(&archive)),
             archive,
             protocol: Protocol::default(),
             signals: signals::registry(),
@@ -75,9 +79,17 @@ impl Lab {
     }
 
     pub(super) async fn view(&self, game: &Match, cutoff: Instant) -> Result<MatchView> {
+        let mut market_history = BTreeMap::new();
+        for source in MarketSource::ALL {
+            let points = self.price_history.points(source, game, cutoff).await?;
+            if !points.is_empty() {
+                market_history.insert(source, points);
+            }
+        }
         let view = MatchView {
             map_history: self.archive.map_history.before(cutoff),
             veto_history: self.archive.veto_history.before(cutoff),
+            market_history,
             signal: self.feeds.signal.signal(game, cutoff).await?,
             market: self.feeds.odds.quote(game, cutoff).await?,
             history_before: self.feeds.history.matches_before(cutoff).await?,
@@ -100,6 +112,9 @@ impl Lab {
         view.history_before()?;
         view.team_a_history()?;
         view.team_b_history()?;
+        for source in MarketSource::ALL {
+            view.points(source)?;
+        }
         Ok(view)
     }
 

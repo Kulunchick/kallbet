@@ -3,12 +3,17 @@
 //! `CandidateSignal` (fit on the training Matches the protocol hands it) and
 //! `FittedSignal` (predict one Match from its view), then add it to `registry`.
 use crate::adapters::debate;
+use crate::adapters::backtest::feeds::MarketSource;
 use crate::*;
+use std::collections::BTreeMap;
 
 pub mod bo1_veto_sim;
 pub mod calibration;
+pub mod favourite_longshot;
 pub mod head_to_head;
 pub mod learned_weights;
+pub mod line_movement;
+pub mod market_sources;
 pub mod own_rating;
 pub mod per_map_rating;
 pub mod recent_form;
@@ -34,8 +39,20 @@ pub struct MatchView {
     pub team_b_history: HistorySlice,
     pub map_history: crate::adapters::backtest::map_history::MapHistory,
     pub veto_history: crate::adapters::backtest::veto_history::VetoHistory,
+    /// Every price point of each market source observed before the cutoff
+    /// (team A's series win, oldest first), for the sources that have any.
+    pub market_history: BTreeMap<MarketSource, Vec<AsOf<f64>>>,
 }
 impl MatchView {
+    /// The price points of `source`, each rechecked against the cutoff.
+    pub fn points(&self, source: MarketSource) -> Result<Vec<(Instant, f64)>, TemporalLeakError> {
+        self.market_history
+            .get(&source)
+            .into_iter()
+            .flatten()
+            .map(|p| Ok((p.observed_at(), *p.at(self.cutoff)?)))
+            .collect()
+    }
     pub fn signal(&self) -> Result<Option<&Signal>, TemporalLeakError> {
         self.signal.as_ref().map(|s| s.at(self.cutoff)).transpose()
     }
@@ -66,6 +83,16 @@ impl MatchView {
             game: self.game.clone(),
             signal: stat,
             market: self.market()?,
+            context: vec![],
+        };
+        Ok(debate::base(&dossier))
+    }
+    /// The anchor (`debate::base`) with `market` in place of the quote the Odds Source gave.
+    pub fn anchor_with_market(&self, market: Option<f64>) -> Result<Option<f64>> {
+        let dossier = Dossier {
+            game: self.game.clone(),
+            signal: self.signal()?.cloned(),
+            market,
             context: vec![],
         };
         Ok(debate::base(&dossier))
@@ -138,6 +165,12 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
     vec![
         std::sync::Arc::new(calibration::RatingCalibration),
         std::sync::Arc::new(learned_weights::LearnedWeights),
+        std::sync::Arc::new(market_sources::pinnacle()),
+        std::sync::Arc::new(market_sources::polymarket()),
+        std::sync::Arc::new(market_sources::kalshi()),
+        std::sync::Arc::new(market_sources::average()),
+        std::sync::Arc::new(line_movement::LineMovement),
+        std::sync::Arc::new(favourite_longshot::FavouriteLongshot),
         std::sync::Arc::new(own_rating::OwnRating),
         std::sync::Arc::new(recent_form::RecentForm),
         std::sync::Arc::new(head_to_head::HeadToHead),
