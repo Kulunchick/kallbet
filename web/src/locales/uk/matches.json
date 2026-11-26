@@ -49,7 +49,16 @@
     "not_found": "Лігу або матч не знайдено.",
     "rationale_invalid": "Обґрунтування прогнозу заповнено неправильно."
   },
-  "editWindow": "Ставку можна змінити ще {{time}}",
+  "editWindow": "Змінити можна ще {{time}}",
+  "unpickedHint": "ви ще не обрали",
+  "winner": "Переможець",
+  "youPicked": "Ваш вибір: {{team}}",
+  "pickedBy": "Хто обрав {{team}}",
+  "pointsEarned_one": "+{{count}} бал",
+  "pointsEarned_few": "+{{count}} бали",
+  "pointsEarned_many": "+{{count}} балів",
+  "pointsEarned_other": "+{{count}} бала",
+  "resultShort": { "correct": "Правильно", "wrong": "Неправильно" },
   "bot": {
     "badge": "Бот",
     "pick": "{{nickname}} (бот)",
