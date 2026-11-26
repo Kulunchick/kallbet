@@ -7,7 +7,9 @@ use crate::*;
 
 pub mod calibration;
 pub mod head_to_head;
+pub mod lineup_strength;
 pub mod own_rating;
+pub mod player_form;
 pub mod recent_form;
 
 /// What a Candidate Signal may read of one Match: the Match as the pipeline
@@ -115,6 +117,8 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(own_rating::OwnRating),
         std::sync::Arc::new(recent_form::RecentForm),
         std::sync::Arc::new(head_to_head::HeadToHead),
+        std::sync::Arc::new(lineup_strength::LineupStrength),
+        std::sync::Arc::new(player_form::PlayerForm),
     ]
 }
 
