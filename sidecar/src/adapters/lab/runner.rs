@@ -36,6 +36,8 @@ pub struct Lab {
     /// When the Holdout is evaluated, for the report (the CLI: the recorded
     /// evaluation's start, else this run's).
     pub evaluated_at: Option<Instant>,
+    /// Each team's VRS and HLTV rank by date (ticket #57).
+    pub ranks: Arc<crate::adapters::backtest::rank_history::RankHistory>,
 }
 
 /// One Match as one Candidate Signal saw it: the anchor's probability and the
@@ -134,6 +136,7 @@ impl Lab {
         Ok(Self {
             feeds: Feeds::replay(&archive)?,
             price_history: Arc::new(ReplayOdds::new(&archive)),
+            ranks: Arc::new(crate::adapters::backtest::rank_history::RankHistory::new(&archive)?),
             archive,
             protocol: Protocol::default(),
             signals: signals::registry(),
@@ -211,6 +214,7 @@ impl Lab {
         let view = MatchView {
             map_history: self.archive.map_history.before(cutoff),
             veto_history: self.archive.veto_history.before(cutoff),
+            ranks: self.ranks.at(game, cutoff, hidden)?,
             market_history,
             signal: self.feeds.signal.signal(game, cutoff).await?,
             market: self.feeds.odds.quote(game, cutoff).await?,

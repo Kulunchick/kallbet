@@ -345,6 +345,7 @@ fn make_view(
         map_history: Default::default(),
         veto_history: Default::default(),
         roster: None,
+        ranks: Default::default(),
         context: kallbet_ai::adapters::backtest::match_context::MatchContext::unknown(),
         team_a_roster: roster_a,
         team_b_roster: roster_b,

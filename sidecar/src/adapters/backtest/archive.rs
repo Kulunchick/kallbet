@@ -158,6 +158,8 @@ pub struct ReplayArchive {
     pub event_titles: BTreeMap<i64, String>,
     /// Historical HLTV match pages (`HltvMatchRecord`) with player statistics.
     pub hltv_matches: Vec<HltvMatchRecord>,
+    /// The rank badges of each saved raw HLTV match page, by HLTV match id (ticket #57).
+    pub hltv_ranks: BTreeMap<i64, Vec<crate::adapters::hltv_research::rank_badges::TeamBadges>>,
     /// Played maps linked to finished PandaScore Matches.
     pub map_history: MapHistory,
     /// Bo1 vetoes of the HLTV match pages linked to PandaScore Matches.
@@ -179,7 +181,20 @@ impl ReplayArchive {
             .filter(|s| stages.contains(&s.id))
             .flat_map(|s| s.matches.iter().map(|m| m.game.id))
             .collect();
+        let hltv_matches: Vec<HltvMatchRecord> = self
+            .hltv_matches
+            .iter()
+            .filter(|r| linker.link(r).is_none_or(|(id, _)| !removed.contains(&id)))
+            .cloned()
+            .collect();
+        let kept: BTreeSet<i64> = hltv_matches.iter().map(|r| r.match_id).collect();
         ReplayArchive {
+            hltv_ranks: self
+                .hltv_ranks
+                .iter()
+                .filter(|(id, _)| kept.contains(id))
+                .map(|(id, b)| (*id, b.clone()))
+                .collect(),
             stages: self
                 .stages
                 .iter()
@@ -196,12 +211,7 @@ impl ReplayArchive {
             kalshi_candles: self.kalshi_candles.clone(),
             event_pages: self.event_pages.clone(),
             event_titles: self.event_titles.clone(),
-            hltv_matches: self
-                .hltv_matches
-                .iter()
-                .filter(|r| linker.link(r).is_none_or(|(id, _)| !removed.contains(&id)))
-                .cloned()
-                .collect(),
+            hltv_matches,
             map_history: self.map_history.without_stages(stages),
             veto_history: self.veto_history.without_stages(stages),
             digest: self.digest.clone(),
@@ -970,11 +980,25 @@ fn load_hltv_dir(dir: &Path, archive: &mut ReplayArchive, digest: &mut Sha256) -
     }
 
     for (match_id, stem, path) in html_fallbacks {
-        if !seen_ids.insert(match_id) || recorded_parse_errors.contains(&match_id) {
+        if recorded_parse_errors.contains(&match_id) {
             continue;
         }
         let bytes = read_file(&path)?;
         let html = String::from_utf8(bytes)?;
+        let badges = crate::adapters::hltv_research::rank_badges::parse_rank_badges(&html);
+        if !badges.is_empty() {
+            archive.hltv_ranks.insert(match_id, badges);
+        }
+        if !seen_ids.insert(match_id) {
+            // A parsed record is cached: the page is read for its rank badges only.
+            if archive.hltv_ranks.contains_key(&match_id) {
+                digest.update(b"hltv-ranks/");
+                digest.update(stem.as_bytes());
+                digest.update(html.as_bytes());
+                archive.files += 1;
+            }
+            continue;
+        }
         let url = format!("https://www.hltv.org/matches/{match_id}/match");
         let rec = parse_match_page(match_id, &url, chrono::DateTime::UNIX_EPOCH, &html)
             .map_err(|e| format!("{stem}: {e}"))?;
