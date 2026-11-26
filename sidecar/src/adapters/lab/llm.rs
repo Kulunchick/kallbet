@@ -24,7 +24,7 @@ use crate::adapters::backtest::{
     runner::{DEBATE, SINGLE, evaluation_lead},
 };
 use crate::adapters::llm::{
-    Finished, Invocation, LlmConfig, ProcessRunner, ProviderConfig, RunError,
+    Cli, Finished, Invocation, LlmConfig, ProcessRunner, ProviderConfig, RunError,
 };
 use crate::*;
 use serde::{Deserialize, Serialize};
@@ -205,12 +205,18 @@ fn programs(setup: &Setup) -> Result<BTreeMap<PathBuf, String>> {
 /// The process runner of a track run: counts the CLI runs of every
 /// subscription and refuses to start one past its budget (the CLI runtime
 /// reads `RunError::OverBudget` as a quota error). A program that belongs to
-/// no budgeted provider is never started.
+/// no budgeted provider is never started. The first run whose output is a
+/// real quota or sign-in failure halts it: no later run of any provider is
+/// started, within the seating (an Arbiter after a failed Advocate, a
+/// fallback provider of the chain) or after it.
 pub struct Budgeted {
     inner: Arc<dyn ProcessRunner>,
     programs: BTreeMap<PathBuf, String>,
     budget: BTreeMap<String, usize>,
     used: Mutex<BTreeMap<String, (usize, usize)>>,
+    /// Which CLI each program is, to read its failures.
+    clis: BTreeMap<PathBuf, Cli>,
+    halted: Mutex<Option<String>>,
 }
 impl Budgeted {
     pub fn new(
@@ -223,7 +229,15 @@ impl Budgeted {
             programs,
             budget,
             used: Mutex::default(),
+            clis: BTreeMap::new(),
+            halted: Mutex::default(),
         }
+    }
+    /// Reads each program's output as `clis` says, to halt on its quota or
+    /// sign-in failure.
+    pub fn halting_on(mut self, clis: BTreeMap<PathBuf, Cli>) -> Self {
+        self.clis = clis;
+        self
     }
     /// (runs started, runs refused) by subscription.
     pub fn used(&self) -> BTreeMap<String, (usize, usize)> {
@@ -232,6 +246,10 @@ impl Budgeted {
     fn refused(&self) -> usize {
         self.used().values().map(|u| u.1).sum()
     }
+    /// The first quota or sign-in failure, after which nothing was started.
+    pub fn halted(&self) -> Option<String> {
+        self.halted.lock().expect("halt lock").clone()
+    }
 }
 #[async_trait::async_trait]
 impl ProcessRunner for Budgeted {
@@ -239,6 +257,9 @@ impl ProcessRunner for Budgeted {
         let Some(name) = self.programs.get(&invocation.program) else {
             return Err(RunError::OverBudget);
         };
+        if self.halted().is_some() {
+            return Err(RunError::OverBudget);
+        }
         {
             let mut used = self.used.lock().expect("budget lock");
             let entry = used.entry(name.clone()).or_default();
@@ -248,8 +269,33 @@ impl ProcessRunner for Budgeted {
             }
             entry.0 += 1;
         }
-        self.inner.run(invocation).await
+        let finished = self.inner.run(invocation).await?;
+        if let Some(cli) = self.clis.get(&invocation.program)
+            && let Err(e @ (LlmError::QuotaExceeded | LlmError::Auth)) =
+                cli.parse(&finished, &Value::Null)
+        {
+            self.halted
+                .lock()
+                .expect("halt lock")
+                .get_or_insert_with(|| format!("first {e} ({name}); no further LLM call was made"));
+        }
+        Ok(finished)
     }
+}
+
+/// Which CLI each budgeted program is.
+fn clis(setup: &Setup) -> BTreeMap<PathBuf, Cli> {
+    setup
+        .llm
+        .providers
+        .values()
+        .filter_map(|provider| match provider {
+            ProviderConfig::Claude(c) => Some((c.binary_or("claude"), Cli::Claude)),
+            ProviderConfig::Codex(c) => Some((c.binary_or("codex"), Cli::Codex)),
+            ProviderConfig::Antigravity(c) => Some((c.binary_or("agy"), Cli::Antigravity)),
+            ProviderConfig::Http(_) => None,
+        })
+        .collect()
 }
 
 /// A Match the track asks about.
@@ -398,11 +444,10 @@ pub async fn run(
     runner: Arc<dyn ProcessRunner>,
 ) -> Result<Track> {
     let programs = programs(setup)?;
-    let budgeted = Arc::new(Budgeted::new(
-        runner,
-        programs,
-        setup.budget.clone().unwrap_or_default(),
-    ));
+    let budgeted = Arc::new(
+        Budgeted::new(runner, programs, setup.budget.clone().unwrap_or_default())
+            .halting_on(clis(setup)),
+    );
     let flagged = flagged(archive, setup.training_cutoff).await?;
     let mut recorded = setup.recorded.clone();
     let seatings = if setup.seatings.is_empty() {
@@ -511,7 +556,10 @@ pub async fn run(
         }
         let llm = &outcome.report.llm;
         let stopped = llm.stopped.clone().map(|why| {
-            if budgeted.refused() > refused_before {
+            if let Some(halted) = budgeted.halted() {
+                track.stopped = Some(halted.clone());
+                halted
+            } else if budgeted.refused() > refused_before {
                 format!("a subscription's budget was spent ({why})")
             } else {
                 track.stopped = Some(why.clone());

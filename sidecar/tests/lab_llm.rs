@@ -842,3 +842,33 @@ async fn the_llm_comparison_reads_no_holdout_match() {
         assert!(c.paired <= 1, "{}: {}", c.name, c.paired);
     }
 }
+
+// Finding 8 (review of 6eea194): the first real quota failure stops every
+// provider call of the track, also within the seating where it happens.
+// Antigravity's quota error is in the Advocate seat: no Arbiter is asked
+// after it, and nothing else is started but a seat already in flight.
+#[tokio::test]
+async fn a_quota_error_in_a_non_final_seat_stops_every_later_call() {
+    let archive = whole();
+    let work = tempfile::tempdir().unwrap();
+    let clis = Arc::new(Clis::default());
+    let s = setup(
+        &work,
+        vec![
+            seating("agy-advocate", "antigravity", "codex", "claude"),
+            seating("claude-only", "claude", "claude", "claude"),
+        ],
+    );
+    let track = llm::run(&archive, &s, clis.clone()).await.unwrap();
+    let started = clis.started();
+    let quota = started
+        .iter()
+        .position(|r| program_of(r) == "agy")
+        .expect("the Advocate was asked");
+    let after: Vec<_> = started[quota + 1..].iter().map(|r| (program_of(r), role_of(r))).collect();
+    assert!(after.iter().all(|(_, role)| role != "arbiter"), "{after:?}");
+    assert!(after.len() <= 1, "only a seat already in flight: {after:?}");
+    assert_eq!(clis.runs_of("agy"), 1);
+    assert!(track.stopped.as_deref().unwrap().contains("quota"), "{:?}", track.stopped);
+    assert!(!track.seatings[1].ran);
+}
