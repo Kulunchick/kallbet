@@ -64,3 +64,71 @@ export const toPicks = (slots: Slot[], winners: Winners): BracketPick[] =>
 
 export const fromPicks = (picks: BracketPick[]): Winners =>
   Object.fromEntries(picks.map((p) => [slotKey(p.rounds_before_final, p.slot), p.team_id]));
+
+// -- Numbering, progress and layout (the Playoffs board) ---------------------
+
+/** The distinct rounds, first round first (the final, `0`, is last). */
+export const roundsOf = (slots: Slot[]): number[] =>
+  [...new Set(slots.map((s) => s.rounds_before_final))].sort((a, b) => b - a);
+
+/** The round's slots in bracket order. */
+export const slotsOfRound = (slots: Slot[], round: number): Slot[] =>
+  slots.filter((s) => s.rounds_before_final === round).sort((a, b) => a.slot - b.slot);
+
+/** Match numbers by slot key: first round first, top to bottom, from 1. */
+export function matchNumbers(slots: Slot[]): Record<string, number> {
+  const numbers: Record<string, number> = {};
+  firstRoundFirst(slots).forEach((s, i) => {
+    numbers[slotKey(s.rounds_before_final, s.slot)] = i + 1;
+  });
+  return numbers;
+}
+
+/**
+ * The number of the Match whose winner fills `side` (0 = top, 1 = bottom) of a
+ * slot that is not a first slot, or null when the data has no such Match.
+ */
+export function feederNumber(slots: Slot[], slot: Slot, side: 0 | 1): number | null {
+  if (slot.leaf) return null;
+  const key = slotKey(slot.rounds_before_final + 1, 2 * slot.slot + side);
+  return matchNumbers(slots)[key] ?? null;
+}
+
+/** Picks placed, counting only slots that exist. */
+export const placedPicks = (slots: Slot[], winners: Winners): number =>
+  slots.filter((s) => winners[slotKey(s.rounds_before_final, s.slot)] !== undefined).length;
+
+/** Picks placed in one round and the round's size. */
+export function roundProgress(slots: Slot[], winners: Winners, round: number): { done: number; total: number } {
+  const inRound = slotsOfRound(slots, round);
+  return {
+    done: inRound.filter((s) => winners[slotKey(round, s.slot)] !== undefined).length,
+    total: inRound.length,
+  };
+}
+
+/** The first round that still lacks a pick; the first round when all are picked. */
+export function firstIncompleteRound(slots: Slot[], winners: Winners): number {
+  const rounds = roundsOf(slots);
+  return rounds.find((r) => {
+    const { done, total } = roundProgress(slots, winners, r);
+    return done < total;
+  }) ?? rounds[0] ?? 0;
+}
+
+/**
+ * Where a slot sits in the desktop grid (rows counted from 1, below the header
+ * row): a first-round slot takes one row, each later round spans twice as many
+ * rows as the round before, so a card is centered between the two cards that
+ * feed it.
+ */
+export function gridPlacement(round: number, slot: number, firstRound: number): { row: number; span: number } {
+  const span = 2 ** Math.max(0, firstRound - round);
+  return { row: slot * span + 1, span };
+}
+
+/** A settled slot's verdict on my pick: null while unsettled or without a pick. */
+export function verdict(slotWinner: number | null, picked: number | undefined): "correct" | "wrong" | null {
+  if (slotWinner === null || picked === undefined) return null;
+  return slotWinner === picked ? "correct" : "wrong";
+}
