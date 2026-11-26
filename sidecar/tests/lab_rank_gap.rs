@@ -106,8 +106,9 @@ fn hltv_rank_is_dated_by_its_ranking_day_and_vrs_rank_comes_from_dated_valve_sna
 }
 
 /// A spy that records what `rank_gap` would read for every Match it is asked about.
+type Seen = (Option<(u32, u32)>, Option<(u32, u32)>);
 #[derive(Default, Clone)]
-struct Spy(Arc<Mutex<BTreeMap<i64, (Option<(u32, u32)>, Option<(u32, u32)>)>>>);
+struct Spy(Arc<Mutex<BTreeMap<i64, Seen>>>);
 impl CandidateSignal for Spy {
     fn name(&self) -> &'static str {
         "rank_spy"
@@ -128,7 +129,7 @@ impl CandidateSignal for Spy {
 impl Spy {
     fn record(&self, m: &MatchView) -> kallbet_ai::Result<()> {
         let read = |r: &Option<kallbet_ai::AsOf<(u32, u32)>>| {
-            r.as_ref().map(|r| r.at(m.cutoff).map(|v| *v)).transpose()
+            r.as_ref().map(|r| r.at(m.cutoff).copied()).transpose()
         };
         let row = (read(&m.ranks.vrs)?, read(&m.ranks.hltv)?);
         self.0.lock().unwrap().insert(m.game.id, row);
@@ -169,8 +170,7 @@ async fn the_views_carry_point_in_time_ranks_and_holdout_pages_never_reach_train
             let spy = Spy::default();
             lab.signals = vec![Arc::new(spy.clone())];
             lab.run().await.unwrap();
-            let seen = spy.0.lock().unwrap().clone();
-            seen
+            spy.0.lock().unwrap().clone()
         }
     };
     let seen = run(false).await;

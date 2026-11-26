@@ -65,10 +65,8 @@ fn parse_anchor(anchor: &str) -> Option<(i64, Kind, RankBadge)> {
     let href = anchor.split("href=\"").nth(1)?.split('"').next()?;
     let (kind, path) = if let Some(p) = href.strip_prefix("/ranking/teams/") {
         (Kind::Hltv, p)
-    } else if let Some(p) = href.strip_prefix("/valve-ranking/teams/") {
-        (Kind::Vrs, p)
     } else {
-        return None;
+        (Kind::Vrs, href.strip_prefix("/valve-ranking/teams/")?)
     };
     let (path, query) = path.split_once('?').unwrap_or((path, ""));
     let mut parts = path.split('/');
