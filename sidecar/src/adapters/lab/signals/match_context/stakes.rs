@@ -24,10 +24,10 @@ pub fn swiss_record(
         if m.stage_id != stage_id || m.finished_at >= cutoff || !m.played(team) {
             continue;
         }
-        if let Some(slot) = m.round.and_then(|n| n.checked_sub(1)).and_then(|n| needed.get_mut(n as usize)) {
-            if slot.replace(m.won_by(team)).is_some() {
-                return None;
-            }
+        if let Some(slot) = m.round.and_then(|n| n.checked_sub(1)).and_then(|n| needed.get_mut(n as usize))
+            && slot.replace(m.won_by(team)).is_some()
+        {
+            return None;
         }
     }
     let wins = needed.iter().try_fold(0, |wins, &result| Some(wins + u32::from(result?)))?;

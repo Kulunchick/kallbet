@@ -886,8 +886,7 @@ async fn a_quota_error_in_a_non_final_seat_stops_every_later_call() {
 fn calling_providers_needs_an_explicit_archive() {
     let args = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
     let e = kallbet_ai::adapters::lab::cli::parse(&args(&["--llm", "llm.json", "--budget", "claude=5"]))
-        .err()
-        .expect("refused");
+        .expect_err("refused");
     assert!(e.to_string().contains("--archive"), "{e}");
     assert!(
         kallbet_ai::adapters::lab::cli::parse(&args(&[

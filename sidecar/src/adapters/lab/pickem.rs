@@ -392,6 +392,10 @@ fn last_result(stage: &ReplayStage) -> Option<Instant> {
         .max()
 }
 
+/// A scored Stage on the Pick'em Leaderboard: when its last result was out,
+/// the bot's Points and each Member's.
+type Ended = (Instant, usize, Vec<usize>);
+
 #[derive(Default)]
 struct Tally {
     rated: usize,
@@ -527,7 +531,7 @@ pub async fn run(lab: &Lab, options: &PickemOptions) -> Result<PickemOutcome> {
                 member_points.push(pickem_points(stage, &payload).0);
             }
             // Public standing before this Stage: Stages whose last result is out.
-            let public = |points: &dyn Fn(&(Instant, usize, Vec<usize>)) -> usize| {
+            let public = |points: &dyn Fn(&Ended) -> usize| {
                 done.iter()
                     .filter(|(ended, _, _)| *ended < stage.cutoff)
                     .map(points)

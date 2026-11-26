@@ -230,7 +230,8 @@ async fn a_view_holding_a_result_or_a_later_round_pairing_aborts_the_run() {
         .iter()
         .position(|s| s.kind == StageKind::Playoffs && s.opening.is_some() && s.complete)
         .unwrap();
-    let leaks: [(usize, Box<dyn Fn(&mut Value)>); 3] = [
+    type Leak = (usize, Box<dyn Fn(&mut Value)>);
+    let leaks: [Leak; 3] = [
         // A Match of the opening round already has its winner.
         (swiss, Box::new(|v| v["groups"][0]["matches"][0]["winner"] = json!(1))),
         // A second-round pairing: a team already in a 1-0 group.

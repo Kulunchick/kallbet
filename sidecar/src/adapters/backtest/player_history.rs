@@ -32,12 +32,13 @@ fn canonical_pair(a: &str, b: &str) -> (String, String) {
 /// Links HLTV records to the archive's PandaScore Matches: same team pair,
 /// nearest start within ±6 h.
 pub(super) struct Linker {
-    by_pair: BTreeMap<(String, String), Vec<(Instant, i64, Option<Instant>)>>,
+    by_pair: BTreeMap<(String, String), Vec<Candidate>>,
 }
+/// A PandaScore Match to link: its actual start, id and known finish.
+type Candidate = (Instant, i64, Option<Instant>);
 impl Linker {
     pub(super) fn new(archive: &ReplayArchive) -> Self {
-        let mut by_pair: BTreeMap<(String, String), Vec<(Instant, i64, Option<Instant>)>> =
-            BTreeMap::new();
+        let mut by_pair: BTreeMap<(String, String), Vec<Candidate>> = BTreeMap::new();
         for stage in &archive.stages {
             for m in &stage.matches {
                 let pair = canonical_pair(&m.game.team_a.name, &m.game.team_b.name);

@@ -85,6 +85,10 @@ pub(super) struct Split {
     pub(super) holdout_stages: Vec<String>,
 }
 
+/// One Candidate Signal evaluated: its report row, its per-Match predictions
+/// and its fit for each training-side Event.
+type Evaluation = (CandidateReport, Vec<LabPrediction>, Vec<Box<dyn FittedSignal>>);
+
 /// `slice` without the Matches in `hidden` (shared as it is when none is).
 fn hide_results(
     slice: HistorySlice,
@@ -527,11 +531,7 @@ impl Lab {
         signal: &dyn CandidateSignal,
         events: &[Event],
         archive: &ReplayArchive,
-    ) -> Result<(
-        CandidateReport,
-        Vec<LabPrediction>,
-        Vec<Box<dyn FittedSignal>>,
-    )> {
+    ) -> Result<Evaluation> {
         let missing = signal.missing_data(archive);
         let mut rows = Vec::new();
         let mut fits = Vec::new();

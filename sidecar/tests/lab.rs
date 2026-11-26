@@ -74,7 +74,7 @@ async fn the_report_compares_the_calibration_with_the_anchor_under_the_protocol(
     assert_eq!(report.archive_digest, lab.archive.digest);
     assert_eq!(report.seed, lab.protocol.seed);
 
-    let c = calibration(&outcome);
+    let c = calibration(outcome);
     // Recompute every number of the row from the per-Match predictions.
     let winners: BTreeMap<i64, (i64, bool)> = lab
         .archive
@@ -295,7 +295,7 @@ async fn a_result_injected_into_a_later_event_changes_nothing_in_an_earlier_one(
             })
             .collect()
     };
-    let (base, after) = (key(&base), key(&after));
+    let (base, after) = (key(base), key(&after));
     assert_eq!(base.len(), after.len());
     let mut later_changed = 0;
     for (k, (event, b_base, v_base)) in &base {

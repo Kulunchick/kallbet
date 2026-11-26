@@ -203,7 +203,8 @@ fn a_serie_bundle_from_the_map_collector_links_like_a_maps_file() {
         .find(|s| s.id == 20710)
         .unwrap()
         .event_id;
-    let entries = |a: &ReplayArchive| -> Vec<(String, String, Vec<(String, bool)>, String)> {
+    type Entry = (String, String, Vec<(String, bool)>, String);
+    let entries = |a: &ReplayArchive| -> Vec<Entry> {
         a.map_history
             .at(chrono::DateTime::<chrono::Utc>::MAX_UTC)
             .map(|e| {
