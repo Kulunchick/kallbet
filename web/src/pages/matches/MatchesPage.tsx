@@ -6,11 +6,10 @@ import { errorMessage } from "../../api/client";
 import { useLoad } from "../../api/useLoad";
 import { getLeague } from "../leagues/api";
 import { MatchCard } from "./MatchCard";
-import { getMatches, type MatchCard as Card, type MatchesView, type TeamRef } from "./api";
+import { getMatches, predict, type MatchCard as Card, type MatchesView, type TeamRef } from "./api";
 import { currentStage, nextUnpicked, orderMatchGroups, stripModel, undoTarget } from "./layout";
 import { LoadFailed, MatchesSkeleton, NoMatches, RefreshFailed } from "./MatchesStates";
 import { NextUpStrip } from "./NextUpStrip";
-import { putPick } from "./pickApi";
 import { PickToast, type PickToastData } from "./PickToast";
 import { StageSection } from "./StageSection";
 import { useNow } from "./time";
@@ -70,7 +69,7 @@ export function MatchesPage() {
     setSaving((pending) => new Set(pending).add(match));
     setError(null);
     try {
-      await putPick(league, match, team.id);
+      await predict(league, match, team.id, true);
       setView((v) => v && withPrediction(v, match, team.id));
       setToast({
         id: Date.now(),
