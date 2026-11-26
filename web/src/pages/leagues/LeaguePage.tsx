@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router";
 
@@ -58,6 +58,15 @@ function LeagueView({ league, reload }: { league: LeagueDetail; reload: () => vo
   const [kicking, setKicking] = useState<Member | null>(null);
   const [kickOpen, setKickOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  // A kicked Member's row is gone, and with it the "···" button that had focus: land on the heading instead.
+  const membersHeading = useRef<HTMLHeadingElement>(null);
+  const refocusAfterKick = useRef(false);
+  useEffect(() => {
+    // Wait for the dialog to close: closing it hands focus back to its (now stale) trigger.
+    if (kickOpen || !refocusAfterKick.current) return;
+    refocusAfterKick.current = false;
+    membersHeading.current?.focus();
+  }, [kickOpen]);
 
   const isAdmin = league.my_role === "admin";
   const archived = league.archived_at !== null;
@@ -128,20 +137,20 @@ function LeagueView({ league, reload }: { league: LeagueDetail; reload: () => vo
 
   const members = (
     <section className="flex flex-col gap-3" aria-labelledby="members-heading">
-      <h2 id="members-heading" className="text-base font-semibold text-fg">
+      <h2 id="members-heading" ref={membersHeading} tabIndex={-1} className="text-base font-semibold text-fg">
         {t("members.title", { count: league.members.length })}
       </h2>
       <ul className="flex flex-col gap-2">
         {league.members.map((m) => {
-          // The creator can be neither kicked nor demoted.
-          const manageable = isAdmin && m.user_id !== league.creator_id;
+          // The creator can be neither kicked nor demoted, and nobody removes their own admin role here.
+          const manageable = isAdmin && m.user_id !== league.creator_id && m.user_id !== me;
           return (
             <MemberRow
               key={m.user_id}
               member={m}
               isMe={m.user_id === me}
               manageable={manageable}
-              kickable={manageable && m.user_id !== me && !archived}
+              kickable={manageable && !archived}
               busy={busy.has(m.user_id)}
               onToggleAdmin={toggleAdmin}
               onKick={(m) => {
@@ -211,6 +220,7 @@ function LeagueView({ league, reload }: { league: LeagueDetail; reload: () => vo
         onConfirm={async () => {
           if (!kicking) return;
           await kickMember(league.id, kicking.user_id);
+          refocusAfterKick.current = true;
           reload();
         }}
       />

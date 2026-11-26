@@ -12,7 +12,7 @@ export type MemberRowProps = {
   member: Member;
   /** Is this row the signed-in User? */
   isMe: boolean;
-  /** The row's actions (League Admin on someone who is not the creator). */
+  /** The row's actions (League Admin on someone who is neither the creator nor themselves). */
   manageable: boolean;
   /** Kicking is offered only to someone else, and never in an archived League. */
   kickable: boolean;
@@ -24,7 +24,8 @@ export type MemberRowProps = {
 const chip =
   "shrink-0 rounded-full border border-line px-2.5 py-0.5 text-xs font-semibold text-mute";
 const menuButton =
-  "tap shrink-0 rounded-full text-mute transition-transform duration-[140ms] ease-out focus-visible:text-fg active:scale-[.97] disabled:opacity-50 motion-reduce:active:scale-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-raised [@media(hover:hover)_and_(pointer:fine)]:hover:text-fg";
+  "tap shrink-0 rounded-full text-mute transition-transform duration-[140ms] ease-out focus-visible:text-fg active:scale-[.97] motion-reduce:active:scale-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-raised [@media(hover:hover)_and_(pointer:fine)]:hover:text-fg";
+// The menu button is never `disabled` while busy: a disabled button cannot take the focus back when the menu closes.
 const sheetItem =
   "flex min-h-12 w-full items-center rounded-xl px-3 text-left text-base transition-transform duration-[140ms] ease-out active:scale-[.97] motion-reduce:active:scale-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-raised";
 
@@ -68,7 +69,7 @@ function MemberMenu({
 
   if (desktop) {
     return (
-      <Popover label={label} triggerClassName={menuButton} trigger={<Dots />}>
+      <Popover label={label} triggerClassName={`${menuButton} ${busy ? "opacity-50" : ""}`} trigger={<Dots />}>
         <button
           type="button"
           role="menuitem"
@@ -104,8 +105,8 @@ function MemberMenu({
         type="button"
         aria-label={label}
         aria-haspopup="dialog"
-        className={menuButton}
-        disabled={busy}
+        className={`${menuButton} ${busy ? "opacity-50" : ""}`}
+        aria-busy={busy || undefined}
         onClick={() => setOpen(true)}
       >
         <Dots />
