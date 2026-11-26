@@ -153,7 +153,8 @@ async fn the_tier_filter_cannot_let_a_later_or_holdout_match_into_fitting() {
     let wrong_tier = matches_of(&lab, |e, _| e.contains("Shanghai") || e.contains("Austin"));
     let latest = matches_of(&lab, |e, _| e.contains("Budapest"));
     assert!(!holdout.is_empty() && !wrong_tier.is_empty() && !latest.is_empty());
-    let fits = fits.lock().unwrap();
+    let seen = fits.lock().unwrap().clone();
+    let fits = seen;
     assert!(!fits.is_empty());
     for fit in fits.iter() {
         assert!(fit.is_disjoint(&holdout), "a fit saw a Holdout Match");
@@ -164,7 +165,6 @@ async fn the_tier_filter_cannot_let_a_later_or_holdout_match_into_fitting() {
     // A fit for a later Event holds the earlier Events and never its own.
     let copenhagen = matches_of(&lab, |e, _| e.contains("Copenhagen"));
     assert!(fits.iter().any(|f| copenhagen.is_subset(f)));
-    drop(fits);
 
     // Training on every tier admits the others but still not the Holdout.
     let all = Arc::new(Mutex::new(Vec::new()));
@@ -175,7 +175,7 @@ async fn the_tier_filter_cannot_let_a_later_or_holdout_match_into_fitting() {
     })];
     open.tiers.train = None;
     open.run().await.unwrap();
-    let all = all.lock().unwrap();
+    let all = all.lock().unwrap().clone();
     assert!(all.iter().any(|f| !f.is_disjoint(&wrong_tier)));
     assert!(all.iter().all(|f| f.is_disjoint(&holdout)));
 }
