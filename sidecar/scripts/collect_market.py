@@ -53,6 +53,7 @@ DEFAULT_ARCHIVE = ROOT / "target/research-archive"
 MANIFEST = "sources-market.tsv"
 REMOTE_NOTE = " (fetched with curl on a remote host: the API is blocked from the workstation)"
 REMOTE_HOSTS = ("gamma-api.polymarket.com", "clob.polymarket.com", "api.elections.kalshi.com")
+FIXTURES_PACE = 12.0  # seconds between billable calls; a burst was answered with 429
 FIXTURE_PAGE = 100  # a full page means the window may be truncated: split it
 SAFE = re.compile(r"[^A-Za-z0-9._-]")
 
@@ -105,14 +106,22 @@ class Collector:
         folder = self.catalog if catalog else self.archive
         (folder / (name + ".gz")).write_bytes(gzip.compress(body, mtime=0))
         rel = ("catalog/" if catalog else "") + name + ".gz"
-        path = self.archive / MANIFEST
-        rows = {}
-        if path.exists():
-            for line in path.read_text(encoding="utf8").splitlines():
-                rows[line.split("\t")[0]] = line
-        rows[rel] = "\t".join([rel, request, iso(self.now()), hashlib.sha256(body).hexdigest()])
-        path.write_text("\n".join(sorted(rows.values())) + "\n", encoding="utf8")
+        # Append-only, so two collectors running side by side (OddsPapi and remote) never lose a row;
+        # `compact_manifest` (the report command) keeps the last row per file.
+        row = "\t".join([rel, request, iso(self.now()), hashlib.sha256(body).hexdigest()])
+        with open(self.archive / MANIFEST, "a", encoding="utf8", newline="\n") as out:
+            out.write(row + "\n")
         self.saved += 1
+
+    def compact_manifest(self):
+        path = self.archive / MANIFEST
+        if not path.exists():
+            return
+        rows = {}
+        for line in path.read_text(encoding="utf8").splitlines():
+            if line.strip():
+                rows[line.split("\t")[0]] = line
+        path.write_text("\n".join(sorted(rows.values())) + "\n", encoding="utf8", newline="\n")
 
     def month(self):
         return self.now().strftime("%Y-%m")
@@ -148,33 +157,47 @@ class Collector:
                 return
 
     def _fixture_window(self, tournament, label, start, end):
-        """Fetch one window; a full page is split in two. Returns True when a budget stops the run."""
-        name = f"oddspapi-fixtures-{label}-{start}-{end}"
-        truncated = name + "-truncated.json"
-        name += ".json"
-        if self.exists(name):
-            return False
-        if self.exists(truncated):
-            body = None
-        else:
-            if not self.spend_billable():
-                return True
-            params = {"tournamentId": tournament, "statusId": 2, "from": str(start), "to": str(end)}
-            try:
-                body, request = self.oddspapi("fixtures", params)
-            except RuntimeError as e:
-                self.notes.append(f"fixtures {label} {start}..{end}: {e}")
+        """Fetch [start, end] page by page. The API returns the earliest 100 fixtures of a window, so a
+        full page is kept up to the day before its last day and the next request starts on that day.
+        Returns True when a budget stops the run."""
+        cur = start
+        while cur <= end:
+            base = f"oddspapi-fixtures-{label}-{cur}-{end}"
+            if self.exists(base + ".json"):
                 return False
-            fixtures = json.loads(body)
-            if len(fixtures) >= FIXTURE_PAGE and end > start:
-                self.save(truncated, body, request, catalog=True)
-                body = None
+            if self.exists(base + "-truncated.json"):
+                body, request = self.read(base + "-truncated.json"), "(saved full page)"
             else:
-                self.save(name, body, request, catalog=not fixtures)
+                if not self.spend_billable():
+                    return True
+                params = {"tournamentId": tournament, "statusId": 2, "from": str(cur), "to": str(end)}
+                try:
+                    body, request = self.oddspapi("fixtures", params)
+                except RuntimeError as e:
+                    self.sleep(FIXTURES_PACE)
+                    if "404" in str(e):  # OddsPapi has nothing for this window: remember it
+                        self.save(base + ".json", b"[]", f"{params} answered HTTP 404", catalog=True)
+                        return False
+                    self.notes.append(f"fixtures {label} {cur}..{end}: {e}")
+                    return "429" in str(e)  # rate limited: stop the run, resume later
+                self.sleep(FIXTURES_PACE)
+            fixtures = json.loads(body)
+            if len(fixtures) < FIXTURE_PAGE or cur >= end:
+                self.save(base + ".json", body, request, catalog=not fixtures)
                 return False
-        mid = start + timedelta(days=(end - start).days // 2)
-        return (self._fixture_window(tournament, label, start, mid)
-                or self._fixture_window(tournament, label, mid + timedelta(days=1), end))
+            if not self.exists(base + "-truncated.json"):
+                self.save(base + "-truncated.json", body, request, catalog=True)
+            days = [f["startTime"][:10] for f in fixtures]
+            last = date.fromisoformat(max(days))
+            if last <= cur:  # the whole page is one day: keep it and move on
+                self.save(f"oddspapi-fixtures-{label}-{cur}-{cur}.json", body, request)
+                cur += timedelta(days=1)
+                continue
+            before = [f for f in fixtures if f["startTime"][:10] < str(last)]
+            self.save(f"oddspapi-fixtures-{label}-{cur}-{last - timedelta(days=1)}.json",
+                      json.dumps(before).encode(), request + " (days before the last day of the page)")
+            cur = last
+        return False
 
     def fixture_lists(self):
         for path in sorted(self.archive.glob("oddspapi-fixtures-*.json.gz")):
@@ -245,18 +268,24 @@ class Collector:
                 for key in ("start_date_min", "start_date_max"):
                     if item.get(key):
                         url += f"&{key}={item[key]}"
-                name = f"polymarket-events-{tag}-closed-{offset}"
+                name = f"polymarket-events-{tag}-{item['label']}-closed-{offset}.json" if item.get("label") else f"polymarket-events-{tag}-closed-{offset}.json"
                 if self.exists(name):
                     body = self.read(name)
                 else:
                     body = self.remote_get(url)
                     if body is None:
                         break
+                    if not isinstance(json.loads(body), list):
+                        self.notes.append(f"{name}: answer is not a list ({body[:80]!r}); window ends")
+                        break
                     self.save(name, body, url + REMOTE_NOTE, catalog=not json.loads(body))
                 events = json.loads(body)
                 if not events:
                     break
                 for event in events:
+                    words = item.get("title_any")
+                    if words and not any(w.lower() in event.get("title", "").lower() for w in words):
+                        continue
                     self._polymarket_history(event)
 
     def _polymarket_history(self, event):
@@ -361,7 +390,7 @@ def main():
     parser.add_argument("command", choices=["collect", "tournaments", "audit", "report"])
     args = parser.parse_args()
     backtest = load_backtest_collector()
-    needs_odds = args.command == "tournaments" or (
+    needs_odds = args.command in ("tournaments", "audit") or (
         args.command == "collect" and {"oddspapi-fixtures", "oddspapi-history"} & set(args.only.split(",")))
     if needs_odds:
         backtest.load_secrets(args.env)
@@ -379,6 +408,8 @@ def main():
         if collector.spend_billable():
             body, request = collector.oddspapi("tournaments", {"sportId": 17})
             collector.save("oddspapi-tournaments-17.json", body, request, catalog=True)
+    elif args.command == "report":
+        collector.compact_manifest()
     elif args.command == "collect":
         plan = load_plan(args.plan, args.tournaments)
         steps = args.only.split(",")

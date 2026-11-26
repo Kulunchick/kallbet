@@ -124,18 +124,48 @@ class Fixtures(unittest.TestCase):
             make(t, odds2).oddspapi_fixtures(self.PLAN)
             self.assertEqual(odds2.calls, [])
 
-    def test_full_page_splits_the_window_and_empty_list_goes_to_catalog(self):
+    def test_full_page_continues_from_its_last_day_and_keeps_only_complete_days(self):
         with tempfile.TemporaryDirectory() as t:
-            full = json.dumps([fx(str(i)) for i in range(100)]).encode()
-            half = json.dumps([fx("h")]).encode()
+            days = ["2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05"]
+            full = json.dumps([fx(str(i), days[i // 25] + "T10:00:00.000Z") for i in range(100)]).encode()
+            tail = json.dumps([fx("h", "2026-06-05T12:00:00.000Z"), fx("i", "2026-06-09T12:00:00.000Z")]).encode()
             odds = FakeOdds(fixtures={(46101, "2026-06-02", "2026-06-22"): full,
-                                      (46101, "2026-06-02", "2026-06-12"): half})
+                                      (46101, "2026-06-05", "2026-06-22"): tail})
             make(t, odds).oddspapi_fixtures(self.PLAN)
-            self.assertEqual(odds.count("fixtures"), 3)
+            self.assertEqual(odds.count("fixtures"), 2)
             root = pathlib.Path(t)
-            self.assertTrue((root / "oddspapi-fixtures-cologne-2026-2026-06-02-2026-06-12.json.gz").exists())
-            self.assertTrue(list((root / "catalog").glob("oddspapi-fixtures-cologne-2026-2026-06-1*")))
-            self.assertFalse((root / "oddspapi-fixtures-cologne-2026-2026-06-02-2026-06-22.json.gz").exists())
+            first = json.loads(gzip.decompress((root / "oddspapi-fixtures-cologne-2026-2026-06-02-2026-06-04.json.gz").read_bytes()))
+            self.assertEqual(len(first), 75)  # the 06-05 fixtures come again with the next page
+            self.assertTrue((root / "oddspapi-fixtures-cologne-2026-2026-06-05-2026-06-22.json.gz").exists())
+            again = FakeOdds()
+            make(t, again).oddspapi_fixtures(self.PLAN)
+            self.assertEqual(again.calls, [])
+
+    def test_a_429_stops_the_fixtures_run_and_requests_are_paced(self):
+        with tempfile.TemporaryDirectory() as t:
+            plan = [{"tournament": i, "name": f"t{i}", "from": "2026-06-02", "to": "2026-06-03"} for i in range(4)]
+            slept = []
+            odds = FakeOdds(fixtures={(1, "2026-06-02", "2026-06-03"): "HTTP 429"})
+            c = make(t, odds)
+            c.sleep = slept.append
+            c.oddspapi_fixtures(plan)
+            self.assertEqual([x[1]["tournamentId"] for x in odds.calls], [0, 1])
+            self.assertEqual(slept, [cm.FIXTURES_PACE] * 2)
+            self.assertIn("429", " ".join(c.notes))
+
+    def test_a_404_is_remembered_as_an_empty_window(self):
+        with tempfile.TemporaryDirectory() as t:
+            odds = FakeOdds(fixtures={(46101, "2026-06-02", "2026-06-22"): "HTTP 404"})
+            make(t, odds).oddspapi_fixtures(self.PLAN)
+            again = FakeOdds()
+            make(t, again).oddspapi_fixtures(self.PLAN)
+            self.assertEqual(again.calls, [])
+            self.assertTrue((pathlib.Path(t) / "catalog/oddspapi-fixtures-cologne-2026-2026-06-02-2026-06-22.json.gz").exists())
+
+    def test_empty_list_goes_to_catalog(self):
+        with tempfile.TemporaryDirectory() as t:
+            make(t, FakeOdds()).oddspapi_fixtures(self.PLAN)
+            self.assertTrue((pathlib.Path(t) / "catalog/oddspapi-fixtures-cologne-2026-2026-06-02-2026-06-22.json.gz").exists())
 
     def test_caps_stop_before_the_request_and_the_ledger_persists(self):
         with tempfile.TemporaryDirectory() as t:
@@ -183,6 +213,27 @@ class Polymarket(unittest.TestCase):
             make(t, remote=remote2).polymarket(self.PLAN)
             self.assertEqual(remote2.urls, [])
 
+    def test_an_error_page_is_not_saved_and_ends_the_window(self):
+        with tempfile.TemporaryDirectory() as t:
+            remote = Remote({"offset=0": b'{"type":"validation error","error":"offset too large"}'})
+            c = make(t, remote=remote)
+            c.polymarket(self.PLAN)
+            self.assertEqual(list(pathlib.Path(t).glob("polymarket-events-*")), [])
+            self.assertIn("not a list", " ".join(c.notes))
+
+    def test_label_names_the_pages_and_title_filter_limits_histories(self):
+        with tempfile.TemporaryDirectory() as t:
+            events = [dict(POLY_EVENTS[0], title="Counter-Strike: A vs B - IEM Cologne 2026"),
+                      dict(POLY_EVENTS[0], slug="other", title="Counter-Strike: C vs D - Tiny Cup")]
+            remote = Remote({"offset=0": json.dumps(events).encode(), "offset=100": b"[]",
+                             "prices-history": b'{"history":[]}'})
+            plan = [{"tag": "cs2", "label": "2026-03", "title_any": ["IEM"]}]
+            make(t, remote=remote).polymarket(plan)
+            root = pathlib.Path(t)
+            self.assertTrue((root / "polymarket-events-cs2-2026-03-closed-0.json.gz").exists())
+            self.assertTrue((root / "polymarket-history-cs2-a-b-2026-03-01.json.gz").exists())
+            self.assertFalse((root / "polymarket-history-other.json.gz").exists())
+
     def test_refuses_a_non_market_host(self):
         with self.assertRaises(RuntimeError):
             cm.check_remote_url("https://example.com/x")
@@ -212,6 +263,20 @@ class Kalshi(unittest.TestCase):
             remote = Remote({"min_close_ts=100": page})
             make(t, remote=remote).kalshi([{"min_close": 100, "max_close": 200, "event": "BLAST"}])
             self.assertEqual(len(remote.urls), 1)
+
+
+class Manifest(unittest.TestCase):
+    def test_rows_append_and_compact_keeps_the_last_row_per_file(self):
+        with tempfile.TemporaryDirectory() as t:
+            c = make(t)
+            c.save("a.json", b"1", "r1")
+            c.save("a.json", b"2", "r2")
+            c.save("b.json", b"3", "r3")
+            path = pathlib.Path(t) / "sources-market.tsv"
+            self.assertEqual(len(path.read_text().splitlines()), 3)
+            c.compact_manifest()
+            rows = [l.split("	") for l in path.read_text().splitlines()]
+            self.assertEqual([(r[0], r[1]) for r in rows], [("a.json.gz", "r2"), ("b.json.gz", "r3")])
 
 
 class Plan(unittest.TestCase):
