@@ -184,7 +184,10 @@ fn dot(a: &[f64], b: &[f64]) -> f64 {
 
 /// Minimises `Σ log-loss(σ(w·x), y) + λ/2 · |w − prior|²`, starting at `prior`.
 pub fn ridge_logistic(rows: &[(Vec<f64>, bool)], prior: &[f64], lambda: f64) -> Vec<f64> {
-    let rows: Vec<_> = rows.iter().map(|(x, won)| (0.0, x.as_slice(), *won)).collect();
+    let rows: Vec<_> = rows
+        .iter()
+        .map(|(x, won)| (0.0, x.as_slice(), *won))
+        .collect();
     ridge_logistic_with_offset(&rows, prior, lambda)
 }
 
@@ -216,14 +219,40 @@ pub(super) fn ridge_logistic_with_offset(
             }
         }
         let Some(step) = solve(h, g) else { break };
-        for (wj, sj) in w.iter_mut().zip(&step) {
-            *wj -= sj;
+        // A full Newton step can overshoot on near-certain inputs and cycle
+        // for ever (ticket #48); halve it until the objective does not rise.
+        let before = objective(rows, &w, prior, lambda);
+        let mut t = 1.0;
+        let mut next: Vec<f64>;
+        loop {
+            next = w.iter().zip(&step).map(|(wj, sj)| wj - t * sj).collect();
+            if objective(rows, &next, prior, lambda) <= before || t < 1e-10 {
+                break;
+            }
+            t /= 2.0;
         }
-        if step.iter().map(|s| s.abs()).fold(0.0, f64::max) < 1e-12 {
+        let moved = step.iter().map(|s| (t * s).abs()).fold(0.0, f64::max);
+        w = next;
+        if moved < 1e-12 {
             break;
         }
     }
     w
+}
+
+/// `Σ log-loss(σ(offset + w·x), y) + λ/2 · |w − prior|²`, computed stably.
+fn objective(rows: &[(f64, &[f64], bool)], w: &[f64], prior: &[f64], lambda: f64) -> f64 {
+    let penalty: f64 = w.iter().zip(prior).map(|(a, b)| (a - b).powi(2)).sum();
+    let loss: f64 = rows
+        .iter()
+        .map(|(offset, x, won)| {
+            // −log σ(±z) = softplus(∓z)
+            let z = offset + dot(w, x);
+            let z = if *won { -z } else { z };
+            z.max(0.0) + (-z.abs()).exp().ln_1p()
+        })
+        .sum();
+    loss + lambda / 2.0 * penalty
 }
 
 /// Solves `a · x = b` by Gaussian elimination with partial pivoting.
