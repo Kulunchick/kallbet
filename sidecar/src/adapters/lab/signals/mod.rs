@@ -6,6 +6,9 @@ use crate::adapters::debate;
 use crate::*;
 
 pub mod calibration;
+pub mod head_to_head;
+pub mod own_rating;
+pub mod recent_form;
 
 /// What a Candidate Signal may read of one Match: the Match as the pipeline
 /// sees it before its cutoff, and the anchor's inputs read through the replay
@@ -20,6 +23,12 @@ pub struct MatchView {
     pub signal: Option<AsOf<Signal>>,
     /// Team A's fair series probability as the Odds Source port gives it.
     pub market: Option<AsOf<f64>>,
+    /// All archive Matches finished strictly before `cutoff`, oldest first.
+    pub history_before: HistorySlice,
+    /// Team A's archive Matches finished strictly before `cutoff`, oldest first.
+    pub team_a_history: HistorySlice,
+    /// Team B's archive Matches finished strictly before `cutoff`, oldest first.
+    pub team_b_history: HistorySlice,
 }
 impl MatchView {
     pub fn signal(&self) -> Result<Option<&Signal>, TemporalLeakError> {
@@ -30,6 +39,15 @@ impl MatchView {
             .as_ref()
             .map(|m| m.at(self.cutoff).copied())
             .transpose()
+    }
+    pub fn history_before(&self) -> Result<Vec<&HistoricalMatch>, TemporalLeakError> {
+        self.history_before.at(self.cutoff)
+    }
+    pub fn team_a_history(&self) -> Result<Vec<&HistoricalMatch>, TemporalLeakError> {
+        self.team_a_history.at(self.cutoff)
+    }
+    pub fn team_b_history(&self) -> Result<Vec<&HistoricalMatch>, TemporalLeakError> {
+        self.team_b_history.at(self.cutoff)
     }
     /// The latest observation among the inputs, to date a prediction made from them.
     pub fn observed_at(&self) -> Option<Instant> {
@@ -83,12 +101,20 @@ pub trait FittedSignal: Send + Sync {
     /// (the protocol checks it against the cutoff), or `None` when it has no
     /// prediction for this Match.
     fn predict(&self, m: &MatchView) -> Result<Option<AsOf<f64>>>;
+    /// Optional unblended series rating probability for direct comparison
+    /// against the Valve rating (`m.signal()?.series`), without the market line.
+    fn predict_rating(&self, _m: &MatchView) -> Result<Option<AsOf<f64>>> {
+        Ok(None)
+    }
 }
 
 /// Every registered Candidate Signal, in report order.
 pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
     vec![
         std::sync::Arc::new(calibration::RatingCalibration),
+        std::sync::Arc::new(own_rating::OwnRating),
+        std::sync::Arc::new(recent_form::RecentForm),
+        std::sync::Arc::new(head_to_head::HeadToHead),
         std::sync::Arc::new(super::llm::LlmAnswers::unrun()),
     ]
 }

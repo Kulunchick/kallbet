@@ -34,6 +34,24 @@ pub struct EventRow {
     pub log_loss_difference: Option<f64>,
 }
 
+/// Head-to-head comparison of a Candidate Signal's unblended rating against a
+/// direct reference (e.g. `own_rating` against Valve Regional Standings without
+/// the market line).
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct DirectComparison {
+    pub reference: String,
+    pub paired: usize,
+    pub events: usize,
+    pub baseline: Metrics,
+    pub variant: Metrics,
+    /// variant − reference: below zero is better for log-loss and Brier.
+    pub difference: Metrics,
+    pub interval: Interval,
+    pub std_error: f64,
+    pub detectable: f64,
+    pub per_event: Vec<EventRow>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct CandidateReport {
     pub name: String,
@@ -60,6 +78,9 @@ pub struct CandidateReport {
     pub detectable: Option<f64>,
     /// The paired Matches with a market line (`None`: there are none).
     pub market: Option<MarketSubset>,
+    /// Optional direct comparison against the Valve rating (unblended).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vs_valve: Option<DirectComparison>,
     pub per_event: Vec<EventRow>,
 }
 
@@ -163,6 +184,41 @@ impl LabReport {
                 );
                 let _ = writeln!(md, "|---|---|---|---|");
                 for (name, m) in [("anchor", b), (c.name.as_str(), v)] {
+                    let _ = writeln!(
+                        md,
+                        "| {name} | {:.4} | {:.4} | {:.1}% |",
+                        m.log_loss,
+                        m.brier,
+                        m.accuracy * 100.0
+                    );
+                }
+                let _ = writeln!(md);
+            }
+            if let Some(vs) = &c.vs_valve {
+                let _ = writeln!(
+                    md,
+                    "### Direct comparison with Valve rating ({} paired Matches, {} Events)\n",
+                    vs.paired, vs.events
+                );
+                let _ = writeln!(
+                    md,
+                    "Reference: {}. Δ log-loss {:+.4} ({level}% interval [{:+.4}, {:+.4}], \
+                     detectable {:.4}), Δ Brier {:+.4}, Δ accuracy {:+.4}.\n",
+                    vs.reference,
+                    vs.difference.log_loss,
+                    vs.interval.low,
+                    vs.interval.high,
+                    vs.detectable,
+                    vs.difference.brier,
+                    vs.difference.accuracy,
+                );
+                let _ = writeln!(
+                    md,
+                    "| On the {} paired Matches | Log-loss | Brier | Accuracy |",
+                    vs.paired
+                );
+                let _ = writeln!(md, "|---|---|---|---|");
+                for (name, m) in [("Valve rating", vs.baseline), (c.name.as_str(), vs.variant)] {
                     let _ = writeln!(
                         md,
                         "| {name} | {:.4} | {:.4} | {:.1}% |",

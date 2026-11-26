@@ -26,7 +26,9 @@ pub mod runs;
 pub mod signals;
 pub mod stats;
 
-pub use report::{CandidateReport, EventInfo, EventRow, LabReport, MarketSubset, Metrics};
+pub use report::{
+    CandidateReport, DirectComparison, EventInfo, EventRow, LabReport, MarketSubset, Metrics,
+};
 pub use runner::{Lab, LabOutcome, LabPrediction};
 pub use runs::{LabRun, record_lab_run};
 pub use signals::{CandidateSignal, FittedSignal, MatchView, Observed};

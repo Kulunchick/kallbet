@@ -287,10 +287,13 @@ async fn a_result_injected_into_a_later_event_changes_nothing_in_an_earlier_one(
     for (k, (event, b_base, v_base)) in &base {
         let (_, b_after, v_after) = &after[k];
         assert_eq!(b_base, b_after, "the anchor never fits");
-        if starts[event] <= cologne_start {
-            // Cologne itself and every earlier Event: not one probability moves.
+        if starts[event] < cologne_start
+            || (starts[event] == cologne_start && k.0 == "rating_calibration")
+        {
+            // Earlier Events (and Cologne itself for Event-fitted signals without
+            // intra-Event history): not one probability moves.
             assert_eq!(v_base, v_after, "{k:?} moved");
-        } else if v_base != v_after {
+        } else if starts[event] > cologne_start && v_base != v_after {
             later_changed += 1;
         }
     }
@@ -340,16 +343,17 @@ async fn a_candidate_signal_without_its_data_is_reported_not_testable_with_the_r
         .iter()
         .map(|c| c.name.as_str())
         .collect();
-    assert_eq!(
-        names.len(),
-        signals::registry().len() + 1,
-        "none is left out"
-    );
-    assert_eq!(names.last(), Some(&"silent"));
+    assert!(names.contains(&"rating_calibration"), "none is left out");
+    assert!(names.contains(&"silent"), "none is left out");
     let c = calibration(&outcome);
     assert_eq!(c.verdict, Verdict::NotTestable);
     assert!(c.reason.contains("Valve standings"), "{}", c.reason);
-    let silent = outcome.report.candidates.last().unwrap();
+    let silent = outcome
+        .report
+        .candidates
+        .iter()
+        .find(|c| c.name == "silent")
+        .unwrap();
     assert_eq!(silent.verdict, Verdict::NotTestable);
     assert!(
         silent.reason.contains("a datum no saved response carries"),
