@@ -30,7 +30,7 @@ pub mod selection;
 pub mod signals;
 pub mod stats;
 
-pub use holdout::Holdout;
+pub use holdout::{Freeze, Holdout};
 pub use report::{
     CandidateReport, DirectComparison, EventInfo, EventRow, HoldoutReport, HoldoutStatus,
     LabReport, MarketSubset, Metrics, SelectionReport,

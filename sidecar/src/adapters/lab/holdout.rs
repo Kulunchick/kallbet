@@ -63,3 +63,15 @@ impl Holdout {
         )
     }
 }
+
+/// A recorded Holdout evaluation (`lab_runs`): after it the Holdout may be
+/// read again only to reproduce it, on the same archive with the same frozen
+/// combination.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Freeze {
+    pub archive_sha256: String,
+    /// The `lab_runs.holdout` record: `evaluated: <frozen combination>`.
+    pub holdout: String,
+    /// When it was evaluated (the run's start).
+    pub evaluated_at: Instant,
+}

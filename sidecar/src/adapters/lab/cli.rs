@@ -85,6 +85,18 @@ pub async fn run(args: &[String]) -> Result<String> {
     }
     std::fs::create_dir_all(&o.out)?;
     let audit = Audit::open(&o.out.join("audit.sqlite")).await?;
+    // The first recorded Holdout evaluation, if any: only a reproduction of it
+    // may read the Holdout again.
+    lab.freeze = audit
+        .lab_runs()
+        .await?
+        .into_iter()
+        .find(|r| r.holdout.as_deref().is_some_and(|h| h.starts_with("evaluated")))
+        .map(|r| super::Freeze {
+            archive_sha256: r.archive_sha256,
+            holdout: r.holdout.unwrap_or_default(),
+            evaluated_at: r.started_at,
+        });
     info!(
         stages = lab.archive.stages.len(),
         files = lab.archive.files,

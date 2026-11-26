@@ -1,7 +1,7 @@
 //! The protocol's runner: reads every scored Match of the archive through the
 //! replay ports at its cutoff, then evaluates each Candidate Signal Event by
 //! Event, walk-forward, against the anchor.
-use super::holdout::Holdout;
+use super::holdout::{Freeze, Holdout};
 use super::report::{
     CandidateReport, DirectComparison, EventInfo, EventRow, LabReport, MarketSubset, Metrics,
 };
@@ -30,6 +30,9 @@ pub struct Lab {
     pub signals: Vec<Arc<dyn CandidateSignal>>,
     /// Which Stages are the Holdout (default: spec #33's).
     pub holdout: Holdout,
+    /// The Holdout evaluation already recorded, if any (the CLI reads it
+    /// from `lab_runs`): a run that would evaluate it otherwise is refused.
+    pub freeze: Option<Freeze>,
 }
 
 /// One Match as one Candidate Signal saw it: the anchor's probability and the
@@ -128,6 +131,7 @@ impl Lab {
             protocol: Protocol::default(),
             signals: signals::registry(),
             holdout: Holdout::default(),
+            freeze: None,
         })
     }
 
@@ -433,6 +437,7 @@ impl Lab {
                 serde_json::to_value(selection::deployment_combiner(&events, &frozen)?)?,
             );
         }
+        self.check_freeze(&frozen)?;
         // The selection is frozen: only now are the Holdout's Matches read.
         let holdout = self.holdout_events().await?;
         let evaluated = selection::holdout(
@@ -465,6 +470,41 @@ impl Lab {
             combination: selected.predictions,
             holdout: evaluated.predictions,
         })
+    }
+
+    /// Refuses to evaluate a Holdout that was already evaluated, unless this
+    /// run reproduces that evaluation: the same archive, the same frozen
+    /// combination. A Holdout with no Match played is not evaluated.
+    fn check_freeze(&self, frozen: &[Member]) -> Result<()> {
+        let Some(freeze) = &self.freeze else {
+            return Ok(());
+        };
+        let stages = self.holdout_stages();
+        let played = self
+            .archive
+            .stages
+            .iter()
+            .any(|s| stages.contains(&s.id) && !s.matches.is_empty());
+        if !played {
+            return Ok(());
+        }
+        let names: Vec<&str> = frozen.iter().map(|m| m.signal.name()).collect();
+        let record = if names.is_empty() {
+            "evaluated: anchor".to_string()
+        } else {
+            format!("evaluated: {}", names.join(" + "))
+        };
+        if freeze.archive_sha256 == self.archive.digest && freeze.holdout == record {
+            return Ok(());
+        }
+        Err(format!(
+            "the Holdout was already evaluated on {} ({}, archive {}); this run ({record},              archive {}) would evaluate it again, so it is refused",
+            freeze.evaluated_at.format("%Y-%m-%d %H:%M UTC"),
+            freeze.holdout,
+            freeze.archive_sha256,
+            self.archive.digest
+        )
+        .into())
     }
 
     /// The walk-forward boundary: the training Matches of `event` are those of

@@ -668,3 +668,40 @@ async fn the_holdout_is_read_only_by_the_final_step() {
     assert_eq!(c.verdict, Verdict::NotTestable);
     assert!(c.reason.contains("fewer than two"), "{}", c.reason);
 }
+
+// Finding 10 (review of 6eea194): once a Holdout evaluation is recorded, a
+// later run reads the Holdout again only to reproduce it: the same archive
+// and the same frozen combination. Any other run is refused before it reads
+// a Holdout Match.
+#[tokio::test]
+async fn a_recorded_holdout_evaluation_is_only_reproduced() {
+    let first = lab_with_holdout(whole()).run().await.unwrap();
+    assert_eq!(first.report.holdout.status, HoldoutStatus::Evaluated);
+    let record = kallbet_ai::adapters::lab::runs::holdout_record(&first.report);
+    let evaluated_at: Instant = "2026-12-03T10:00:00Z".parse().unwrap();
+    let freeze = |digest: &str, combination: &str| kallbet_ai::adapters::lab::Freeze {
+        archive_sha256: digest.into(),
+        holdout: combination.into(),
+        evaluated_at,
+    };
+
+    let mut again = lab_with_holdout(whole());
+    again.freeze = Some(freeze(&first.report.archive_digest, &record));
+    let reproduced = again.run().await.unwrap();
+    assert_eq!(reproduced.holdout, first.holdout);
+
+    for (digest, combination) in [
+        ("another archive", record.as_str()),
+        (first.report.archive_digest.as_str(), "evaluated: something_else"),
+    ] {
+        let mut other = lab_with_holdout(whole());
+        other.freeze = Some(freeze(digest, combination));
+        let err = other.run().await.err().expect("refused");
+        assert!(err.to_string().contains("already evaluated"), "{err}");
+    }
+    // A selection that changes refuses too: here, no promoted signal.
+    let mut fewer = lab_with_holdout(whole());
+    fewer.signals = vec![signals::by_name("head_to_head").unwrap()];
+    fewer.freeze = Some(freeze(&first.report.archive_digest, &record));
+    assert!(fewer.run().await.is_err());
+}
