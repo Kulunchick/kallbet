@@ -217,6 +217,22 @@ impl Lab {
                 fits: m.fits,
             })
             .collect();
+        let training: Vec<_> = events
+            .iter()
+            .flat_map(|e| e.matches.iter().cloned())
+            .collect();
+        let mut deployment = BTreeMap::new();
+        for member in &promoted {
+            if let Some(parameters) = member.signal.fit(&training)?.deployment()? {
+                deployment.insert(member.signal.name().into(), parameters);
+            }
+        }
+        if !frozen.is_empty() {
+            deployment.insert(
+                "combination".into(),
+                serde_json::to_value(selection::deployment_combiner(&events, &frozen)?)?,
+            );
+        }
         let evaluated = selection::holdout(
             &self.holdout,
             &events,
@@ -238,6 +254,7 @@ impl Lab {
                            rating logit (`debate::base`)"
                     .into(),
                 events: events.iter().map(|e| e.info.clone()).collect(),
+                deployment,
                 candidates,
                 selection: selected.report,
                 holdout: evaluated.report,

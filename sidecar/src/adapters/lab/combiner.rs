@@ -32,7 +32,9 @@ pub fn sigmoid(x: f64) -> f64 {
 }
 
 /// What the anchor's inputs give for a Match.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub enum Pattern {
     /// A market line and a rating.
     Both,
@@ -101,7 +103,7 @@ impl Inputs {
 }
 
 /// The weights of one availability pattern and the Matches they were fitted on.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Model {
     pub matches: usize,
     /// Base inputs first (market, rating, as the pattern has them), then the extras.
@@ -109,7 +111,7 @@ pub struct Model {
 }
 
 /// A fitted combiner.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Combiner {
     pub extras: Vec<String>,
     models: Vec<(Pattern, Model)>,

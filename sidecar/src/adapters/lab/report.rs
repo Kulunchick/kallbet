@@ -110,6 +110,10 @@ pub struct LabReport {
     pub archive_files: usize,
     pub baseline: String,
     pub events: Vec<EventInfo>,
+    /// What a live bot runs (ticket #47): each `promote`d Candidate Signal that
+    /// can run live, fitted on every training-side Match, and the frozen
+    /// combination (`combination`), at full precision.
+    pub deployment: std::collections::BTreeMap<String, serde_json::Value>,
     pub candidates: Vec<CandidateReport>,
     /// Forward selection of the `promote`d Candidate Signals (ticket #37).
     pub selection: SelectionReport,

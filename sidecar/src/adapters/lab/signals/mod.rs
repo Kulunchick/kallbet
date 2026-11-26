@@ -134,6 +134,11 @@ pub trait FittedSignal: Send + Sync {
     /// (the protocol checks it against the cutoff), or `None` when it has no
     /// prediction for this Match.
     fn predict(&self, m: &MatchView) -> Result<Option<AsOf<f64>>>;
+    /// The fit at full precision, for a live bot to load (ticket #47); `None`
+    /// for a Candidate Signal that cannot run live (`promotion::LIVE`).
+    fn deployment(&self) -> Result<Option<serde_json::Value>> {
+        Ok(None)
+    }
     /// What it fitted, for the report's row of the evaluated Event.
     fn parameters(&self) -> Option<serde_json::Value> {
         None

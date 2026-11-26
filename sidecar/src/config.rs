@@ -7,6 +7,7 @@ pub enum Policy {
     VrsOnly,
     MarketOnly,
     HybridAnchored,
+    Promoted { name: String, report: PathBuf },
 }
 #[derive(Clone, Deserialize)]
 pub struct BotProfile {
