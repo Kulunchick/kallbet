@@ -8,7 +8,7 @@ const NOISE: [&str; 7] = ["team", "esports", "esport", "gaming", "clan", "club",
 
 /// Short or former name (as a key) → the team's key. One table for every
 /// source; add a name here, never in an adapter.
-const ALIASES: [(&str, &str); 26] = [
+const ALIASES: [(&str, &str); 27] = [
     ("nip", "ninjasinpyjamas"),
     ("navi", "natusvincere"),
     ("tl", "liquid"),
@@ -25,6 +25,7 @@ const ALIASES: [(&str, &str); 26] = [
     ("pvision", "parivision"),
     ("pv", "parivision"),
     ("dendelecs", "dendele"),
+    ("1w", "1win"),
     ("chinggis", "chinggiswarriors"),
     ("cw", "chinggiswarriors"),
     ("ef", "eternalfire"),
@@ -74,6 +75,8 @@ mod tests {
             ("PARIVISION", "PVISION"),
             ("BC.Game Esports", "GOSH"),
             ("Dendele CS", "Dendele"),
+            ("1win", "1w Team"),
+            ("1win", "1w"),
             ("BetBoom Team", "BB"),
             ("The MongolZ", "MongolZ"),
             ("Team Liquid", "TL"),
