@@ -1,0 +1,7 @@
+{
+  "close": "Close",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "dragHandle": "Drag down to close",
+  "typeToConfirm": "Type “{{text}}” to confirm"
+}
