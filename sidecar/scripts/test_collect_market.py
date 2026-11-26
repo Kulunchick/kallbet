@@ -213,6 +213,27 @@ class Polymarket(unittest.TestCase):
             make(t, remote=remote2).polymarket(self.PLAN)
             self.assertEqual(remote2.urls, [])
 
+    def test_an_error_page_is_not_saved_and_ends_the_window(self):
+        with tempfile.TemporaryDirectory() as t:
+            remote = Remote({"offset=0": b'{"type":"validation error","error":"offset too large"}'})
+            c = make(t, remote=remote)
+            c.polymarket(self.PLAN)
+            self.assertEqual(list(pathlib.Path(t).glob("polymarket-events-*")), [])
+            self.assertIn("not a list", " ".join(c.notes))
+
+    def test_label_names_the_pages_and_title_filter_limits_histories(self):
+        with tempfile.TemporaryDirectory() as t:
+            events = [dict(POLY_EVENTS[0], title="Counter-Strike: A vs B - IEM Cologne 2026"),
+                      dict(POLY_EVENTS[0], slug="other", title="Counter-Strike: C vs D - Tiny Cup")]
+            remote = Remote({"offset=0": json.dumps(events).encode(), "offset=100": b"[]",
+                             "prices-history": b'{"history":[]}'})
+            plan = [{"tag": "cs2", "label": "2026-03", "title_any": ["IEM"]}]
+            make(t, remote=remote).polymarket(plan)
+            root = pathlib.Path(t)
+            self.assertTrue((root / "polymarket-events-cs2-2026-03-closed-0.json.gz").exists())
+            self.assertTrue((root / "polymarket-history-cs2-a-b-2026-03-01.json.gz").exists())
+            self.assertFalse((root / "polymarket-history-other.json.gz").exists())
+
     def test_refuses_a_non_market_host(self):
         with self.assertRaises(RuntimeError):
             cm.check_remote_url("https://example.com/x")

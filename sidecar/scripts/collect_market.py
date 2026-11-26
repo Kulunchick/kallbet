@@ -268,18 +268,24 @@ class Collector:
                 for key in ("start_date_min", "start_date_max"):
                     if item.get(key):
                         url += f"&{key}={item[key]}"
-                name = f"polymarket-events-{tag}-closed-{offset}"
+                name = f"polymarket-events-{tag}-{item['label']}-closed-{offset}.json" if item.get("label") else f"polymarket-events-{tag}-closed-{offset}.json"
                 if self.exists(name):
                     body = self.read(name)
                 else:
                     body = self.remote_get(url)
                     if body is None:
                         break
+                    if not isinstance(json.loads(body), list):
+                        self.notes.append(f"{name}: answer is not a list ({body[:80]!r}); window ends")
+                        break
                     self.save(name, body, url + REMOTE_NOTE, catalog=not json.loads(body))
                 events = json.loads(body)
                 if not events:
                     break
                 for event in events:
+                    words = item.get("title_any")
+                    if words and not any(w.lower() in event.get("title", "").lower() for w in words):
+                        continue
                     self._polymarket_history(event)
 
     def _polymarket_history(self, event):
