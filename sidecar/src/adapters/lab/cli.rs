@@ -98,6 +98,7 @@ pub async fn run(args: &[String]) -> Result<String> {
     let track = super::llm::prepare(&mut lab, &o.llm, runner, &o.out).await?;
     let outcome = lab.run().await?;
     let leagues = super::leagues::report(&lab, lab.protocol.seed, 2000).await?;
+    let pickem = super::pickem::run(&lab, &super::pickem::PickemOptions::default()).await?;
     record_lab_run(&audit, started_at, SystemClock.now(), &outcome.report).await?;
     let report = &outcome.report;
     std::fs::write(o.out.join("catch-up.md"), leagues)?;
@@ -106,7 +107,18 @@ pub async fn run(args: &[String]) -> Result<String> {
         o.out.join("report.md"),
         report.markdown()
             + "\n[Catch-up mode in simulated Leagues](catch-up.md)\n"
-            + "\n[LLM track: single agent, debate and seatings](llm.md)\n",
+            + "
+[LLM track: single agent, debate and seatings](llm.md)
+"
+            + "
+[Pick'em variants in Pick'em Points](pickem.md)
+",
+    )?;
+    std::fs::write(o.out.join("pickem.md"), pickem.report.markdown())?;
+    std::fs::write(
+        o.out.join("pickem.json"),
+        serde_json::to_string_pretty(&pickem.report)? + "
+",
     )?;
     std::fs::write(
         o.out.join("report.json"),

@@ -7,6 +7,15 @@ use crate::*;
 use serde_json::Value;
 use std::sync::Arc;
 
+/// Picks to play down: what the field is assumed to submit (a Pick'em payload)
+/// and the share of a pick's expected points that agreeing with it forfeits.
+/// The Signal Lab's variance-seeking variant uses it when the bot trails.
+#[derive(Clone, Copy)]
+pub struct Avoid<'a> {
+    pub picks: &'a Value,
+    pub discount: f64,
+}
+
 pub const DEFAULT_SIMULATIONS: usize = 25_000;
 pub const DEFAULT_SEED: u64 = 0x51C0_2026_0028_CAFE;
 
@@ -113,14 +122,26 @@ impl MonteCarloPickemSolver {
         cutoff: Instant,
         rng: &mut dyn RandomSource,
     ) -> Result<Option<Value>> {
+        self.solve_avoiding(stage, ratings, cutoff, rng, None)
+    }
+
+    /// As `solve_with_rng`, with the picks of `avoid` worth less (see `Avoid`).
+    pub fn solve_avoiding(
+        &self,
+        stage: &AsOf<Value>,
+        ratings: &[AsOf<PairwiseProbability>],
+        cutoff: Instant,
+        rng: &mut dyn RandomSource,
+        avoid: Option<Avoid<'_>>,
+    ) -> Result<Option<Value>> {
         let stage_val = stage.at(cutoff)?;
         for rating in ratings {
             rating.at(cutoff)?;
         }
         check_no_mid_stage_leak(stage_val, cutoff)?;
         match stage_val["stage"]["kind"].as_str() {
-            Some("swiss") => swiss::solve_swiss(stage_val, ratings, cutoff, self.simulations, rng),
-            Some("playoffs") => playoffs::solve_playoffs(stage_val, ratings, cutoff),
+            Some("swiss") => swiss::solve_swiss(stage_val, ratings, cutoff, self.simulations, rng, avoid),
+            Some("playoffs") => playoffs::solve_playoffs(stage_val, ratings, cutoff, avoid),
             _ => Ok(None),
         }
     }
@@ -139,6 +160,7 @@ impl PickemSolver for MonteCarloPickemSolver {
 }
 
 pub use step::{SubmittedPickem, submitted_pickems};
+pub(crate) use step::invert_series_prob;
 
 pub fn new(
     clock: Arc<dyn Clock>,

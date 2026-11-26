@@ -11,6 +11,7 @@ use super::signals::roster::RosterHistory;
 use super::stats::{self, Verdict};
 use super::{PROTOCOL_VERSION, Protocol};
 use crate::adapters::backtest::feeds::{MarketSource, PriceHistory, ReplayOdds};
+use crate::adapters::backtest::match_context::MatchContext;
 use crate::adapters::backtest::{Feeds, ReplayArchive, ReplayMatch, ReplayStage};
 use crate::*;
 use std::{
@@ -60,11 +61,11 @@ pub(crate) struct Event {
 }
 
 /// The training side and, apart, the Holdout.
-struct Split {
-    training: Vec<Event>,
-    holdout: Vec<Event>,
+pub(super) struct Split {
+    pub(super) training: Vec<Event>,
+    pub(super) holdout: Vec<Event>,
     /// The Holdout Stages of the archive, for the report.
-    holdout_stages: Vec<String>,
+    pub(super) holdout_stages: Vec<String>,
 }
 
 impl Lab {
@@ -85,8 +86,19 @@ impl Lab {
         m: &ReplayMatch,
         rosters: Option<&RosterHistory>,
     ) -> Result<MatchView> {
-        let game = &m.game;
-        let cutoff = m.cutoff();
+        let context = self.archive.match_context.view(stage, m);
+        self.view_of(&m.game, m.cutoff(), context, rosters).await
+    }
+
+    /// The view of `game` at `cutoff`, also for a Match the archive does not
+    /// hold (a hypothetical Pick'em pairing), with the context given.
+    pub(super) async fn view_of(
+        &self,
+        game: &Match,
+        cutoff: Instant,
+        context: MatchContext,
+        rosters: Option<&RosterHistory>,
+    ) -> Result<MatchView> {
         let facts = self.feeds.context.facts(game, cutoff).await?;
         let mut team_a_roster = None;
         let mut team_b_roster = None;
@@ -150,7 +162,7 @@ impl Lab {
                 .history
                 .team_matches(&game.team_b.name, cutoff)
                 .await?,
-            context: self.archive.match_context.view(stage, m),
+            context,
             team_a_roster,
             team_b_roster,
             player_stats,
@@ -172,7 +184,7 @@ impl Lab {
     }
 
     /// The archive's Events, the Holdout's Stages kept apart from the training side.
-    async fn events(&self) -> Result<Split> {
+    pub(super) async fn events(&self) -> Result<Split> {
         let rosters = self
             .signals
             .iter()
@@ -327,7 +339,7 @@ impl Lab {
 
     /// The walk-forward boundary: the training Matches of `event` are those of
     /// the Events that ended before it began.
-    fn training(events: &[Event], event: &Event) -> Vec<Observed> {
+    pub(super) fn training(events: &[Event], event: &Event) -> Vec<Observed> {
         events
             .iter()
             .filter(|e| e.info.ends < event.info.begins)

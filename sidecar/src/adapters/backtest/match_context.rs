@@ -203,6 +203,18 @@ impl ArchiveContext {
             bracket_round: game.bracket_round,
         }
     }
+
+    /// The Stage's context for a pairing that is not one of its Matches (no round).
+    pub fn stage_view(&self, stage: &ReplayStage) -> MatchContext {
+        MatchContext {
+            index: self.0.clone(),
+            event_id: stage.event_id,
+            stage_id: stage.id,
+            stage_kind: stage.kind,
+            round: None,
+            bracket_round: None,
+        }
+    }
 }
 
 #[derive(Clone)]
