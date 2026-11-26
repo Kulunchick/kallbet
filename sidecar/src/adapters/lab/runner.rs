@@ -503,7 +503,7 @@ impl Lab {
             return Ok(());
         }
         Err(format!(
-            "the Holdout was already evaluated on {} ({}, archive {}); this run ({record},              archive {}) would evaluate it again, so it is refused",
+            "the Holdout was already evaluated on {} ({}, archive {}); this run ({record}, archive {}) would evaluate it again, so it is refused",
             freeze.evaluated_at.format("%Y-%m-%d %H:%M UTC"),
             freeze.holdout,
             freeze.archive_sha256,
