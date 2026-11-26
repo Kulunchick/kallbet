@@ -36,7 +36,7 @@ pub struct ReplayPlayerHistory {
 
 impl ReplayPlayerHistory {
     pub fn new(archive: &ReplayArchive) -> Self {
-        let mut by_pair: BTreeMap<(String, String), Vec<(Instant, Option<Instant>)>> =
+        let mut by_pair: BTreeMap<(String, String), Vec<(Instant, i64, Option<Instant>)>> =
             BTreeMap::new();
         for stage in &archive.stages {
             for m in &stage.matches {
@@ -44,7 +44,7 @@ impl ReplayPlayerHistory {
                 by_pair
                     .entry(pair)
                     .or_default()
-                    .push((m.actual_start, m.known_finish()));
+                    .push((m.actual_start, m.game.id, m.known_finish()));
             }
         }
 
@@ -61,11 +61,11 @@ impl ReplayPlayerHistory {
             let matched_finish = by_pair.get(&pair).and_then(|candidates| {
                 candidates
                     .iter()
-                    .filter(|(actual, _)| (*actual - rec.started_at).abs() <= window)
-                    .min_by_key(|(actual, _)| (*actual - rec.started_at).abs())
-                    .map(|(_, finished)| *finished)
+                    .filter(|(actual, _, _)| (*actual - rec.started_at).abs() <= window)
+                    .min_by_key(|(actual, _, _)| (*actual - rec.started_at).abs())
+                    .and_then(|(_, id, finished)| Some((*id, (*finished)?)))
             });
-            let Some(finished_at) = matched_finish.flatten() else {
+            let Some((match_id, finished_at)) = matched_finish else {
                 continue;
             };
             let maps_played = rec.maps.iter().filter(|m| m.played).count().max(1) as u8;
@@ -82,6 +82,7 @@ impl ReplayPlayerHistory {
                     }
                     let app = PlayerAppearance {
                         hltv_match_id: rec.match_id,
+                        match_id,
                         player_id: p.player_id,
                         nickname_key: nk.clone(),
                         nickname: p.nickname.clone(),

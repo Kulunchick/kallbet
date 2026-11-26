@@ -572,3 +572,44 @@ async fn no_stage_of_the_evaluated_event_trains_it() {
     }
     assert!(fitted_on.lock().unwrap().is_disjoint(&singapore));
 }
+
+// Finding 2 (review of 6eea194): a Holdout result never reaches a training
+// view, also not nested in the results history a signal reads. Cologne
+// begins before the boundary and ends after it, so it is all in the Holdout;
+// Singapore Stage 1 stays on the training side and is played after Cologne,
+// whose results would otherwise be in its history.
+#[tokio::test]
+async fn holdout_results_reach_no_training_view_through_the_history() {
+    let run = |reverse: bool| async move {
+        let mut archive = whole();
+        let boundary = archive.stages.iter().find(|s| s.id == 20709).unwrap().cutoff;
+        if reverse {
+            for s in archive.stages.iter_mut().filter(|s| s.event_id == 10488) {
+                for m in &mut s.matches {
+                    m.winner = m.loser();
+                    m.maps_score = m.maps_score.map(|(a, b)| (b, a));
+                }
+            }
+        }
+        let mut lab = Lab::new(archive).unwrap();
+        lab.holdout = Holdout {
+            from: boundary,
+            training_stages: vec![kallbet_ai::adapters::lab::holdout::SINGAPORE_STAGE_1],
+        };
+        lab.signals = ["own_rating", "recent_form", "head_to_head"]
+            .into_iter()
+            .map(|n| signals::by_name(n).unwrap())
+            .collect();
+        lab.run().await.unwrap()
+    };
+    let (plain, reversed) = (run(false).await, run(true).await);
+    assert!(plain.report.events.iter().any(|e| e.title.contains("Singapore")));
+    assert!(plain.report.events.iter().all(|e| !e.title.contains("Cologne")));
+    let singapore: Vec<_> = plain
+        .predictions
+        .iter()
+        .filter(|p| p.variant.is_some() && p.event_id == 11176)
+        .collect();
+    assert!(!singapore.is_empty());
+    assert_eq!(plain.predictions, reversed.predictions);
+}

@@ -129,9 +129,10 @@ pub async fn report(lab: &Lab, seed: u64, trials: usize) -> Result<String> {
         return Err("league experiment needs at least one trial".into());
     }
     let mut events = BTreeMap::<i64, Vec<Game>>::new();
+    let hidden = lab.holdout_matches(&lab.holdout_stages());
     for stage in &lab.archive.stages {
         for m in &stage.matches {
-            let v = lab.view(stage, m, None).await?;
+            let v = lab.view(stage, m, None, &hidden).await?;
             events.entry(stage.event_id).or_default().push(Game {
                 cutoff: m.cutoff(),
                 known: m.known_finish(),

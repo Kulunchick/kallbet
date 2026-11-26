@@ -177,6 +177,7 @@ impl PlayerStatsHistory for LeakyPlayerStats {
     async fn player_matches(&self, nickname: &str, cutoff: Instant) -> Result<PlayerStatsSlice> {
         let app = PlayerAppearance {
             hltv_match_id: 999_001,
+            match_id: 999_001,
             player_id: 42,
             nickname_key: player_key(nickname),
             nickname: nickname.to_string(),
@@ -295,6 +296,7 @@ fn app_slice(items: Vec<(i64, i64, &str, &str, u8, f64, Instant)>) -> PlayerStat
     for (mid, pid, nick, team, maps, rating, finished_at) in items {
         let a = PlayerAppearance {
             hltv_match_id: mid,
+            match_id: mid,
             player_id: pid,
             nickname_key: player_key(nick),
             nickname: nick.to_string(),

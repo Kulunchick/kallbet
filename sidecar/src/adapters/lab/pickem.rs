@@ -284,7 +284,12 @@ impl Pair {
 }
 
 /// Every pair of the Stage's teams, viewed at `now`.
-async fn pairs(lab: &Lab, stage: &ReplayStage, now: Instant) -> Result<Vec<Pair>> {
+async fn pairs(
+    lab: &Lab,
+    stage: &ReplayStage,
+    now: Instant,
+    hidden: &BTreeSet<i64>,
+) -> Result<Vec<Pair>> {
     let opening = |a: i64, b: i64| {
         stage
             .opening_matches
@@ -307,7 +312,7 @@ async fn pairs(lab: &Lab, stage: &ReplayStage, now: Instant) -> Result<Vec<Pair>
                 scheduled_start: Some(stage.cutoff),
             });
             let context = lab.archive.match_context.stage_view(stage);
-            let view = lab.view_of(&game, now, context, None).await?;
+            let view = lab.view_of(&game, now, context, None, hidden).await?;
             let mut pair = Pair {
                 first: ta.id,
                 second: tb.id,
@@ -397,6 +402,8 @@ struct Tally {
 pub async fn run(lab: &Lab, options: &PickemOptions) -> Result<PickemOutcome> {
     let seed = lab.protocol.seed;
     let split = lab.events().await?;
+    // The Holdout's results stay out of every view Pick'em reads.
+    let hidden = lab.holdout_matches(&lab.holdout_stages());
     let solver = MonteCarloPickemSolver::with_simulations(0, options.simulations);
     let candidates = [("calibrated", "rating_calibration"), ("learned", "learned_weights")];
     let by_event = event_order(lab);
@@ -464,7 +471,7 @@ pub async fn run(lab: &Lab, options: &PickemOptions) -> Result<PickemOutcome> {
             let mut view = opening.value.clone();
             view["stage"]["ordinal"] = (i as u64).into();
             let stage_view = AsOf::new(view, opening.observed_at, stage.cutoff)?;
-            let pairs = pairs(lab, stage, now).await?;
+            let pairs = pairs(lab, stage, now, &hidden).await?;
             let baseline_maps: Vec<Option<f64>> = pairs.iter().map(|p| p.baseline).collect();
             let stage_seed = mix(seed, stage.id as u64, 0);
             let solve = |maps: &[Option<f64>], avoid: Option<Avoid<'_>>, rng_seed: u64| -> Result<Option<Value>> {

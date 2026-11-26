@@ -20,6 +20,8 @@ pub fn player_key(nickname: &str) -> String {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PlayerAppearance {
     pub hltv_match_id: i64,
+    /// The PandaScore Match the HLTV record is linked to.
+    pub match_id: i64,
     pub player_id: i64,
     pub nickname_key: String,
     pub nickname: String,

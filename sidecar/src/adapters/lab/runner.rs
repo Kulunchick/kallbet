@@ -80,6 +80,46 @@ pub(super) struct Split {
     pub(super) holdout_stages: Vec<String>,
 }
 
+/// `slice` without the Matches in `hidden` (shared as it is when none is).
+fn hide_results(
+    slice: HistorySlice,
+    hidden: &BTreeSet<i64>,
+    cutoff: Instant,
+) -> Result<HistorySlice> {
+    let entries = slice.as_slice();
+    let mut keep = Vec::with_capacity(entries.len());
+    for e in entries {
+        if !hidden.contains(&e.at(cutoff)?.match_id) {
+            keep.push(e.clone());
+        }
+    }
+    Ok(if keep.len() == entries.len() {
+        slice
+    } else {
+        HistorySlice::from_vec(keep)
+    })
+}
+
+/// `slice` without the appearances in Matches of `hidden`.
+fn hide_players(
+    slice: PlayerStatsSlice,
+    hidden: &BTreeSet<i64>,
+    cutoff: Instant,
+) -> Result<PlayerStatsSlice> {
+    let entries = slice.as_slice();
+    let mut keep = Vec::with_capacity(entries.len());
+    for e in entries {
+        if !hidden.contains(&e.at(cutoff)?.match_id) {
+            keep.push(e.clone());
+        }
+    }
+    Ok(if keep.len() == entries.len() {
+        slice
+    } else {
+        PlayerStatsSlice::from_vec(keep)
+    })
+}
+
 impl Lab {
     pub fn new(archive: ReplayArchive) -> Result<Self> {
         Ok(Self {
@@ -97,19 +137,23 @@ impl Lab {
         stage: &ReplayStage,
         m: &ReplayMatch,
         rosters: Option<&RosterHistory>,
+        hidden: &BTreeSet<i64>,
     ) -> Result<MatchView> {
         let context = self.archive.match_context.view(stage, m);
-        self.view_of(&m.game, m.cutoff(), context, rosters).await
+        self.view_of(&m.game, m.cutoff(), context, rosters, hidden).await
     }
 
     /// The view of `game` at `cutoff`, also for a Match the archive does not
-    /// hold (a hypothetical Pick'em pairing), with the context given.
+    /// hold (a hypothetical Pick'em pairing), with the context given. The
+    /// Matches in `hidden` (the Holdout's, for a training-side view) are left
+    /// out of every history it holds.
     pub(super) async fn view_of(
         &self,
         game: &Match,
         cutoff: Instant,
         context: MatchContext,
         rosters: Option<&RosterHistory>,
+        hidden: &BTreeSet<i64>,
     ) -> Result<MatchView> {
         let facts = self.feeds.context.facts(game, cutoff).await?;
         let mut team_a_roster = None;
@@ -143,7 +187,7 @@ impl Lab {
                 }
                 let slice = self.feeds.player_stats.player_matches(nick, cutoff).await?;
                 slice.at(cutoff)?;
-                player_stats.insert(key, slice);
+                player_stats.insert(key, hide_players(slice, hidden, cutoff)?);
             }
         }
         let mut market_history = BTreeMap::new();
@@ -163,17 +207,27 @@ impl Lab {
                 .map(|history| history.at(game, cutoff))
                 .transpose()?
                 .flatten(),
-            history_before: self.feeds.history.matches_before(cutoff).await?,
-            team_a_history: self
-                .feeds
-                .history
-                .team_matches(&game.team_a.name, cutoff)
-                .await?,
-            team_b_history: self
-                .feeds
-                .history
-                .team_matches(&game.team_b.name, cutoff)
-                .await?,
+            history_before: hide_results(
+                self.feeds.history.matches_before(cutoff).await?,
+                hidden,
+                cutoff,
+            )?,
+            team_a_history: hide_results(
+                self.feeds
+                    .history
+                    .team_matches(&game.team_a.name, cutoff)
+                    .await?,
+                hidden,
+                cutoff,
+            )?,
+            team_b_history: hide_results(
+                self.feeds
+                    .history
+                    .team_matches(&game.team_b.name, cutoff)
+                    .await?,
+                hidden,
+                cutoff,
+            )?,
             context,
             team_a_roster,
             team_b_roster,
@@ -218,6 +272,16 @@ impl Lab {
             .collect()
     }
 
+    /// The PandaScore ids of the Matches of `stages`.
+    pub(crate) fn holdout_matches(&self, stages: &BTreeSet<i64>) -> BTreeSet<i64> {
+        self.archive
+            .stages
+            .iter()
+            .filter(|s| stages.contains(&s.id))
+            .flat_map(|s| s.matches.iter().map(|m| m.game.id))
+            .collect()
+    }
+
     /// The archive's Events, the Holdout's Stages kept apart from the training side.
     pub(super) async fn events(&self) -> Result<Split> {
         let rosters = self
@@ -228,6 +292,8 @@ impl Lab {
             .transpose()?;
         let ends = self.event_ends();
         let holdout_ids = self.holdout_stages();
+        let hidden = self.holdout_matches(&holdout_ids);
+        let shown = BTreeSet::new();
         let map_history = self.archive.map_history.without_stages(&holdout_ids);
         let veto_history = self.archive.veto_history.without_stages(&holdout_ids);
         let mut sides: [BTreeMap<i64, Event>; 2] = [BTreeMap::new(), BTreeMap::new()];
@@ -258,7 +324,8 @@ impl Lab {
             event.info.begins = event.info.begins.min(stage.cutoff);
             for m in &stage.matches {
                 event.info.ends = event.info.ends.max(m.known_finish().unwrap_or(m.finished_at));
-                let mut view = self.view(stage, m, rosters.as_ref()).await?;
+                let hide = if in_holdout { &shown } else { &hidden };
+                let mut view = self.view(stage, m, rosters.as_ref(), hide).await?;
                 view.map_history = map_history.before(view.cutoff);
                 view.veto_history = veto_history.before(view.cutoff);
                 event.matches.push(Observed {
