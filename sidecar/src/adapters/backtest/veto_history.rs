@@ -97,7 +97,7 @@ pub(super) fn link(
             continue;
         };
         let mut candidates = candidates.iter().filter(|(_, game)| {
-            (game.actual_start - record.started_at).abs() <= chrono::Duration::minutes(30)
+            (game.actual_start - record.started_at).abs() <= chrono::Duration::hours(6)
         });
         let Some(&(stage_id, game)) = candidates.next() else {
             continue;

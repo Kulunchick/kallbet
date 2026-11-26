@@ -196,7 +196,8 @@ impl ReplayArchive {
         names.retain(|p| p.is_file());
         let catalog = dir.join("catalog");
         let hltv = dir.join("hltv");
-        for subdir in [&catalog, &hltv] {
+        let hltv_matches_dir = hltv.join("matches");
+        for subdir in [&catalog, &hltv, &hltv_matches_dir] {
             if !subdir.is_dir() {
                 continue;
             }
@@ -220,13 +221,23 @@ impl ReplayArchive {
             if !(stem.ends_with(".json") || stem.ends_with(".md")) {
                 continue;
             }
-            let bytes = read_file(&path)?;
             let is_catalog = path.parent() == Some(catalog.as_path());
+            let is_hltv = path.parent() == Some(hltv.as_path());
+            let is_hltv_matches = path.parent() == Some(hltv_matches_dir.as_path());
+            let hltv_id = stem
+                .strip_prefix("hltv-match-")
+                .and_then(|s| s.strip_suffix(".json"))
+                .and_then(|s| s.parse::<i64>().ok());
+            if (is_hltv || is_hltv_matches) && hltv_id.is_none() {
+                continue;
+            }
+            let bytes = read_file(&path)?;
             if is_catalog {
                 digest.update(b"catalog/");
-            }
-            if path.parent() == Some(hltv.as_path()) {
+            } else if is_hltv {
                 digest.update(b"hltv/");
+            } else if is_hltv_matches {
+                digest.update(b"hltv/matches/");
             }
             digest.update(stem.as_bytes());
             digest.update(&bytes);
@@ -246,11 +257,7 @@ impl ReplayArchive {
             if stem.starts_with("panda-") && value.as_array().is_some_and(Vec::is_empty) {
                 continue;
             }
-            if let Some(id) = stem
-                .strip_prefix("hltv-match-")
-                .and_then(|s| s.strip_suffix(".json"))
-                .and_then(|s| s.parse::<i64>().ok())
-            {
+            if let Some(id) = hltv_id {
                 let record: crate::adapters::hltv_research::archive::HltvMatchRecord =
                     serde_json::from_value(value).map_err(|e| format!("{name}: {e}"))?;
                 if record.match_id != id || hltv_matches.insert(id, record).is_some() {

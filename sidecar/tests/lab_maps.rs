@@ -113,8 +113,13 @@ async fn bo1_veto_uses_an_earlier_saved_veto_and_never_its_own() {
         std::str::from_utf8(&html).unwrap(),
     )
     .unwrap();
+    let hltv_dir = dir.path().join("hltv");
+    let matches_dir = hltv_dir.join("matches");
+    std::fs::create_dir_all(&matches_dir).unwrap();
+    // Sidecar HLTV collector metadata alongside match records must be ignored.
+    std::fs::write(hltv_dir.join("manifest.json"), br#"{"version":1}"#).unwrap();
     std::fs::write(
-        dir.path().join("hltv-match-2394774.json"),
+        matches_dir.join("hltv-match-2394774.json"),
         serde_json::to_vec(&record).unwrap(),
     )
     .unwrap();
