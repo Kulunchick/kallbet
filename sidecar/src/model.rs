@@ -13,7 +13,7 @@ pub const PRE_LOCK_LEAD: chrono::Duration = chrono::Duration::minutes(25);
 pub fn hard_lock(scheduled_start: Instant) -> Instant {
     scheduled_start - HARD_LOCK_LEAD
 }
-#[derive(Clone, Copy, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Format {
     Bo1,

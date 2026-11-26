@@ -4,6 +4,7 @@
 use super::anonymizer::Blind;
 use super::archive::{ReplayArchive, ReplayStage};
 use super::feeds::{MarketSource, ReplayContext, ReplayOdds, ReplaySignal};
+use super::history::ReplayHistory;
 use super::platform::{Due, ReplayClock, ReplayPlatform, Submitted};
 use super::report::{self, LlmTrack, PickemRow, Report, StageRow};
 use crate::adapters::{
@@ -55,6 +56,7 @@ pub struct Feeds {
     pub signal: Arc<dyn SignalEstimator>,
     pub odds: Arc<dyn OddsSource>,
     pub context: Arc<dyn ContextEnricher>,
+    pub history: Arc<dyn ResultsHistory>,
 }
 impl Feeds {
     pub fn replay(archive: &ReplayArchive) -> Result<Self> {
@@ -62,6 +64,7 @@ impl Feeds {
             signal: Arc::new(ReplaySignal::new(&archive.standings)?),
             odds: Arc::new(ReplayOdds::new(archive)),
             context: Arc::new(ReplayContext::new(archive)),
+            history: Arc::new(ReplayHistory::new(archive)),
         })
     }
 }
