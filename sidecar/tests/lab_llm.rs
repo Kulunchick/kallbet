@@ -393,7 +393,7 @@ async fn the_first_quota_error_stops_the_llm_track_and_the_rest_of_the_lab_compl
     );
     assert!(
         md.contains(
-            "cargo run -p kallbet-ai -- lab --llm llm.json --answers answers.json \
+            "cargo run -p kallbet-ai -- lab --archive <ARCHIVE> --llm llm.json --answers answers.json \
              --budget antigravity=<RUNS> --budget claude=<RUNS> --budget codex=<RUNS>"
         ),
         "{md}"
@@ -871,4 +871,23 @@ async fn a_quota_error_in_a_non_final_seat_stops_every_later_call() {
     assert_eq!(clis.runs_of("agy"), 1);
     assert!(track.stopped.as_deref().unwrap().contains("quota"), "{:?}", track.stopped);
     assert!(!track.seatings[1].ran);
+}
+
+// Finding 16 (review of 6eea194): a run that calls providers names the
+// archive it spends them on; the default is the small test archive.
+#[test]
+fn calling_providers_needs_an_explicit_archive() {
+    let args = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+    let e = kallbet_ai::adapters::lab::cli::parse(&args(&["--llm", "llm.json", "--budget", "claude=5"]))
+        .err()
+        .expect("refused");
+    assert!(e.to_string().contains("--archive"), "{e}");
+    assert!(
+        kallbet_ai::adapters::lab::cli::parse(&args(&[
+            "--archive", "research", "--llm", "llm.json", "--budget", "claude=5"
+        ]))
+        .is_ok()
+    );
+    // Recorded answers alone call nothing: the default archive is fine.
+    assert!(kallbet_ai::adapters::lab::cli::parse(&args(&["--answers", "a.json"])).is_ok());
 }

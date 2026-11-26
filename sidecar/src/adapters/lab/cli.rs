@@ -44,11 +44,15 @@ impl Default for Options {
 
 pub fn parse(args: &[String]) -> Result<Options> {
     let mut o = Options::default();
+    let mut archive_given = false;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         let mut value = || it.next().cloned().ok_or(format!("{arg} needs a value"));
         match arg.as_str() {
-            "--archive" => o.archive = value()?.into(),
+            "--archive" => {
+                o.archive = value()?.into();
+                archive_given = true;
+            }
             "--out" => o.out = value()?.into(),
             "--seed" => o.seed = Some(value()?.parse()?),
             "--resamples" => o.resamples = Some(value()?.parse()?),
@@ -56,6 +60,14 @@ pub fn parse(args: &[String]) -> Result<Options> {
             flag if super::llm::FLAGS.contains(&flag) => o.llm.set(flag, value()?)?,
             other => return Err(format!("unknown lab option {other:?}\n{USAGE}").into()),
         }
+    }
+    if o.llm.llm.is_some() && !archive_given {
+        return Err(format!(
+            "--llm calls providers: name the archive they are spent on with --archive \
+             (the default, {}, is the small test archive)",
+            o.archive.display()
+        )
+        .into());
     }
     Ok(o)
 }

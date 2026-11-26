@@ -739,7 +739,7 @@ pub fn command(llm: Option<&Path>, answers: Option<&Path>, subscriptions: &[Stri
         p.map_or(placeholder.to_owned(), |p| p.display().to_string())
     };
     let mut cmd = format!(
-        "cargo run -p kallbet-ai -- lab --llm {} --answers {}",
+        "cargo run -p kallbet-ai -- lab --archive <ARCHIVE> --llm {} --answers {}",
         path(llm, "<LLM_FILE>"),
         path(answers, "<ANSWERS_FILE>")
     );

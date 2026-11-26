@@ -129,11 +129,14 @@ The recorded answers do not exist yet, and producing them is the operator's run,
 of runs per subscription:
 
 ```
-cargo run -p kallbet-ai -- lab --out docs/lab --llm <LLM_FILE> --answers docs/lab/llm-answers.json --budget claude=<RUNS> --budget codex=<RUNS> --budget antigravity=<RUNS>
+cargo run --release -p kallbet-ai -- lab --archive <ARCHIVE> --out docs/lab/research --seed 33 --llm <LLM_FILE> --answers docs/lab/research/llm-answers.json --budget claude=<RUNS> --budget codex=<RUNS> --budget antigravity=<RUNS>
 ```
 
-`<LLM_FILE>` starts from [../llm.example.json](../llm.example.json). After that run,
-`--answers docs/lab/llm-answers.json` reproduces it with no provider. This run called no provider.
+`<ARCHIVE>` is the frozen research snapshot above (the lab refuses `--llm` without an explicit
+`--archive`: its default is the small test archive), and `<LLM_FILE>` starts from
+[../llm.example.json](../llm.example.json). After that run, the same command with
+`--answers docs/lab/research/llm-answers.json` and no `--llm` or `--budget` reproduces it with no
+provider. This run called no provider.
 
 ## Request counters of the limited Data Sources
 
