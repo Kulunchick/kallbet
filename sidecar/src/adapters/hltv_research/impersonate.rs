@@ -1,5 +1,7 @@
 //! Optional `wreq` + `wreq-util` iOS-impersonating HTTP transport (feature `hltv-impersonate`).
 //! Never compiled into the server crate or the default live sidecar build.
+//! Disables automatic redirects so the collector counts every HTTP request against
+//! the daily budget and enforces `/matches/*` on redirect targets.
 
 use super::collector::{CollectorError, HttpResponse, ResearchHttp};
 use async_trait::async_trait;
@@ -25,7 +27,7 @@ impl WreqIosHttp {
             .build();
         let client = Client::builder()
             .emulation(emulation)
-            .redirect(redirect::Policy::limited(5))
+            .redirect(redirect::Policy::none())
             .timeout(Duration::from_secs(30))
             .build()
             .map_err(|e| CollectorError::Transport(e.to_string()))?;
@@ -52,6 +54,11 @@ impl ResearchHttp for WreqIosHttp {
             .get("cf-mitigated")
             .and_then(|v| v.to_str().ok())
             .map(str::to_owned);
+        let location = resp
+            .headers()
+            .get(header::LOCATION)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned);
         let body = resp
             .text()
             .await
@@ -59,6 +66,7 @@ impl ResearchHttp for WreqIosHttp {
         Ok(HttpResponse {
             status,
             cf_mitigated,
+            location,
             body,
         })
     }
