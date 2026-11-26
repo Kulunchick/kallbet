@@ -14,7 +14,9 @@ pub mod head_to_head;
 pub mod learned_weights;
 pub mod line_movement;
 pub mod market_sources;
+pub mod lineup_strength;
 pub mod own_rating;
+pub mod player_form;
 pub mod recent_form;
 
 /// What a Candidate Signal may read of one Match: the Match as the pipeline
@@ -40,6 +42,12 @@ pub struct MatchView {
     /// Every price point of each market source observed before the cutoff
     /// (team A's series win, oldest first), for the sources that have any.
     pub market_history: BTreeMap<MarketSource, Vec<AsOf<f64>>>,
+    /// Team A's Liquipedia roster revision strictly before `cutoff`, if known.
+    pub team_a_roster: Option<AsOf<TeamRosterFact>>,
+    /// Team B's Liquipedia roster revision strictly before `cutoff`, if known.
+    pub team_b_roster: Option<AsOf<TeamRosterFact>>,
+    /// HLTV appearances strictly before `cutoff`, keyed by `player_key(nickname)`.
+    pub player_stats: std::collections::BTreeMap<String, PlayerStatsSlice>,
 }
 impl MatchView {
     /// The price points of `source`, each rechecked against the cutoff.
@@ -68,6 +76,24 @@ impl MatchView {
     }
     pub fn team_b_history(&self) -> Result<Vec<&HistoricalMatch>, TemporalLeakError> {
         self.team_b_history.at(self.cutoff)
+    }
+    pub fn team_a_roster(&self) -> Result<Option<&TeamRosterFact>, TemporalLeakError> {
+        self.team_a_roster
+            .as_ref()
+            .map(|r| r.at(self.cutoff))
+            .transpose()
+    }
+    pub fn team_b_roster(&self) -> Result<Option<&TeamRosterFact>, TemporalLeakError> {
+        self.team_b_roster
+            .as_ref()
+            .map(|r| r.at(self.cutoff))
+            .transpose()
+    }
+    pub fn player_matches(&self, nickname: &str) -> Result<Vec<&PlayerAppearance>, TemporalLeakError> {
+        let Some(slice) = self.player_stats.get(&player_key(nickname)) else {
+            return Ok(vec![]);
+        };
+        slice.at(self.cutoff)
     }
     /// The latest observation among the inputs, to date a prediction made from them.
     pub fn observed_at(&self) -> Option<Instant> {
@@ -173,6 +199,8 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(recent_form::RecentForm),
         std::sync::Arc::new(head_to_head::HeadToHead),
         std::sync::Arc::new(super::llm::LlmAnswers::unrun()),
+        std::sync::Arc::new(lineup_strength::LineupStrength),
+        std::sync::Arc::new(player_form::PlayerForm),
     ];
     signals.extend(match_context::registry());
     signals

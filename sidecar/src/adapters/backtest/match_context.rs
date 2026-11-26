@@ -216,6 +216,19 @@ pub struct MatchContext {
 }
 
 impl MatchContext {
+    /// A Match the archive holds no context for (no venue, region or round):
+    /// every context signal then abstains.
+    pub fn unknown() -> Self {
+        Self {
+            index: Arc::default(),
+            event_id: 0,
+            stage_id: 0,
+            stage_kind: StageKind::Other,
+            round: None,
+            bracket_round: None,
+        }
+    }
+
     fn venue<T>(
         &self,
         stage: i64,

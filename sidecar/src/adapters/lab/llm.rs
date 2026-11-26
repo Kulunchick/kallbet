@@ -312,6 +312,7 @@ fn subset(archive: &ReplayArchive, ids: &BTreeSet<i64>) -> ReplayArchive {
         kalshi_candles: archive.kalshi_candles.clone(),
         event_pages: archive.event_pages.clone(),
         event_titles: archive.event_titles.clone(),
+        hltv_matches: archive.hltv_matches.clone(),
         digest: archive.digest.clone(),
         files: archive.files,
     }

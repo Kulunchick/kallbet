@@ -6,6 +6,7 @@ use super::archive::{ReplayArchive, ReplayStage};
 use super::feeds::{MarketSource, ReplayContext, ReplayOdds, ReplaySignal};
 use super::history::ReplayHistory;
 use super::platform::{Due, ReplayClock, ReplayPlatform, Submitted};
+use super::player_history::ReplayPlayerHistory;
 use super::report::{self, LlmTrack, PickemRow, Report, StageRow};
 use crate::adapters::{
     baseline::Noop,
@@ -57,6 +58,7 @@ pub struct Feeds {
     pub odds: Arc<dyn OddsSource>,
     pub context: Arc<dyn ContextEnricher>,
     pub history: Arc<dyn ResultsHistory>,
+    pub player_stats: Arc<dyn PlayerStatsHistory>,
 }
 impl Feeds {
     pub fn replay(archive: &ReplayArchive) -> Result<Self> {
@@ -65,6 +67,7 @@ impl Feeds {
             odds: Arc::new(ReplayOdds::new(archive)),
             context: Arc::new(ReplayContext::new(archive)),
             history: Arc::new(ReplayHistory::new(archive)),
+            player_stats: Arc::new(ReplayPlayerHistory::new(archive)),
         })
     }
 }
