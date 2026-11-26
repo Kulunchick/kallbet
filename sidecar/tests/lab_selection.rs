@@ -705,3 +705,18 @@ async fn a_recorded_holdout_evaluation_is_only_reproduced() {
     fewer.freeze = Some(freeze(&first.report.archive_digest, &record));
     assert!(fewer.run().await.is_err());
 }
+
+// Finding 14 (review of 6eea194): the published report says when the Holdout
+// was evaluated (the recorded evaluation's date, so a reproduction keeps it),
+// not only the dates of its Matches.
+#[tokio::test]
+async fn the_holdout_report_states_the_evaluation_date() {
+    let mut lab = lab_with_holdout(whole());
+    lab.evaluated_at = Some("2026-12-03T10:00:00Z".parse().unwrap());
+    let outcome = lab.run().await.unwrap();
+    let h = &outcome.report.holdout;
+    assert!(h.statement.contains("on 2026-12-03"), "{}", h.statement);
+    assert!(outcome.report.markdown().contains("2026-12-03"));
+    let json = serde_json::to_value(&outcome.report).unwrap();
+    assert_eq!(json["holdout"]["evaluated_at"], "2026-12-03T10:00:00Z");
+}

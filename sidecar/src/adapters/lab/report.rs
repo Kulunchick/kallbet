@@ -185,6 +185,9 @@ pub struct HoldoutReport {
     pub combination: Vec<String>,
     /// When and on what the Holdout was evaluated, or that it is pending.
     pub statement: String,
+    /// When it was evaluated: the start of the first run that evaluated it
+    /// (a reproduction keeps that date). `None`: pending, or not run by the CLI.
+    pub evaluated_at: Option<Instant>,
     pub matches: usize,
     pub events: usize,
     pub played_from: Option<Instant>,

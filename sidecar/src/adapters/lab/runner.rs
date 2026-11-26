@@ -33,6 +33,9 @@ pub struct Lab {
     /// The Holdout evaluation already recorded, if any (the CLI reads it
     /// from `lab_runs`): a run that would evaluate it otherwise is refused.
     pub freeze: Option<Freeze>,
+    /// When the Holdout is evaluated, for the report (the CLI: the recorded
+    /// evaluation's start, else this run's).
+    pub evaluated_at: Option<Instant>,
 }
 
 /// One Match as one Candidate Signal saw it: the anchor's probability and the
@@ -132,6 +135,7 @@ impl Lab {
             signals: signals::registry(),
             holdout: Holdout::default(),
             freeze: None,
+            evaluated_at: None,
         })
     }
 
@@ -447,6 +451,7 @@ impl Lab {
             holdout_stages,
             &frozen,
             &self.protocol,
+            self.evaluated_at,
         )?;
         Ok(LabOutcome {
             report: LabReport {

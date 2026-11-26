@@ -361,6 +361,7 @@ pub(crate) fn holdout(
     stages: Vec<String>,
     frozen: &[Member],
     protocol: &Protocol,
+    evaluated_at: Option<Instant>,
 ) -> Result<Evaluated> {
     let names: Vec<String> = frozen.iter().map(|m| m.signal.name().to_string()).collect();
     let mut report = HoldoutReport {
@@ -369,6 +370,7 @@ pub(crate) fn holdout(
         stages,
         combination: names.clone(),
         statement: String::new(),
+        evaluated_at: None,
         matches: 0,
         events: 0,
         played_from: None,
@@ -463,9 +465,13 @@ pub(crate) fn holdout(
     } else {
         format!("`{}`", names.join(" + "))
     };
+    report.evaluated_at = evaluated_at;
+    let on = evaluated_at.map_or(String::new(), |t| {
+        format!(" on {}", t.format("%Y-%m-%d %H:%M UTC"))
+    });
     report.statement = format!(
-        "Evaluated once, as the final step of this run, after the selection was frozen: \
-         {combination} on {} Holdout Matches played from {} to {}. The time of the run is in \
+        "Evaluated once{on}, as the final step of the run, after the selection was frozen: \
+         {combination} on {} Holdout Matches played from {} to {}. The run is recorded in \
          the audit store's `lab_runs`.",
         pairs.len(),
         report

@@ -106,6 +106,7 @@ pub async fn run(args: &[String]) -> Result<String> {
     // When the run happened is the one wall-clock reading of a lab run; it is
     // kept in the audit store, never in the report.
     let started_at = SystemClock.now();
+    lab.evaluated_at = Some(lab.freeze.as_ref().map_or(started_at, |f| f.evaluated_at));
     let runner = std::sync::Arc::new(crate::adapters::llm::TokioRunner);
     let track = super::llm::prepare(&mut lab, &o.llm, runner, &o.out).await?;
     let outcome = lab.run().await?;
