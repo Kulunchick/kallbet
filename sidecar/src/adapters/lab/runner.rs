@@ -4,7 +4,7 @@
 use super::holdout::{Freeze, Holdout};
 use super::report::{
     CandidateReport, DirectComparison, EventInfo, EventRow, LabReport, MarketSubset, Metrics,
-    TierView,
+    QualifierEvent, QualifierView, TierView,
 };
 use super::selection::{self, Member};
 use super::signals::{self, CandidateSignal, FittedSignal, MatchView, Observed};
@@ -39,6 +39,17 @@ pub struct Lab {
     pub evaluated_at: Option<Instant>,
     /// Which tiers are evaluated and which may train a fit (default: all).
     pub tiers: TierFilter,
+    /// Score and fit on qualifiers and RMRs too (default: left out of both;
+    /// their results still feed every history).
+    pub include_qualifiers: bool,
+}
+
+pub const QUALIFIER_RULE: &str = "A qualifier is an Event whose name contains `RMR` or `Qualifier` (case-insensitive): many unknown teams and near-random outcomes. Its Matches are neither scored nor used to fit a parameter, but they stay in the results, player and map histories, so ratings still update after them.";
+
+/// Whether an Event, by its name, is a qualifier or a Major RMR.
+pub fn is_qualifier(event: &str) -> bool {
+    let name = event.to_lowercase();
+    name.contains("rmr") || name.contains("qualifier")
 }
 
 /// The tier the secondary view of the report slices to (ticket #55).
@@ -186,6 +197,7 @@ impl Lab {
             freeze: None,
             evaluated_at: None,
             tiers: TierFilter::default(),
+            include_qualifiers: false,
         })
     }
 
@@ -351,19 +363,24 @@ impl Lab {
             .map(|s| format!("{}: {} ({} scored)", s.event, s.name, s.matches.len()))
             .collect();
         Ok(Split {
-            training: self.side(false, &holdout_ids).await?,
+            training: self.side(false, &holdout_ids, self.include_qualifiers).await?,
             holdout_stages,
         })
     }
 
     /// The Holdout's Events, read once the selection is frozen.
     pub(super) async fn holdout_events(&self) -> Result<Vec<Event>> {
-        self.side(true, &self.holdout_stages()).await
+        self.side(true, &self.holdout_stages(), self.include_qualifiers).await
     }
 
     /// The Events of one side of the boundary, each Match read at its cutoff.
     /// A training-side view holds no Holdout Match in any history.
-    async fn side(&self, holdout_side: bool, holdout_ids: &BTreeSet<i64>) -> Result<Vec<Event>> {
+    async fn side(
+        &self,
+        holdout_side: bool,
+        holdout_ids: &BTreeSet<i64>,
+        with_qualifiers: bool,
+    ) -> Result<Vec<Event>> {
         let rosters = self
             .signals
             .iter()
@@ -385,6 +402,9 @@ impl Lab {
         let mut by_id: BTreeMap<i64, Event> = BTreeMap::new();
         for stage in &self.archive.stages {
             if holdout_ids.contains(&stage.id) != holdout_side {
+                continue;
+            }
+            if !with_qualifiers && is_qualifier(&stage.event) {
                 continue;
             }
             let event = by_id.entry(stage.event_id).or_insert_with(|| Event {
@@ -469,6 +489,9 @@ impl Lab {
             })
             .collect();
         let tier_view = self.tier_view(&events, &training_archive)?;
+        let qualifiers = self
+            .qualifier_view(&self.holdout_stages(), &candidates, &training_archive)
+            .await?;
         let selected = selection::select(&events, &promoted, &self.protocol)?;
         // The selection is frozen here; only now is the Holdout read.
         let frozen: Vec<Member> = selected
@@ -527,6 +550,7 @@ impl Lab {
                 selection: selected.report,
                 holdout: evaluated.report,
                 tier_view,
+                qualifiers,
             },
             predictions,
             combination: selected.predictions,
@@ -584,6 +608,48 @@ impl Lab {
             .filter(|e| e.trains(&event.info) && tiers.trains_on(e))
             .flat_map(|e| e.matches.iter().cloned())
             .collect()
+    }
+
+    /// The Events left out as qualifiers (training side), with their Matches.
+    async fn qualifier_view(
+        &self,
+        holdout: &BTreeSet<i64>,
+        main: &[CandidateReport],
+        archive: &ReplayArchive,
+    ) -> Result<QualifierView> {
+        let mut by_event: BTreeMap<i64, QualifierEvent> = BTreeMap::new();
+        if !self.include_qualifiers {
+            for s in self.archive.stages.iter().filter(|s| {
+                !holdout.contains(&s.id) && is_qualifier(&s.event)
+            }) {
+                by_event
+                    .entry(s.event_id)
+                    .or_insert_with(|| QualifierEvent {
+                        event_id: s.event_id,
+                        title: s.event.clone(),
+                        matches: 0,
+                    })
+                    .matches += s.matches.len();
+            }
+        }
+        // The secondary view: the same Candidate Signals with the qualifiers
+        // scored and fitted on too.
+        let with_qualifiers = if self.include_qualifiers || by_event.is_empty() {
+            main.to_vec()
+        } else {
+            let events = self.side(false, holdout, true).await?;
+            let mut all = Vec::new();
+            for signal in &self.signals {
+                all.push(self.evaluate(signal.as_ref(), &events, archive, &self.tiers)?.0);
+            }
+            all
+        };
+        Ok(QualifierView {
+            rule: QUALIFIER_RULE.into(),
+            included: self.include_qualifiers,
+            excluded: by_event.into_values().collect(),
+            with_qualifiers,
+        })
     }
 
     /// The secondary view of ticket #55: every Candidate Signal on the

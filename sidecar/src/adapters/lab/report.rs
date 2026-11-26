@@ -105,6 +105,27 @@ pub struct EventInfo {
     pub matches: usize,
 }
 
+/// The Events the protocol leaves out (signal-lab/4): qualifiers and RMRs.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct QualifierView {
+    /// The rule, in words.
+    pub rule: String,
+    /// `--include-qualifiers` was given: nothing is excluded.
+    pub included: bool,
+    /// Excluded Events on the training side, with their scored Matches.
+    pub excluded: Vec<QualifierEvent>,
+    /// Secondary view: every Candidate Signal with the qualifiers scored and
+    /// fitted on too (what `--include-qualifiers` would report).
+    pub with_qualifiers: Vec<CandidateReport>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct QualifierEvent {
+    pub event_id: i64,
+    pub title: String,
+    pub matches: usize,
+}
+
 /// The tier view of the report (ticket #55): a secondary slice, chosen after
 /// results were seen, so it never decides a promotion.
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -146,6 +167,8 @@ pub struct LabReport {
     pub holdout: HoldoutReport,
     /// The secondary tier view (ticket #55).
     pub tier_view: TierView,
+    /// Qualifiers and RMRs, left out of scoring and fitting (signal-lab/4).
+    pub qualifiers: QualifierView,
 }
 
 /// The combination's combiner as fitted for one Event.
@@ -253,6 +276,57 @@ fn num(v: Option<f64>) -> String {
 }
 
 impl LabReport {
+    fn qualifier_markdown(&self, md: &mut String) {
+        let q = &self.qualifiers;
+        let _ = writeln!(md, "
+## Qualifiers and RMRs
+");
+        let _ = writeln!(md, "{}", q.rule);
+        if q.included {
+            let _ = writeln!(md, "
+`--include-qualifiers` was given: they are scored and fitted on.");
+        }
+        if q.excluded.is_empty() {
+            let _ = writeln!(md, "
+No Event of the training side is excluded.");
+        } else {
+            let total: usize = q.excluded.iter().map(|e| e.matches).sum();
+            let _ = writeln!(md, "
+| Excluded Event | Scored Matches |
+|---|---|");
+            for e in &q.excluded {
+                let _ = writeln!(md, "| {} | {} |", e.title, e.matches);
+            }
+            let _ = writeln!(md, "| **{} Events** | **{total}** |", q.excluded.len());
+            let level = (self.level * 100.0).round();
+            let _ = writeln!(
+                md,
+                "
+### With qualifiers (secondary view)
+
+The same Candidate Signals with the                  qualifiers scored and fitted on too, so an effect that lives only on                  lesser-known teams stays visible. The primary verdicts are the ones above:                  qualifiers never appear in KallBet Leagues.
+
+| Candidate Signal | Verdict                  (primary) | Paired | Verdict (with qualifiers) | Paired | Δ log-loss | {level}% interval |
+|---|---|---|---|---|---|---|"
+            );
+            for c in &q.with_qualifiers {
+                let primary = self.candidates.iter().find(|p| p.name == c.name);
+                let _ = writeln!(
+                    md,
+                    "| `{}` | {} | {} | {} | {} | {} | {} |",
+                    c.name,
+                    primary.map_or("—", |p| p.verdict.as_str()),
+                    primary.map_or(0, |p| p.paired),
+                    c.verdict.as_str(),
+                    c.paired,
+                    num(c.difference.map(|d| d.log_loss)),
+                    c.interval
+                        .map_or("—".into(), |i| format!("[{:+.4}, {:+.4}]", i.low, i.high)),
+                );
+            }
+        }
+    }
+
     /// The tier-S column next to the full verdicts.
     fn tier_markdown(&self, md: &mut String) {
         let v = &self.tier_view;
@@ -373,6 +447,7 @@ Events with no archived tier (never in a tier slice): {}.",
                 )),
             );
         }
+        self.qualifier_markdown(&mut md);
         self.tier_markdown(&mut md);
         for c in &self.candidates {
             let note = if c.added_after_list_fixed {

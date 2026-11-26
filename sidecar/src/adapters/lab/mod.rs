@@ -35,6 +35,7 @@ pub use report::{
     CandidateReport, DirectComparison, EventInfo, EventRow, HoldoutReport, HoldoutStatus,
     LabReport, MarketSubset, Metrics, SelectionReport, TierView,
 };
+pub use runner::{QUALIFIER_RULE, is_qualifier};
 pub use runner::{Lab, LabOutcome, LabPrediction, TierFilter};
 pub use runs::{LabRun, record_lab_run};
 pub use signals::{CandidateSignal, FittedSignal, MatchView, Observed};
@@ -42,7 +43,7 @@ pub use signals::{CandidateSignal, FittedSignal, MatchView, Observed};
 /// The protocol's version, named in every report and run record. Bump it when
 /// the metric, the resampling, the verdict rule or the walk-forward boundary
 /// changes; a new Candidate Signal does not change it.
-pub const PROTOCOL_VERSION: &str = "signal-lab/3";
+pub const PROTOCOL_VERSION: &str = "signal-lab/4";
 
 /// The fixed settings of the protocol (spec #33, "Protocol").
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]

@@ -91,7 +91,7 @@ async fn reports_round_rating_coverage_metrics_and_post_hoc_status() {
     let missing = run(None, Duration::seconds(1), false).await;
     assert_eq!(missing.report.candidates[0].verdict, Verdict::NotTestable);
     let replay = run(Some((13, 8)), Duration::seconds(1), false).await;
-    assert_eq!(replay.report.protocol_version, "signal-lab/3");
+    assert_eq!(replay.report.protocol_version, "signal-lab/4");
     let row = &replay.report.candidates[0];
     assert_eq!(row.name, "round_diff_rating");
     assert!(row.computed_on >= row.paired && row.paired > 0);
