@@ -129,8 +129,14 @@ pub async fn report(lab: &Lab, seed: u64, trials: usize) -> Result<String> {
         return Err("league experiment needs at least one trial".into());
     }
     let mut events = BTreeMap::<i64, Vec<Game>>::new();
-    let hidden = lab.holdout_matches(&lab.holdout_stages());
+    // The Holdout is no part of this experiment: its Stages are not drawn and
+    // their results are in no view.
+    let holdout_stages = lab.holdout_stages();
+    let hidden = lab.holdout_matches(&holdout_stages);
     for stage in &lab.archive.stages {
+        if holdout_stages.contains(&stage.id) {
+            continue;
+        }
         for m in &stage.matches {
             let v = lab.view(stage, m, None, &hidden).await?;
             events.entry(stage.event_id).or_default().push(Game {
@@ -152,7 +158,7 @@ pub async fn report(lab: &Lab, seed: u64, trials: usize) -> Result<String> {
     let games = events.iter().flatten();
     let digest = &lab.archive.digest;
     let mut out = format!(
-        "# Catch-up mode\n\nArchive SHA-256 `{digest}`. Seed {seed}. Each of {trials} paired trials draws one of {} archived Events uniformly and replays all its scored Matches. Of {} Matches, {} have an anchor and {} have a market line. An unavailable input means a missed pick. Favourite followers independently reverse the anchor favourite with the stated probability. Market followers always take the market favourite. Exact ties pick team A.\n\nBoth bots face identical opponents. The variant reverses a favourite of over 50% through 60% whenever it trails. Only results published strictly before the cutoff enter standings. Missing end times enter final scoring only. Default Stage weights award one Match Point per correct pick. Equal points share place, including first.\n\nBrackets are pointwise 90% Hoeffding intervals for the simulated means conditional on these Events and opponent models. They measure Monte Carlo uncertainty only.\n",
+        "# Catch-up mode\n\nArchive SHA-256 `{digest}`. Seed {seed}. Each of {trials} paired trials draws one of {} archived training-side Events uniformly (the Holdout is not drawn) and replays all its scored Matches. Of {} Matches, {} have an anchor and {} have a market line. An unavailable input means a missed pick. Favourite followers independently reverse the anchor favourite with the stated probability. Market followers always take the market favourite. Exact ties pick team A.\n\nBoth bots face identical opponents. The variant reverses a favourite of over 50% through 60% whenever it trails. Only results published strictly before the cutoff enter standings. Missing end times enter final scoring only. Default Stage weights award one Match Point per correct pick. Equal points share place, including first.\n\nBrackets are pointwise 90% Hoeffding intervals for the simulated means conditional on these Events and opponent models. They measure Monte Carlo uncertainty only.\n",
         events.len(),
         games.clone().count(),
         games.clone().filter(|g| g.anchor.is_some()).count(),
