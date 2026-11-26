@@ -12,7 +12,7 @@ import {
 
 /** How long the panel stays mounted after closing, to play its 120 ms exit. */
 const EXIT_MS = 140;
-const ITEMS = '[role="menuitem"]:not(:disabled):not([aria-disabled="true"])';
+const ITEMS = '[role^="menuitem"]:not(:disabled):not([aria-disabled="true"])';
 
 /**
  * Class for a menu item inside a `Popover`: at least 44 px tall, quiet hover
@@ -21,7 +21,7 @@ const ITEMS = '[role="menuitem"]:not(:disabled):not([aria-disabled="true"])';
  * `<button role="menuitem" className={popoverItemClass} onClick={...}>`.
  */
 export const popoverItemClass =
-  "flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-fg outline-none transition-[background-color,transform] duration-[140ms] ease-out focus-visible:bg-line focus-visible:ring-2 focus-visible:ring-emerald-b active:scale-[.97] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-line";
+  "flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-fg transition-[background-color,scale] duration-[140ms] ease-out focus-visible:bg-line focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-b active:scale-[.97] motion-reduce:transition-[background-color] motion-reduce:active:scale-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-line";
 
 type PopoverProps = {
   /** The button's content: an element, or a function of the open state. */
@@ -132,6 +132,12 @@ export function Popover({ trigger, children, align = "end", label, triggerClassN
         return move(0);
       case "End":
         return move(-1);
+      case " ":
+        if (at >= 0 && items[at].tagName !== "BUTTON") {
+          e.preventDefault();
+          if (!e.repeat) items[at].click();
+        }
+        return;
       case "Tab":
         // Leave from the button, so Tab carries on to its neighbour.
         button.current?.focus();
@@ -182,7 +188,7 @@ export function Popover({ trigger, children, align = "end", label, triggerClassN
             onKeyDown={onPanelKeyDown}
             onClick={(e) => {
               // Any activated item closes the menu and hands focus back.
-              if ((e.target as HTMLElement).closest('[role="menuitem"]')) hide(e.detail === 0, true);
+              if ((e.target as HTMLElement).closest('[role^="menuitem"]')) hide(e.detail === 0, true);
             }}
           >
             {children}

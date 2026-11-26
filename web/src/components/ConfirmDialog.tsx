@@ -31,8 +31,6 @@ type ConfirmDialogProps = {
 
 const button =
   "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold transition-transform duration-[140ms] ease-out active:scale-[.97] md:flex-1";
-// Local until the shared `btn-danger` lands: white on #b91c1c, never the primary emerald.
-const dangerButton = `${button} bg-[#b91c1c] text-white [@media(hover:hover)_and_(pointer:fine)]:hover:bg-[#c42424]`;
 
 /**
  * A confirmation on a `Sheet`: a bottom sheet on phones (confirm above Cancel),
@@ -84,7 +82,7 @@ export function ConfirmDialog({
     }
   };
 
-  const confirmClass = tone === "danger" ? dangerButton : `btn-primary ${button}`;
+  const confirmClass = tone === "danger" ? `btn-danger ${button}` : `btn-primary ${button}`;
   const cancel = (
     <button
       type="button"

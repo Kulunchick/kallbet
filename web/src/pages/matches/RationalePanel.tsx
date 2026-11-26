@@ -46,7 +46,7 @@ function RationalePanel({
       <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-3 rounded-lg p-3 [&::-webkit-details-marker]:hidden">
         <span
           aria-hidden="true"
-          className={`flex size-7 shrink-0 items-center justify-center rounded-full border border-line bg-panel text-[0.6875rem] font-bold text-fg ${
+          className={`flex size-7 shrink-0 items-center justify-center rounded-full border border-line bg-panel text-xs font-bold text-fg ${
             pick.preliminary ? "border-dashed" : ""
           }`}
         >
@@ -161,7 +161,7 @@ function FactorChip({ kind, url }: { kind: string; url: string }) {
   const { t } = useTranslation("matches");
   const label = t(factorLabelKey(kind));
   const href = externalLink(url);
-  const chip = "inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-panel px-3.5 text-[0.8125rem] font-medium";
+  const chip = "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-panel px-3.5 text-[0.8125rem] font-medium";
   return (
     <li>
       {href ? (
