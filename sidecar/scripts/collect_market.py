@@ -40,6 +40,7 @@ import gzip
 import hashlib
 import importlib.util
 import json
+import os
 import pathlib
 import re
 import sys
@@ -103,14 +104,24 @@ class Collector:
         raise FileNotFoundError(name)
 
     def save(self, name, body, request, catalog=False):
+        """Write the payload under a temporary name, append its manifest row, then move it into
+        place: a payload is never in the archive without its provenance, nor half written under
+        its final name (an interrupted save is fetched again on the next run)."""
         folder = self.catalog if catalog else self.archive
-        (folder / (name + ".gz")).write_bytes(gzip.compress(body, mtime=0))
+        final = folder / (name + ".gz")
+        partial = folder / (name + ".gz.partial")
+        partial.write_bytes(gzip.compress(body, mtime=0))
         rel = ("catalog/" if catalog else "") + name + ".gz"
         # Append-only, so two collectors running side by side (OddsPapi and remote) never lose a row;
         # `compact_manifest` (the report command) keeps the last row per file.
         row = "\t".join([rel, request, iso(self.now()), hashlib.sha256(body).hexdigest()])
-        with open(self.archive / MANIFEST, "a", encoding="utf8", newline="\n") as out:
-            out.write(row + "\n")
+        try:
+            with open(self.archive / MANIFEST, "a", encoding="utf8", newline="\n") as out:
+                out.write(row + "\n")
+        except BaseException:
+            partial.unlink(missing_ok=True)
+            raise
+        os.replace(partial, final)
         self.saved += 1
 
     def compact_manifest(self):

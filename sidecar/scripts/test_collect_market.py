@@ -330,5 +330,18 @@ class Audit(unittest.TestCase):
             self.assertNotEqual(got.returncode, 0, got.stdout + got.stderr)
             self.assertNotIn("no credential found", got.stdout)
 
+
+class Durability(unittest.TestCase):
+    # Finding 12 (review of 6eea194): a payload is in place only once its
+    # manifest row is written, and never half written under its final name.
+    def test_a_save_interrupted_before_its_manifest_row_leaves_no_payload(self):
+        with tempfile.TemporaryDirectory() as t:
+            c = make(t)
+            (pathlib.Path(t) / cm.MANIFEST).mkdir()  # the manifest cannot be written
+            with self.assertRaises(OSError):
+                c.save("a.json", b"[1]", "r")
+            self.assertFalse(c.exists("a.json"))
+            self.assertEqual([p.name for p in pathlib.Path(t).glob("a.json*")], [])
+
 if __name__ == "__main__":
     unittest.main()
