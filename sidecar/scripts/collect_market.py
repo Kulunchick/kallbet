@@ -21,7 +21,7 @@ Budgets are settings (flags) with conservative defaults and every run ends with
 a report of the requests spent per Data Source. Re-running skips what is saved;
 an interrupted run costs only the missing requests.
 
-  python -I sidecar/scripts/collect_market.py --plan plan.json collect [--only oddspapi-fixtures,oddspapi-history,polymarket,kalshi]
+  python -I sidecar/scripts/collect_market.py --plan plan.json [--tournaments list.json] collect [--only oddspapi-fixtures,oddspapi-history,polymarket,kalshi]
   python -I sidecar/scripts/collect_market.py tournaments        # 1 billable request: OddsPapi tournament list for the plan
   python -I sidecar/scripts/collect_market.py audit              # exit 1 if a credential is found
   python -I sidecar/scripts/collect_market.py report
@@ -333,11 +333,23 @@ class Collector:
         return "\n".join(lines)
 
 
+def load_plan(plan_path, tournaments_path=None):
+    """The plan file plus an optional tournament list: [{"id" or "tournament", "name", "from", "to"}]."""
+    plan = json.loads(pathlib.Path(plan_path).read_text(encoding="utf8")) if plan_path else {}
+    plan.setdefault("oddspapi", [])
+    if tournaments_path:
+        for t in json.loads(pathlib.Path(tournaments_path).read_text(encoding="utf8")):
+            plan["oddspapi"].append({"tournament": t.get("tournament", t.get("id")), "name": t["name"],
+                                     "from": t["from"], "to": t["to"]})
+    return plan
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--archive", default=str(DEFAULT_ARCHIVE))
     parser.add_argument("--env", default=str(ROOT / ".env"))
     parser.add_argument("--plan")
+    parser.add_argument("--tournaments", help="JSON list of OddsPapi tournaments [{id, name, from, to}] added to the plan")
     parser.add_argument("--ssh-host")
     parser.add_argument("--ssh-key")
     parser.add_argument("--known-hosts")
@@ -368,7 +380,7 @@ def main():
             body, request = collector.oddspapi("tournaments", {"sportId": 17})
             collector.save("oddspapi-tournaments-17.json", body, request, catalog=True)
     elif args.command == "collect":
-        plan = json.loads(pathlib.Path(args.plan).read_text(encoding="utf8"))
+        plan = load_plan(args.plan, args.tournaments)
         steps = args.only.split(",")
         try:
             if "oddspapi-fixtures" in steps:

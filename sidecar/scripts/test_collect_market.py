@@ -214,6 +214,19 @@ class Kalshi(unittest.TestCase):
             self.assertEqual(len(remote.urls), 1)
 
 
+class Plan(unittest.TestCase):
+    def test_a_tournament_list_file_joins_the_plan(self):
+        with tempfile.TemporaryDirectory() as t:
+            plan = pathlib.Path(t) / "plan.json"
+            plan.write_text(json.dumps({"polymarket": [{"tag": "cs2"}]}))
+            lst = pathlib.Path(t) / "tournaments.json"
+            lst.write_text(json.dumps([{"id": 7, "name": "blast-2026", "from": "2026-02-01", "to": "2026-02-10"}]))
+            got = cm.load_plan(plan, lst)
+            self.assertEqual(got["oddspapi"], [{"tournament": 7, "name": "blast-2026", "from": "2026-02-01", "to": "2026-02-10"}])
+            self.assertEqual(got["polymarket"], [{"tag": "cs2"}])
+            self.assertEqual(cm.load_plan(None, lst)["kalshi"] if "kalshi" in cm.load_plan(None, lst) else [], [])
+
+
 class Audit(unittest.TestCase):
     def test_finds_a_credential_in_a_file_or_manifest(self):
         with tempfile.TemporaryDirectory() as t:
