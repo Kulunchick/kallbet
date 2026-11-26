@@ -31,7 +31,10 @@ export function OverridesPage() {
   const { result, reload } = useLoad(() => getOverrides(league), [league]);
 
   const back = (
-    <Link to={`/leagues/${league}`} className="text-sm text-mute hover:text-fg">
+    <Link
+      to={`/leagues/${league}`}
+      className="inline-flex min-h-11 items-center self-start text-sm text-mute [@media(hover:hover)_and_(pointer:fine)]:hover:text-fg"
+    >
       ← {t("backToLeague")}
     </Link>
   );
@@ -53,12 +56,48 @@ export function OverridesPage() {
     <div className="flex flex-col gap-6 py-10">
       <header className="flex flex-col gap-1">
         {back}
-        <h1 className="text-2xl font-extrabold text-gold-gradient">{t("title")}</h1>
+        <h1 className="font-display text-2xl font-extrabold text-fg">{t("title")}</h1>
         <p className="text-sm text-mute">{t("intro")}</p>
       </header>
       {admin && <AdminTools league={league} data={result.data} onChange={reload} />}
       <History entries={result.data.entries} />
     </div>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-3.5 shrink-0 text-mute"
+    >
+      <path d="M4 20h4L19 9l-4-4L4 16v4z" />
+    </svg>
+  );
+}
+
+function WarningIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="mt-0.5 size-4 shrink-0 text-mute"
+    >
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    </svg>
   );
 }
 
@@ -90,15 +129,23 @@ function History({ entries }: { entries: Entry[] }) {
   const language = i18n.resolvedLanguage ?? "en";
   return (
     <section className="card flex flex-col gap-3 p-4">
-      <h2 className="font-display text-lg font-bold text-gold-gradient">{t("history")}</h2>
+      <h2 className="font-display text-lg font-bold text-fg">{t("history")}</h2>
       {entries.length === 0 ? (
         <p className="text-sm text-mute">{t("noHistory")}</p>
       ) : (
         <ul className="flex flex-col divide-y divide-line">
           {entries.map((e) => (
             <li key={e.id} className="flex flex-col gap-1 py-2 text-sm">
-              <span className="font-semibold">
-                {matchLabel(t, e.match, e.match_id)}: {describe(t, e, language)}
+              <span className="inline-flex items-baseline gap-1.5 font-semibold text-fg">
+                {!e.cleared && (
+                  <span className="self-center">
+                    <PencilIcon />
+                  </span>
+                )}
+                <span>
+                  {matchLabel(t, e.match, e.match_id)}:{" "}
+                  <span className="font-normal text-mute">{describe(t, e, language)}</span>
+                </span>
               </span>
               <span className="text-xs text-mute">
                 {t("by", {
@@ -180,15 +227,19 @@ function AdminTools({
         />
       </fieldset>
       <section className="card flex flex-col gap-3 p-4">
-        <h2 className="font-display text-lg font-bold text-gold-gradient">{t("inForce")}</h2>
+        <h2 className="font-display text-lg font-bold text-fg">{t("inForce")}</h2>
         {inForce(data.entries).length === 0 ? (
           <p className="text-sm text-mute">{t("noneInForce")}</p>
         ) : (
           <ul className="flex flex-col divide-y divide-line">
             {inForce(data.entries).map((e) => (
-              <li key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <span>
-                  {matchLabel(t, e.match, e.match_id)}: {describe(t, e, language)}
+              <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                <span className="inline-flex min-w-0 items-center gap-1.5 text-fg">
+                  <PencilIcon />
+                  <span className="min-w-0 break-words">
+                    {matchLabel(t, e.match, e.match_id)}:{" "}
+                    <span className="text-mute">{describe(t, e, language)}</span>
+                  </span>
                 </span>
                 <button
                   type="button"
@@ -207,7 +258,7 @@ function AdminTools({
         <AddMatchForm data={data} onSubmit={(body) => run("add", () => addMatch(league, body))} />
       </fieldset>
       <section className="card flex flex-col gap-3 p-4">
-        <h2 className="font-display text-lg font-bold text-gold-gradient">{t("warnings.title")}</h2>
+        <h2 className="font-display text-lg font-bold text-fg">{t("warnings.title")}</h2>
         <p className="text-xs text-mute">{t("warnings.hint")}</p>
         {warnings.state === "ready" &&
           warnings.data.conflicts.length === 0 &&
@@ -217,14 +268,17 @@ function AdminTools({
         {warnings.state === "ready" && (
           <ul className="flex flex-col gap-2 text-sm">
             {warnings.data.conflicts.map((c) => (
-              <li key={`c${c.match_id}${c.other_source}`} className="text-gold-a">
-                {t("warnings.conflict", {
-                  match: matchLabel(t, c.match, c.match_id),
-                  kept: c.kept_source,
-                  keptWinner: c.kept_winner?.name ?? t("void"),
-                  other: c.other_source,
-                  otherWinner: c.other_winner?.name ?? t("void"),
-                })}
+              <li key={`c${c.match_id}${c.other_source}`} className="flex items-start gap-2 text-fg">
+                <WarningIcon />
+                <span>
+                  {t("warnings.conflict", {
+                    match: matchLabel(t, c.match, c.match_id),
+                    kept: c.kept_source,
+                    keptWinner: c.kept_winner?.name ?? t("void"),
+                    other: c.other_source,
+                    otherWinner: c.other_winner?.name ?? t("void"),
+                  })}
+                </span>
               </li>
             ))}
             {warnings.data.unmatched.map((u) => (
@@ -284,11 +338,11 @@ function OverrideForm({
 
   return (
     <form onSubmit={submit} className="card flex flex-col gap-3 p-4">
-      <h2 className="font-display text-lg font-bold text-gold-gradient">{t("form.title")}</h2>
+      <h2 className="font-display text-lg font-bold text-fg">{t("form.title")}</h2>
       <label className="flex flex-col gap-1 text-sm">
         {t("form.match")}
         <select
-          className="rounded-lg border border-line bg-raised px-3 py-2"
+          className="min-h-11 rounded-lg border border-line bg-raised px-3 py-2 text-base text-fg"
           value={matchId ?? ""}
           onChange={(e) => setMatchId(e.target.value ? Number(e.target.value) : null)}
         >
@@ -303,7 +357,7 @@ function OverrideForm({
       <label className="flex flex-col gap-1 text-sm">
         {t("form.action")}
         <select
-          className="rounded-lg border border-line bg-raised px-3 py-2"
+          className="min-h-11 rounded-lg border border-line bg-raised px-3 py-2 text-base text-fg"
           value={action}
           onChange={(e) => setAction(e.target.value as Action)}
         >
@@ -319,7 +373,7 @@ function OverrideForm({
           {t("form.start")}
           <input
             type="datetime-local"
-            className="rounded-lg border border-line bg-raised px-3 py-2"
+            className="min-h-11 rounded-lg border border-line bg-raised px-3 py-2 text-base text-fg"
             value={start}
             onChange={(e) => setStart(e.target.value)}
           />
@@ -358,7 +412,7 @@ function TeamSelect({
     <label className="flex flex-col gap-1 text-sm">
       {label}
       <select
-        className="rounded-lg border border-line bg-raised px-3 py-2"
+        className="min-h-11 rounded-lg border border-line bg-raised px-3 py-2 text-base text-fg"
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
       >
@@ -408,11 +462,11 @@ function AddMatchForm({
 
   return (
     <form onSubmit={submit} className="card flex flex-col gap-3 p-4">
-      <h2 className="font-display text-lg font-bold text-gold-gradient">{t("add.title")}</h2>
+      <h2 className="font-display text-lg font-bold text-fg">{t("add.title")}</h2>
       <label className="flex flex-col gap-1 text-sm">
         {t("add.stage")}
         <select
-          className="rounded-lg border border-line bg-raised px-3 py-2"
+          className="min-h-11 rounded-lg border border-line bg-raised px-3 py-2 text-base text-fg"
           value={stage ?? ""}
           onChange={(e) => setStage(e.target.value ? Number(e.target.value) : null)}
         >
@@ -429,7 +483,7 @@ function AddMatchForm({
         {t("form.start")}
         <input
           type="datetime-local"
-          className="rounded-lg border border-line bg-raised px-3 py-2"
+          className="min-h-11 rounded-lg border border-line bg-raised px-3 py-2 text-base text-fg"
           value={start}
           onChange={(e) => setStart(e.target.value)}
         />
@@ -437,7 +491,7 @@ function AddMatchForm({
       <label className="flex flex-col gap-1 text-sm">
         {t("add.format")}
         <select
-          className="rounded-lg border border-line bg-raised px-3 py-2"
+          className="min-h-11 rounded-lg border border-line bg-raised px-3 py-2 text-base text-fg"
           value={format}
           onChange={(e) => setFormat(e.target.value as "bo1" | "bo3" | "bo5")}
         >
@@ -448,7 +502,7 @@ function AddMatchForm({
           ))}
         </select>
       </label>
-      <button type="submit" className="btn-primary self-start" disabled={!ready}>
+      <button type="submit" className="btn-ghost self-start" disabled={!ready}>
         {t("add.save")}
       </button>
     </form>

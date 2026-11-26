@@ -27,7 +27,10 @@ export function LeaderboardPage() {
   }, [reload]);
 
   const back = (
-    <Link to={`/leagues/${league}`} className="text-sm text-mute hover:text-fg">
+    <Link
+      to={`/leagues/${league}`}
+      className="inline-flex min-h-11 items-center self-start text-sm text-mute [@media(hover:hover)_and_(pointer:fine)]:hover:text-fg"
+    >
       ← {t("backToLeague")}
     </Link>
   );
@@ -46,7 +49,7 @@ export function LeaderboardPage() {
     <div className="flex flex-col gap-6 py-10">
       <header className="flex flex-col gap-1">
         {back}
-        <h1 className="text-2xl font-extrabold text-gold-gradient">{t("title")}</h1>
+        <h1 className="font-display text-2xl font-extrabold text-fg">{t("title")}</h1>
       </header>
 
       <div className="card overflow-x-auto">
@@ -81,7 +84,7 @@ export function LeaderboardPage() {
                   className={`border-b border-line last:border-b-0 ${mine ? "bg-raised" : ""}`}
                 >
                   <td
-                    className={`px-3 py-3 text-center font-display font-bold ${leader ? "text-gold-a text-glow-gold" : "text-mute"}`}
+                    className={`px-3 py-3 text-center font-display font-bold ${leader ? "text-gold-a" : "text-mute"}`}
                   >
                     {isArchived && <Medal place={row.place} />} {row.place}
                   </td>
@@ -89,7 +92,7 @@ export function LeaderboardPage() {
                     <span className="flex items-center gap-3">
                       <Avatar nickname={row.nickname} url={row.avatar_url} className="size-8" />
                       <span
-                        className={`min-w-0 truncate font-semibold ${leader ? "text-gold-a" : ""} ${mine ? "text-emerald-b" : ""}`}
+                        className={`min-w-0 truncate font-semibold ${mine ? "text-emerald-b" : "text-fg"}`}
                       >
                         {row.nickname}
                       </span>
@@ -100,9 +103,7 @@ export function LeaderboardPage() {
                       )}
                     </span>
                   </td>
-                  <td
-                    className={`px-3 py-3 text-right font-display font-bold ${leader ? "text-gold-a" : ""}`}
-                  >
+                  <td className="px-3 py-3 text-right font-display font-bold text-gold-a">
                     {row.points}
                   </td>
                   <td className="px-3 py-3 text-right text-mute">{row.playoff_points}</td>

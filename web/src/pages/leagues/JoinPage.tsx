@@ -56,7 +56,7 @@ export function JoinPage() {
       {session.user && result.state === "ready" && (
         <div className="card flex flex-col gap-4 p-6">
           <p className="text-sm text-mute">{t("join.invited")}</p>
-          <h1 className="text-2xl font-extrabold text-gold-gradient">{result.data.name}</h1>
+          <h1 className="font-display text-2xl font-extrabold text-fg">{result.data.name}</h1>
           <p className="text-mute">
             {result.data.event.name} · {t("members.title", { count: result.data.member_count })}
           </p>

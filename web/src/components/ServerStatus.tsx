@@ -21,7 +21,7 @@ export function ServerStatus() {
   }, []);
 
   const dot =
-    status === "online" ? "bg-emerald-b glow-emerald" : status === "offline" ? "bg-danger" : "bg-mute";
+    status === "online" ? "bg-emerald-b" : status === "offline" ? "bg-danger" : "bg-mute";
   return (
     <span className="inline-flex items-center gap-2" data-status={status}>
       <span className={`size-2 rounded-full ${dot}`} aria-hidden />

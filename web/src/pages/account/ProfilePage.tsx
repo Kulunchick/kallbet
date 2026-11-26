@@ -56,7 +56,7 @@ function Profile({ user }: { user: User }) {
     <div className="mx-auto flex max-w-md flex-col gap-6 py-12">
       <div className="flex items-center gap-4">
         <Avatar url={user.avatar_url} nickname={user.nickname} className="size-16" />
-        <h1 className="truncate text-2xl font-extrabold text-gold-gradient">{user.nickname}</h1>
+        <h1 className="truncate font-display text-2xl font-extrabold text-fg">{user.nickname}</h1>
       </div>
 
       <form onSubmit={onSubmit} className="card flex flex-col gap-3 p-5">
@@ -72,7 +72,7 @@ function Profile({ user }: { user: User }) {
             setNickname(event.target.value);
             setSaved(false);
           }}
-          className="rounded-xl border border-line bg-ink px-3 py-2.5 text-sm outline-none focus:border-emerald-a"
+          className="min-h-11 rounded-xl border border-line bg-ink px-3 py-2.5 text-base text-fg outline-none focus:border-emerald-a"
         />
         <p className="text-xs text-mute">{t("profile.nicknameHint")}</p>
         {error !== null && (
@@ -88,7 +88,7 @@ function Profile({ user }: { user: User }) {
 
       <div className="card flex flex-col gap-3 p-5">
         <p className="text-sm font-semibold">{t("profile.language")}</p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {LANGUAGES.map((language) => (
             <button
               key={language}
@@ -97,7 +97,11 @@ function Profile({ user }: { user: User }) {
               aria-pressed={language === user.language}
               disabled={pending}
               onClick={() => void save({ language })}
-              className={language === user.language ? "btn-primary !py-2" : "btn-ghost !py-2"}
+              className={
+                language === user.language
+                  ? "btn-ghost !border-emerald-a !bg-emerald-tint !py-2 !text-emerald-b"
+                  : "btn-ghost !py-2"
+              }
             >
               {t(`common:language.${language}`)}
             </button>
@@ -108,7 +112,7 @@ function Profile({ user }: { user: User }) {
       <div className="card flex flex-col gap-3 p-5">
         <p className="text-sm font-semibold">{t("profile.notifications")}</p>
         {NOTIFICATION_TYPES.map((type) => (
-          <label key={type} className="flex items-start gap-3 text-sm">
+          <label key={type} className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
             <input
               type="checkbox"
               checked={user.notifications[type]}
@@ -116,7 +120,7 @@ function Profile({ user }: { user: User }) {
               onChange={(event) =>
                 void save({ notifications: { [type]: event.target.checked } })
               }
-              className="mt-0.5 size-4 accent-emerald-500"
+              className="size-5 shrink-0 accent-emerald-500"
             />
             <span>{t(`profile.notify.${type}`)}</span>
           </label>
