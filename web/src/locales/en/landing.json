@@ -22,16 +22,16 @@
     "locked": {
       "label": "At Lock",
       "status": "Locked",
-      "footer": "Everyone's picks, revealed",
-      "teamPicks_one": "{{team}}: {{count}} pick",
-      "teamPicks_other": "{{team}}: {{count}} picks"
+      "footer": "Everyone's Predictions, revealed",
+      "teamPicks_one": "{{team}}: {{count}} Prediction",
+      "teamPicks_other": "{{team}}: {{count}} Predictions"
     }
   },
   "how": {
     "title": "How it works",
     "league": {
       "title": "Create a League",
-      "text": "Pick an Event, name your League and share the Invite Link in your chat."
+      "text": "Choose an Event, name your League and share the Invite Link in your chat."
     },
     "predict": {
       "title": "Predict every Match",

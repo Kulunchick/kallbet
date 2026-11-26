@@ -1,18 +1,18 @@
 {
   "strip": {
-    "unpicked_one": "{{count}} unpicked",
-    "unpicked_other": "{{count}} unpicked",
-    "allPicked": "All picked",
-    "nothing": "Nothing to pick right now",
+    "unpicked_one": "{{count}} to predict",
+    "unpicked_other": "{{count}} to predict",
+    "allPicked": "All predicted",
+    "nothing": "Nothing to predict right now",
     "nextLock": "Next Lock in {{time}}",
-    "pickNext": "Pick next Match",
+    "pickNext": "Predict next Match",
     "howLockWorks": "How Lock works"
   },
   "lockHelp": {
     "title": "How Lock works",
-    "line1": "Picks close 15 minutes before a Match starts.",
-    "line2": "If everyone has picked earlier, it locks right then.",
-    "line3": "At Lock, everyone's picks are revealed. A Lock is never undone.",
+    "line1": "Predictions close 15 minutes before a Match starts.",
+    "line2": "If everyone has predicted earlier, it locks right then.",
+    "line3": "At Lock, everyone's Predictions are revealed. A Lock is never undone.",
     "gotIt": "Got it"
   },
   "disclosure": {
@@ -23,14 +23,14 @@
     "startsOn": "starts {{day}}"
   },
   "toast": {
-    "saved": "Pick saved · {{team}}",
-    "restored": "Pick restored · {{team}}",
+    "saved": "Prediction saved · {{team}}",
+    "restored": "Prediction restored · {{team}}",
     "undo": "Undo"
   },
   "states": {
     "loadFailed": {
       "title": "Couldn't load Matches",
-      "body": "Check your connection and try again. Picks you already made are not affected.",
+      "body": "Check your connection and try again. Predictions you already made are not affected.",
       "retry": "Retry",
       "back": "Back to League"
     },
