@@ -20,6 +20,7 @@
 pub mod cli;
 pub mod combiner;
 pub mod holdout;
+pub mod leagues;
 pub mod report;
 pub mod runner;
 pub mod runs;
@@ -29,8 +30,8 @@ pub mod stats;
 
 pub use holdout::Holdout;
 pub use report::{
-    CandidateReport, EventInfo, EventRow, HoldoutReport, HoldoutStatus, LabReport, MarketSubset,
-    Metrics, SelectionReport,
+    CandidateReport, DirectComparison, EventInfo, EventRow, HoldoutReport, HoldoutStatus,
+    LabReport, MarketSubset, Metrics, SelectionReport,
 };
 pub use runner::{Lab, LabOutcome, LabPrediction};
 pub use runs::{LabRun, record_lab_run};

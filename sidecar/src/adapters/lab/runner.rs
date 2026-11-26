@@ -2,7 +2,9 @@
 //! replay ports at its cutoff, then evaluates each Candidate Signal Event by
 //! Event, walk-forward, against the anchor.
 use super::holdout::Holdout;
-use super::report::{CandidateReport, EventInfo, EventRow, LabReport, MarketSubset, Metrics};
+use super::report::{
+    CandidateReport, DirectComparison, EventInfo, EventRow, LabReport, MarketSubset, Metrics,
+};
 use super::selection::{self, Member};
 use super::signals::{self, CandidateSignal, FittedSignal, MatchView, Observed};
 use super::stats::{self, Verdict};
@@ -69,16 +71,30 @@ impl Lab {
         })
     }
 
-    async fn view(&self, game: &Match, cutoff: Instant) -> Result<MatchView> {
+    pub(super) async fn view(&self, game: &Match, cutoff: Instant) -> Result<MatchView> {
         let view = MatchView {
             signal: self.feeds.signal.signal(game, cutoff).await?,
             market: self.feeds.odds.quote(game, cutoff).await?,
+            history_before: self.feeds.history.matches_before(cutoff).await?,
+            team_a_history: self
+                .feeds
+                .history
+                .team_matches(&game.team_a.name, cutoff)
+                .await?,
+            team_b_history: self
+                .feeds
+                .history
+                .team_matches(&game.team_b.name, cutoff)
+                .await?,
             game: game.clone(),
             cutoff,
         };
         // A port that answers with a datum at or after the cutoff ends the run.
         view.signal()?;
         view.market()?;
+        view.history_before()?;
+        view.team_a_history()?;
+        view.team_b_history()?;
         Ok(view)
     }
 
@@ -241,6 +257,9 @@ impl Lab {
         let mut fits = Vec::new();
         // (event, a won, baseline, variant, has market) of every paired Match.
         let mut paired: Vec<(i64, bool, f64, f64, bool)> = Vec::new();
+        // (event, a won, valve series, unblended rating) for direct comparison with Valve.
+        let mut vs_valve_paired: Vec<(i64, bool, f64, f64)> = Vec::new();
+        let mut vs_valve_per_event = Vec::new();
         let mut per_event = Vec::new();
         for event in events {
             let training = Self::training(events, event);
@@ -250,6 +269,7 @@ impl Lab {
             };
             let parameters = fitted.as_ref().and_then(|f| f.parameters());
             let (mut computed, mut both, mut diff) = (0, 0, 0.0);
+            let (mut v_computed, mut v_both, mut v_diff) = (0, 0, 0.0);
             for m in &event.matches {
                 let baseline = m.view.anchor()?;
                 let variant = match &fitted {
@@ -268,6 +288,26 @@ impl Lab {
                         m.view.game.id
                     )
                     .into());
+                }
+                if let Some(f) = &fitted
+                    && let Some(rp) = f.predict_rating(&m.view)?
+                {
+                    let rp = *rp.at(m.view.cutoff)?;
+                    if !(0.0..=1.0).contains(&rp) {
+                        return Err(format!(
+                            "Candidate Signal {} gave rating {rp} for Match {}",
+                            signal.name(),
+                            m.view.game.id
+                        )
+                        .into());
+                    }
+                    v_computed += 1;
+                    if let Some(valve) = m.view.signal()? {
+                        v_both += 1;
+                        v_diff += stats::log_loss(rp, m.team_a_won)
+                            - stats::log_loss(valve.series, m.team_a_won);
+                        vs_valve_paired.push((event.info.id, m.team_a_won, valve.series, rp));
+                    }
                 }
                 computed += usize::from(variant.is_some());
                 if let (Some(b), Some(v)) = (baseline, variant) {
@@ -292,8 +332,69 @@ impl Lab {
                 log_loss_difference: (both > 0).then(|| diff / both as f64),
                 parameters,
             });
+            vs_valve_per_event.push(EventRow {
+                event_id: event.info.id,
+                title: event.info.title.clone(),
+                training_matches: training.len(),
+                computed: v_computed,
+                paired: v_both,
+                log_loss_difference: (v_both > 0).then(|| v_diff / v_both as f64),
+                parameters: None,
+            });
             fits.extend(fitted);
         }
+        let vs_valve = if vs_valve_paired.is_empty() {
+            None
+        } else {
+            let v_diffs: Vec<(i64, f64)> = vs_valve_paired
+                .iter()
+                .map(|r| (r.0, stats::log_loss(r.3, r.1) - stats::log_loss(r.2, r.1)))
+                .collect();
+            stats::event_bootstrap(
+                &v_diffs,
+                self.protocol.resamples,
+                self.protocol.level,
+                self.protocol.seed,
+            )
+            .map(|boot| {
+                let v_metrics = |pick: fn(&(i64, bool, f64, f64)) -> f64| {
+                    let n = vs_valve_paired.len() as f64;
+                    let mean = |f: &dyn Fn(f64, bool) -> f64| {
+                        vs_valve_paired
+                            .iter()
+                            .map(|r| f(pick(r), r.1))
+                            .sum::<f64>()
+                            / n
+                    };
+                    Metrics {
+                        log_loss: mean(&stats::log_loss),
+                        brier: mean(&stats::brier),
+                        accuracy: mean(&|p, w| f64::from(u8::from(stats::correct(p, w)))),
+                    }
+                };
+                let (b, v) = (v_metrics(|r| r.2), v_metrics(|r| r.3));
+                DirectComparison {
+                    reference: "Valve Regional Standings (unblended)".into(),
+                    paired: vs_valve_paired.len(),
+                    events: vs_valve_paired
+                        .iter()
+                        .map(|r| r.0)
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .len(),
+                    difference: Metrics {
+                        log_loss: v.log_loss - b.log_loss,
+                        brier: v.brier - b.brier,
+                        accuracy: v.accuracy - b.accuracy,
+                    },
+                    baseline: b,
+                    variant: v,
+                    interval: boot.interval,
+                    std_error: boot.std_error,
+                    detectable: stats::detectable_effect(boot.std_error),
+                    per_event: vs_valve_per_event,
+                }
+            })
+        };
         let computed_on = rows.iter().filter(|r| r.variant.is_some()).count();
         let mut report = CandidateReport {
             name: signal.name().into(),
@@ -314,6 +415,7 @@ impl Lab {
             std_error: None,
             detectable: None,
             market: None,
+            vs_valve,
             per_event,
         };
         if let Some(reason) = missing {
