@@ -28,9 +28,10 @@ use std::{
 pub struct ReplayMatch {
     pub game: Match,
     pub actual_start: Instant,
-    /// When the result was known: PandaScore's `end_at`, else the actual start.
+    /// For ordering only: PandaScore's `end_at`, else the actual start. Not a
+    /// time the result was known: read `known_finish` for that.
     pub finished_at: Instant,
-    /// Source-reported finish, without the results history's start-time fallback.
+    /// Source-reported finish, without the start-time fallback.
     pub reported_finish: Option<Instant>,
     pub winner: i64,
     /// Map score `(team_a_maps, team_b_maps)` from PandaScore `results`, if present.
@@ -46,6 +47,12 @@ impl ReplayMatch {
             self.game.scheduled_start.unwrap_or(self.actual_start),
             self.actual_start,
         )
+    }
+    /// When the result became known: the reported finish, if it is after the
+    /// start. `None`: unknown, so the result is never visible (a start time is
+    /// not a finish, and no duration is estimated).
+    pub fn known_finish(&self) -> Option<Instant> {
+        self.reported_finish.filter(|&end| end > self.actual_start)
     }
     pub fn loser(&self) -> i64 {
         if self.winner == self.game.team_a.id {

@@ -134,7 +134,7 @@ pub async fn report(lab: &Lab, seed: u64, trials: usize) -> Result<String> {
             let v = lab.view(stage, m, None).await?;
             events.entry(stage.event_id).or_default().push(Game {
                 cutoff: m.cutoff(),
-                known: (m.finished_at > m.actual_start).then_some(m.finished_at),
+                known: m.known_finish(),
                 anchor: v.anchor()?,
                 market: v.market()?,
                 won: m.winner == m.game.team_a.id,

@@ -376,8 +376,15 @@ fn event_order(lab: &Lab) -> BTreeMap<i64, Vec<usize>> {
     by_event
 }
 
+/// When the Stage's last result became known; `None` while any is unknown.
 fn last_result(stage: &ReplayStage) -> Option<Instant> {
-    stage.matches.iter().map(|m| m.finished_at).max()
+    stage
+        .matches
+        .iter()
+        .map(|m| m.known_finish())
+        .collect::<Option<Vec<_>>>()?
+        .into_iter()
+        .max()
 }
 
 #[derive(Default)]

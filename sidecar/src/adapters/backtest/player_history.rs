@@ -1,7 +1,9 @@
 //! Replay adapter for `PlayerStatsHistory` (ticket #45): indexes HLTV
 //! `HltvMatchRecord`s loaded into `ReplayArchive`, joins each Match to its
 //! PandaScore `ReplayMatch` (by `team_key` pair within ±6h) for verified
-//! `finished_at`, and serves per-player prefixes strictly before `cutoff`.
+//! `finished_at`, and serves per-player prefixes strictly before `cutoff`. A
+//! record with no linked Match, or whose Match has no reported finish, is
+//! never visible: no finish is estimated from a start and a duration.
 use super::archive::{ReplayArchive, team_key};
 use crate::adapters::hltv_research::archive::HltvMatchRecord;
 use crate::*;
@@ -21,14 +23,6 @@ fn parse_format(raw: &str) -> Format {
     }
 }
 
-fn conservative_duration(format: Format) -> Duration {
-    match format {
-        Format::Bo1 => Duration::hours(4),
-        Format::Bo3 => Duration::hours(8),
-        Format::Bo5 => Duration::hours(12),
-    }
-}
-
 fn canonical_pair(a: &str, b: &str) -> (String, String) {
     let ka = team_key(a);
     let kb = team_key(b);
@@ -42,14 +36,15 @@ pub struct ReplayPlayerHistory {
 
 impl ReplayPlayerHistory {
     pub fn new(archive: &ReplayArchive) -> Self {
-        let mut by_pair: BTreeMap<(String, String), Vec<(Instant, Instant)>> = BTreeMap::new();
+        let mut by_pair: BTreeMap<(String, String), Vec<(Instant, Option<Instant>)>> =
+            BTreeMap::new();
         for stage in &archive.stages {
             for m in &stage.matches {
                 let pair = canonical_pair(&m.game.team_a.name, &m.game.team_b.name);
                 by_pair
                     .entry(pair)
                     .or_default()
-                    .push((m.actual_start, m.finished_at));
+                    .push((m.actual_start, m.known_finish()));
             }
         }
 
@@ -70,9 +65,9 @@ impl ReplayPlayerHistory {
                     .min_by_key(|(actual, _)| (*actual - rec.started_at).abs())
                     .map(|(_, finished)| *finished)
             });
-            let finished_at = matched_finish
-                .unwrap_or_else(|| rec.started_at + conservative_duration(format))
-                .max(rec.started_at);
+            let Some(finished_at) = matched_finish.flatten() else {
+                continue;
+            };
             let maps_played = rec.maps.iter().filter(|m| m.played).count().max(1) as u8;
             let mut seen_player_ids = BTreeSet::new();
             for ts in &rec.overall_stats {

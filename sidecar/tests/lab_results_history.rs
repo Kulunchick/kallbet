@@ -578,3 +578,27 @@ async fn all_three_signals_are_reported_and_own_rating_is_compared_directly_with
         .unwrap();
     assert!(own_json["vs_valve"].is_object(), "vs_valve missing in JSON");
 }
+
+// Finding 1 (review of 6eea194): a Match whose finish is not reported is not
+// yet visible. A start time is not a finish: play may last for hours.
+#[tokio::test]
+async fn a_match_without_a_reported_finish_never_enters_the_history() {
+    let mut archive = whole();
+    let m = &mut archive.stages[0].matches[0];
+    let id = m.game.id;
+    // What the loader makes of a finished row without `end_at`.
+    m.reported_finish = None;
+    m.finished_at = m.actual_start;
+    let kickoff = m.actual_start;
+    let history = ReplayHistory::new(&archive);
+    for cutoff in [
+        kickoff + Duration::minutes(5),
+        "2030-01-01T00:00:00Z".parse().unwrap(),
+    ] {
+        let all = history.matches_before(cutoff).await.unwrap();
+        assert!(all.at(cutoff).unwrap().iter().all(|h| h.match_id != id));
+        let team = archive.stages[0].matches[0].game.team_a.name.clone();
+        let own = history.team_matches(&team, cutoff).await.unwrap();
+        assert!(own.at(cutoff).unwrap().iter().all(|h| h.match_id != id));
+    }
+}

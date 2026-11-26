@@ -757,3 +757,42 @@ async fn walk_forward_lab_run_evaluates_player_signals_and_isolates_later_events
         }
     }
 }
+
+// Finding 1 (review of 6eea194): an HLTV performance is visible from the
+// reported finish of the PandaScore Match it belongs to, never from a start
+// time or an estimated duration.
+#[tokio::test]
+async fn player_stats_need_a_reported_finish_and_are_never_estimated() {
+    let dir = copy_backtest_prefixes(&["panda-20708", "lp-20708", "event-iem-cologne-2026-before-stage1"]);
+    let hltv_dir = dir.path().join("hltv");
+    std::fs::create_dir_all(&hltv_dir).unwrap();
+    std::fs::copy(
+        research_fixtures().join("hltv-match-2394774-heroic-vs-sharks.html.gz"),
+        hltv_dir.join("hltv-match-2394774-heroic-vs-sharks.html.gz"),
+    )
+    .unwrap();
+    let loaded = ReplayArchive::load(dir.path()).unwrap();
+    let started = loaded.hltv_matches[0].started_at;
+    let late: Instant = started + Duration::days(2);
+
+    // The linked PandaScore Match (1494593) lost its end time.
+    let mut archive = ReplayArchive::load(dir.path()).unwrap();
+    for m in archive.stages.iter_mut().flat_map(|s| s.matches.iter_mut()) {
+        if m.game.id == 1494593 {
+            m.reported_finish = None;
+            m.finished_at = m.actual_start;
+        }
+    }
+    let history = ReplayPlayerHistory::new(&archive);
+    let slice = history.player_matches("xfl0ud", late).await.unwrap();
+    assert!(slice.at(late).unwrap().is_empty(), "no finish, no visibility");
+
+    // No PandaScore Match to link: no finish to date it by.
+    let mut archive = ReplayArchive::load(dir.path()).unwrap();
+    for s in &mut archive.stages {
+        s.matches.retain(|m| m.game.id != 1494593);
+    }
+    let history = ReplayPlayerHistory::new(&archive);
+    let slice = history.player_matches("xfl0ud", late).await.unwrap();
+    assert!(slice.at(late).unwrap().is_empty(), "no estimated finish");
+}

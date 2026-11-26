@@ -29,8 +29,8 @@ pub struct PlayerAppearance {
     pub maps_played: u8,
     pub rating: f64,
     pub rating_version: String,
-    /// When the Match finished (PandaScore verified `end_at`, else conservative
-    /// upper bound from HLTV `started_at`). Every `AsOf<PlayerAppearance>` is
+    /// When the Match finished: the reported `end_at` of the PandaScore Match
+    /// it is linked to (never estimated). Every `AsOf<PlayerAppearance>` is
     /// dated by this instant.
     pub finished_at: Instant,
 }

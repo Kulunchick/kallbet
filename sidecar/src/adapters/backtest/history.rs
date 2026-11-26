@@ -34,6 +34,10 @@ impl ReplayHistory {
         for stage in &archive.stages {
             let kind = stage_kind(stage.kind);
             for m in &stage.matches {
+                // Without a reported finish the result is never visible.
+                let Some(finished_at) = m.known_finish() else {
+                    continue;
+                };
                 if !seen.insert(m.game.id) {
                     continue;
                 }
@@ -61,7 +65,7 @@ impl ReplayHistory {
                     maps_score: m.maps_score,
                     scheduled_start: m.game.scheduled_start,
                     actual_start: m.actual_start,
-                    finished_at: m.finished_at,
+                    finished_at,
                 });
             }
         }
