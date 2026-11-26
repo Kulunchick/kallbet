@@ -4,6 +4,7 @@
 use super::holdout::{Freeze, Holdout};
 use super::report::{
     CandidateReport, DirectComparison, EventInfo, EventRow, LabReport, MarketSubset, Metrics,
+    TierView,
 };
 use super::selection::{self, Member};
 use super::signals::{self, CandidateSignal, FittedSignal, MatchView, Observed};
@@ -36,6 +37,48 @@ pub struct Lab {
     /// When the Holdout is evaluated, for the report (the CLI: the recorded
     /// evaluation's start, else this run's).
     pub evaluated_at: Option<Instant>,
+    /// Which tiers are evaluated and which may train a fit (default: all).
+    pub tiers: TierFilter,
+}
+
+/// The tier the secondary view of the report slices to (ticket #55).
+pub const SLICE_TIERS: &str = "s";
+
+/// Which Events, by their archived PandaScore tier, are evaluated and which
+/// may train a fit. `None`: any Event, tiered or not. An Event with no tier is
+/// in neither set of a given filter; the report lists it.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct TierFilter {
+    pub evaluate: Option<BTreeSet<String>>,
+    pub train: Option<BTreeSet<String>>,
+}
+impl TierFilter {
+    /// `"s,a"` into a tier set.
+    pub fn parse(list: &str) -> Result<BTreeSet<String>> {
+        let set: BTreeSet<String> = list
+            .split(',')
+            .map(|t| t.trim().to_lowercase())
+            .filter(|t| !t.is_empty())
+            .collect();
+        if set.is_empty() {
+            return Err("a tier list needs at least one tier".into());
+        }
+        Ok(set)
+    }
+    fn within(set: &Option<BTreeSet<String>>, event: &Event) -> bool {
+        set.as_ref()
+            .is_none_or(|s| event.tier.as_ref().is_some_and(|t| s.contains(t)))
+    }
+    pub(crate) fn evaluates(&self, event: &Event) -> bool {
+        Self::within(&self.evaluate, event)
+    }
+    pub(crate) fn trains_on(&self, event: &Event) -> bool {
+        Self::within(&self.train, event)
+    }
+}
+fn show(set: &Option<BTreeSet<String>>) -> String {
+    set.as_ref()
+        .map_or("all".into(), |s| s.iter().cloned().collect::<Vec<_>>().join(","))
 }
 
 /// One Match as one Candidate Signal saw it: the anchor's probability and the
@@ -64,6 +107,8 @@ pub struct LabOutcome {
 pub(crate) struct Event {
     pub(crate) info: EventInfo,
     pub(crate) matches: Vec<Observed>,
+    /// PandaScore tier of the Event (its first Stage that names one).
+    pub(crate) tier: Option<String>,
     /// When its last result became known; `None`: not complete (a Stage
     /// still in play, or a result without a reported finish), so it trains
     /// nothing.
@@ -140,6 +185,7 @@ impl Lab {
             holdout: Holdout::default(),
             freeze: None,
             evaluated_at: None,
+            tiers: TierFilter::default(),
         })
     }
 
@@ -347,10 +393,12 @@ impl Lab {
                     matches: 0,
                 },
                 matches: vec![],
+                tier: None,
                 // The whole Event's end, both sides of the boundary.
                 ended: ends[&stage.event_id],
             });
             event.info.begins = event.info.begins.min(stage.cutoff);
+            event.tier = event.tier.take().or_else(|| stage.tier.clone());
             for m in &stage.matches {
                 event.info.ends = event.info.ends.max(m.known_finish().unwrap_or(m.finished_at));
                 let mut view = self.view(stage, m, rosters.as_ref(), &hidden).await?;
@@ -378,7 +426,7 @@ impl Lab {
         self.signals
             .iter()
             .map(|signal| {
-                self.evaluate(signal.as_ref(), &events, &training_archive)
+                self.evaluate(signal.as_ref(), &events, &training_archive, &self.tiers)
                     .map(|(report, _, _)| report)
             })
             .collect()
@@ -403,7 +451,7 @@ impl Lab {
         let mut fitted = Vec::new();
         for signal in &self.signals {
             let (report, rows, fits) =
-                self.evaluate(signal.as_ref(), &events, &training_archive)?;
+                self.evaluate(signal.as_ref(), &events, &training_archive, &self.tiers)?;
             if report.verdict == Verdict::Promote {
                 fitted.push((signal.clone(), fits));
             }
@@ -417,6 +465,7 @@ impl Lab {
                 fits,
             })
             .collect();
+        let tier_view = self.tier_view(&events, &training_archive)?;
         let selected = selection::select(&events, &promoted, &self.protocol)?;
         // The selection is frozen here; only now is the Holdout read.
         let frozen: Vec<Member> = selected
@@ -474,6 +523,7 @@ impl Lab {
                 candidates,
                 selection: selected.report,
                 holdout: evaluated.report,
+                tier_view,
             },
             predictions,
             combination: selected.predictions,
@@ -519,11 +569,47 @@ impl Lab {
     /// The walk-forward boundary: the training Matches of `event` are those of
     /// the Events that ended before it began.
     pub(super) fn training(events: &[Event], event: &Event) -> Vec<Observed> {
+        Self::training_in(events, event, &TierFilter::default())
+    }
+
+    /// `training`, with only the Events whose tier `tiers.train` allows. The
+    /// tier is a further restriction: it never admits an Event the walk-forward
+    /// boundary excludes, and `events` holds no Holdout Match.
+    pub(crate) fn training_in(events: &[Event], event: &Event, tiers: &TierFilter) -> Vec<Observed> {
         events
             .iter()
-            .filter(|e| e.trains(&event.info))
+            .filter(|e| e.trains(&event.info) && tiers.trains_on(e))
             .flat_map(|e| e.matches.iter().cloned())
             .collect()
+    }
+
+    /// The secondary view of ticket #55: every Candidate Signal on the
+    /// `SLICE_TIERS` slice, fitted on the Events `self.tiers.train` allows.
+    fn tier_view(&self, events: &[Event], archive: &ReplayArchive) -> Result<TierView> {
+        let slice = TierFilter {
+            evaluate: Some(TierFilter::parse(SLICE_TIERS)?),
+            train: self.tiers.train.clone(),
+        };
+        let mut matches_by_tier: BTreeMap<String, usize> = BTreeMap::new();
+        let mut untiered = Vec::new();
+        for e in events {
+            match &e.tier {
+                Some(t) => *matches_by_tier.entry(t.clone()).or_default() += e.matches.len(),
+                None => untiered.push(format!("{}: {}", e.info.title, e.matches.len())),
+            }
+        }
+        let mut candidates = Vec::new();
+        for signal in &self.signals {
+            candidates.push(self.evaluate(signal.as_ref(), events, archive, &slice)?.0);
+        }
+        Ok(TierView {
+            evaluated: show(&self.tiers.evaluate),
+            train: show(&self.tiers.train),
+            slice: SLICE_TIERS.into(),
+            matches_by_tier,
+            untiered,
+            candidates,
+        })
     }
 
     fn evaluate(
@@ -531,6 +617,7 @@ impl Lab {
         signal: &dyn CandidateSignal,
         events: &[Event],
         archive: &ReplayArchive,
+        tiers: &TierFilter,
     ) -> Result<Evaluation> {
         let missing = signal.missing_data(archive);
         let mut rows = Vec::new();
@@ -542,11 +629,17 @@ impl Lab {
         let mut vs_valve_per_event = Vec::new();
         let mut per_event = Vec::new();
         for event in events {
-            let training = Self::training(events, event);
+            let training = Self::training_in(events, event, tiers);
             let fitted = match missing {
                 None => Some(signal.fit(&training)?),
                 Some(_) => None,
             };
+            if !tiers.evaluates(event) {
+                // Fitted all the same (selection reads one fit per Event), but
+                // not scored: it is outside the evaluated tiers.
+                fits.extend(fitted);
+                continue;
+            }
             let parameters = fitted.as_ref().and_then(|f| f.parameters());
             let (mut computed, mut both, mut diff) = (0, 0, 0.0);
             let (mut v_computed, mut v_both, mut v_diff) = (0, 0, 0.0);
