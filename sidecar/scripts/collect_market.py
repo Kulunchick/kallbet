@@ -156,33 +156,42 @@ class Collector:
                 return
 
     def _fixture_window(self, tournament, label, start, end):
-        """Fetch one window; a full page is split in two. Returns True when a budget stops the run."""
-        name = f"oddspapi-fixtures-{label}-{start}-{end}"
-        truncated = name + "-truncated.json"
-        name += ".json"
-        if self.exists(name):
-            return False
-        if self.exists(truncated):
-            body = None
-        else:
-            if not self.spend_billable():
-                return True
-            params = {"tournamentId": tournament, "statusId": 2, "from": str(start), "to": str(end)}
-            try:
-                body, request = self.oddspapi("fixtures", params)
-            except RuntimeError as e:
-                self.notes.append(f"fixtures {label} {start}..{end}: {e}")
+        """Fetch [start, end] page by page. The API returns the earliest 100 fixtures of a window, so a
+        full page is kept up to the day before its last day and the next request starts on that day.
+        Returns True when a budget stops the run."""
+        cur = start
+        while cur <= end:
+            base = f"oddspapi-fixtures-{label}-{cur}-{end}"
+            if self.exists(base + ".json"):
                 return False
-            fixtures = json.loads(body)
-            if len(fixtures) >= FIXTURE_PAGE and end > start:
-                self.save(truncated, body, request, catalog=True)
-                body = None
+            if self.exists(base + "-truncated.json"):
+                body, request = self.read(base + "-truncated.json"), "(saved full page)"
             else:
-                self.save(name, body, request, catalog=not fixtures)
+                if not self.spend_billable():
+                    return True
+                params = {"tournamentId": tournament, "statusId": 2, "from": str(cur), "to": str(end)}
+                try:
+                    body, request = self.oddspapi("fixtures", params)
+                except RuntimeError as e:
+                    self.notes.append(f"fixtures {label} {cur}..{end}: {e}")
+                    return False
+            fixtures = json.loads(body)
+            if len(fixtures) < FIXTURE_PAGE or cur >= end:
+                self.save(base + ".json", body, request, catalog=not fixtures)
                 return False
-        mid = start + timedelta(days=(end - start).days // 2)
-        return (self._fixture_window(tournament, label, start, mid)
-                or self._fixture_window(tournament, label, mid + timedelta(days=1), end))
+            if not self.exists(base + "-truncated.json"):
+                self.save(base + "-truncated.json", body, request, catalog=True)
+            days = [f["startTime"][:10] for f in fixtures]
+            last = date.fromisoformat(max(days))
+            if last <= cur:  # the whole page is one day: keep it and move on
+                self.save(f"oddspapi-fixtures-{label}-{cur}-{cur}.json", body, request)
+                cur += timedelta(days=1)
+                continue
+            before = [f for f in fixtures if f["startTime"][:10] < str(last)]
+            self.save(f"oddspapi-fixtures-{label}-{cur}-{last - timedelta(days=1)}.json",
+                      json.dumps(before).encode(), request + " (days before the last day of the page)")
+            cur = last
+        return False
 
     def fixture_lists(self):
         for path in sorted(self.archive.glob("oddspapi-fixtures-*.json.gz")):
