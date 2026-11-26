@@ -10,6 +10,7 @@
     "devSubmit": "Sign in as this nickname"
   },
   "profile": {
+    "title": "Profile",
     "nickname": "Nickname",
     "nicknameHint": "3 to 20 characters. Other players see it. It must be unique.",
     "save": "Save",

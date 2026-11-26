@@ -3,5 +3,10 @@
   "cancel": "Отмена",
   "confirm": "Подтвердить",
   "dragHandle": "Потяните вниз, чтобы закрыть",
-  "typeToConfirm": "Введите «{{text}}» для подтверждения"
+  "typeToConfirm": "Введите «{{text}}» для подтверждения",
+  "skipToContent": "Перейти к содержимому",
+  "primaryNav": "Основная навигация",
+  "accountMenu": "Меню аккаунта",
+  "signedInWithTelegram": "Вход через Telegram",
+  "language": "Язык"
 }
