@@ -13,6 +13,7 @@ pub mod archive;
 pub mod cli;
 pub mod feeds;
 pub mod history;
+pub mod map_history;
 pub mod platform;
 pub mod report;
 pub mod runner;

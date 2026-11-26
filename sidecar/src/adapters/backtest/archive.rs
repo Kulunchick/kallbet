@@ -6,9 +6,10 @@
 //! truth), Liquipedia revisions (a Stage page as it stood before the Stage: the
 //! Pick'em view; an Event page before a Match: the rosters), Valve global
 //! standings, OddsPapi settled fixture lists and their historical odds.
-//! Only the Liquipedia file name carries meaning: `lp-<tournament>` is the Stage
-//! revision of that PandaScore tournament.
-use super::{Dated, match_cutoff};
+//! Liquipedia Stage filenames identify their PandaScore tournament:
+//! `lp-<tournament>` is an opening revision, and `maps-<tournament>` is a
+//! post-Match revision used for played maps.
+use super::{Dated, map_history::MapHistory, match_cutoff};
 use crate::adapters::context::wikitext::{Template, find_templates, strip_comments};
 use crate::*;
 use serde::Serialize;
@@ -125,6 +126,8 @@ pub struct ReplayArchive {
     pub event_pages: BTreeMap<String, Vec<WikiRevision>>,
     /// Liquipedia root title of each Event (PandaScore serie id).
     pub event_titles: BTreeMap<i64, String>,
+    /// Played maps linked to finished PandaScore Matches.
+    pub map_history: MapHistory,
     /// SHA-256 over every file name and content, in name order.
     pub digest: String,
     pub files: usize,
@@ -202,6 +205,7 @@ impl ReplayArchive {
         let mut digest = Sha256::new();
         let mut matches: BTreeMap<i64, Vec<Value>> = BTreeMap::new();
         let mut stage_pages: BTreeMap<i64, WikiRevision> = BTreeMap::new();
+        let mut map_pages = BTreeMap::new();
         for path in names {
             let name = path.file_name().unwrap_or_default().to_string_lossy();
             let stem = name.trim_end_matches(".gz");
@@ -231,7 +235,21 @@ impl ReplayArchive {
             if stem.starts_with("panda-") && value.as_array().is_some_and(Vec::is_empty) {
                 continue;
             }
-            if first["slug"].is_string() && first["markets"].is_array() {
+            if let Some(tournament) = stem
+                .strip_prefix("maps-")
+                .and_then(|s| s.trim_end_matches(".json").parse::<i64>().ok())
+            {
+                let page = crate::adapters::hltv_research::liquipedia_maps::parse_stage_maps(
+                    std::str::from_utf8(&bytes)?,
+                )
+                .map_err(|e| format!("{name}: {e}"))?;
+                if map_pages.insert(tournament, page).is_some() {
+                    return Err(format!(
+                        "{name}: duplicate map revision for tournament {tournament}"
+                    )
+                    .into());
+                }
+            } else if first["slug"].is_string() && first["markets"].is_array() {
                 archive
                     .polymarket_events
                     .extend(value.as_array().cloned().unwrap_or_default());
@@ -309,6 +327,7 @@ impl ReplayArchive {
             revisions.sort_by_key(|r| r.timestamp);
         }
         archive.digest = hex::encode(digest.finalize());
+        let mut map_matches = Vec::new();
         for (id, rows) in matches {
             let stage = stage_from_pandascore(id, &rows, stage_pages.get(&id))?;
             if let Some(page) = stage_pages.get(&id) {
@@ -320,8 +339,12 @@ impl ReplayArchive {
                 };
                 archive.event_titles.insert(stage.event_id, root.to_owned());
             }
+            if let Some(page) = map_pages.remove(&id) {
+                map_matches.extend(super::map_history::link_stage(&stage, &rows, page));
+            }
             archive.stages.push(stage);
         }
+        archive.map_history = MapHistory::new(map_matches);
         archive.stages.sort_by_key(|s| (s.cutoff, s.id));
         Ok(archive)
     }
@@ -355,7 +378,10 @@ fn stage_from_pandascore(
         StageKind::Groups
     } else if name.to_lowercase().contains("swiss")
         || (event.to_lowercase().contains("major")
-            && matches!(name.as_str(), "Elimination Stage" | "Opening Stage" | "Stage 1" | "Stage 2" | "Stage 3"))
+            && matches!(
+                name.as_str(),
+                "Elimination Stage" | "Opening Stage" | "Stage 1" | "Stage 2" | "Stage 3"
+            ))
     {
         StageKind::Swiss
     } else {
@@ -557,7 +583,9 @@ fn opening_view(
         json!({"id": id, "name": t.map(|t| t.name.as_str()).unwrap_or("")})
     };
     match stage.kind {
-        StageKind::Groups | StageKind::Other => Err("no Pick'em model for this Stage format".into()),
+        StageKind::Groups | StageKind::Other => {
+            Err("no Pick'em model for this Stage format".into())
+        }
         StageKind::Swiss => {
             let section = content
                 .split("====Round 1====")

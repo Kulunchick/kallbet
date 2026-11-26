@@ -3,11 +3,39 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import collect_research as research
 
 
 class ArchiveTest(unittest.TestCase):
+    def test_postmatch_stage_collection_uses_one_resumable_liquipedia_request(self):
+        body = (Path(__file__).resolve().parents[1] / "tests/fixtures/research"
+                / "liquipedia-cologne-playoffs-postmatch.json").read_bytes()
+        title = "Intel Extreme Masters/2026/Cologne/Playoffs"
+        requests = []
+
+        def fetch(source, request):
+            self.assertEqual(source, "liquipedia")
+            params = parse_qs(urlparse(request).query)
+            self.assertEqual(params["action"], ["query"])
+            self.assertEqual(params["prop"], ["revisions"])
+            self.assertEqual(params["titles"], [title])
+            requests.append(request)
+            return body
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)
+            rows = [{"tournament_id": 20710, "tournament": {"end_at": "2026-06-21T18:06:13Z"}}]
+            (path / "panda-20710-1.json.gz").write_bytes(gzip.compress(json.dumps(rows).encode()))
+            a = research.Archive(path, {"liquipedia": 1}, fetch)
+            for _ in range(2):
+                self.assertEqual(research.collect_maps(a, research.date(2026, 6, 22), {20710: title}), [])
+            self.assertEqual(len(requests), 1)
+            self.assertEqual(gzip.decompress((path / "maps-20710.json.gz").read_bytes()), body)
+            self.assertIn("maps-20710.json.gz", (path / "sources.tsv").read_text())
+            a.db.close()
+
     def test_resume_spend_and_provenance(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp)

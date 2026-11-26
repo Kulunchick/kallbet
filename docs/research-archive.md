@@ -14,3 +14,16 @@ The default directory is `target/research-archive/`. Root payloads use gzip. The
 `sources.tsv` gives the relative path, public request URL, retrieval time in UTC and SHA-256 of each uncompressed source payload. Keep the SQLite collector ledger when resuming. Replay reads the root payloads, writes their digest to its report, and gives rating, market and roster coverage for the scored Matches. The test fixtures have a separate directory.
 
 The live sidecar keeps dated RSS items under `rss:item` in its audit database. `Audit::news_before(cutoff)` returns items whose publication and first fetch both predate the cutoff. Repeated observations of the same content retain the original fetch time.
+
+## Played maps from Liquipedia
+
+From the repository root, run the map collection against a writable research archive that already holds the PandaScore Stage responses.
+
+```sh
+python sidecar/scripts/collect_research.py --maps-only --archive target/research-archive --until 2026-11-25 --liquipedia-cap 100
+cargo run -p kallbet-ai -- lab --archive target/research-archive --signal per_map_rating --signal bo1_veto_sim --out target/map-lab
+```
+
+For Stages beyond those with verified paths in the small saved archive, add `--stage-titles PATH` with a JSON object keyed by PandaScore **tournament** ID, such as `{"20710":"Intel Extreme Masters/2026/Cologne/Playoffs"}`. The collector prints IDs without verified paths and returns status 2 for partial coverage. It uses the shared Liquipedia request budget, custom User-Agent, gzip and 2.1-second minimum spacing. Each completed Stage uses one MediaWiki revision request and saves the response as `maps-<tournament_id>.json.gz` with CC-BY-SA 3.0 source attribution in `sources.tsv`. Repeat the command with the same verified titles to resume.
+
+The replay links played maps by Stage and normalized team pair, checks the series score, and requires a recorded PandaScore Match finish. Ambiguous pairs and records without confirmed scores or finish times are skipped. Completed map outcomes are dated by the Match finish, so ratings use only Matches that finished strictly before the evaluation cutoff. The rating averages across equally likely sets of historical maps for the two teams and starts an unrated team-map combination at neutral Elo. The Lab reports `bo1_veto_sim` as `not testable` because the authorized sources lack ordered bans and picks.

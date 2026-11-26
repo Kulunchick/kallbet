@@ -6,6 +6,8 @@ use crate::adapters::debate;
 use crate::*;
 
 pub mod calibration;
+pub mod bo1_veto_sim;
+pub mod per_map_rating;
 pub mod head_to_head;
 pub mod own_rating;
 pub mod recent_form;
@@ -29,6 +31,7 @@ pub struct MatchView {
     pub team_a_history: HistorySlice,
     /// Team B's archive Matches finished strictly before `cutoff`, oldest first.
     pub team_b_history: HistorySlice,
+    pub map_history: crate::adapters::backtest::map_history::MapHistory,
 }
 impl MatchView {
     pub fn signal(&self) -> Result<Option<&Signal>, TemporalLeakError> {
@@ -115,6 +118,8 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(own_rating::OwnRating),
         std::sync::Arc::new(recent_form::RecentForm),
         std::sync::Arc::new(head_to_head::HeadToHead),
+        std::sync::Arc::new(per_map_rating::PerMapRating),
+        std::sync::Arc::new(bo1_veto_sim::Bo1VetoSim),
     ]
 }
 
