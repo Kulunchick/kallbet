@@ -8,5 +8,12 @@
   "primaryNav": "Основная навигация",
   "accountMenu": "Меню аккаунта",
   "signedInWithTelegram": "Вход через Telegram",
-  "language": "Язык"
+  "language": "Язык",
+  "leagueTabs": {
+    "label": "Разделы лиги",
+    "myLeagues": "Мои лиги",
+    "matches": "Матчи",
+    "pickem": "Pick'em",
+    "leaderboard": "Таблица"
+  }
 }

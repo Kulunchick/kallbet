@@ -1,12 +1,12 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { useLoad, type Loaded } from "../../api/useLoad";
+import { LeagueHeader } from "../../components/LeagueHeader";
 import { getLeague } from "../leagues/api";
 import { getMatches, type StageView } from "../matches/api";
 import { getLeaderboard, getPickem } from "./api";
-import { ChevronLeft } from "./icons";
 import type { BoardState } from "./LeaderboardPanel";
 import { PickemStage } from "./PickemStage";
 import { PlayoffsStage } from "./PlayoffsStage";
@@ -16,13 +16,11 @@ import { defaultStage, stageFromHash } from "./stages";
 
 /** The League's Pick'em: the Stage switcher and one Stage at a time. */
 export function PickemPage() {
-  const { t } = useTranslation("pickem");
   const league = Number(useParams().id);
   const stages = useLoad(() => getMatches(league), [league]);
   const board = useLoad(() => getLeaderboard(league), [league]);
   const detail = useLoad(() => getLeague(league), [league]).result;
   const archived = detail.state === "ready" && detail.data.archived_at !== null;
-  const eventName = detail.state === "ready" ? detail.data.event.name : stages.result.state === "ready" ? stages.result.data.event.name : null;
 
   const playable =
     stages.result.state === "ready"
@@ -31,14 +29,7 @@ export function PickemPage() {
 
   return (
     <div className="flex flex-col gap-6 pb-10 pt-4">
-      <header className="flex flex-col">
-        <Link to={`/leagues/${league}`} className="inline-flex min-h-11 items-center gap-1 self-start text-sm text-mute [@media(hover:hover)_and_(pointer:fine)]:hover:text-fg">
-          <ChevronLeft className="size-4" />
-          {t("backToLeague")}
-        </Link>
-        <h1 className="font-display text-2xl font-extrabold text-fg">{t("title")}</h1>
-        {eventName && <p className="mt-1 text-mute">{eventName}</p>}
-      </header>
+      <LeagueHeader league={league} active="pickem" loaded={detail} />
 
       {stages.result.state === "loading" && <StageSkeleton />}
       {stages.result.state === "error" && <LoadError error={stages.result.error} onRetry={stages.reload} />}
