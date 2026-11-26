@@ -5,6 +5,28 @@
     "subtitle": "Private Leagues for predicting CS2 Matches at the Major and other pro Events. Predictions stay hidden until everyone is in.",
     "badge": "Sign in with Telegram, no password needed"
   },
+  "cta": {
+    "signIn": "Sign in with Telegram",
+    "leagues": "My Leagues",
+    "note": "Free to play · no money involved"
+  },
+  "demo": {
+    "title": "This is the whole game",
+    "describe": "Example Match showing how Reveal works. Before Lock, five Members' Predictions stay hidden. At Lock, everyone's picks are revealed: two for Astralis and three for Falcons.",
+    "vs": "vs",
+    "before": {
+      "label": "Before Lock",
+      "status": "Locks in 8 min",
+      "footer": "5 of 5 picked · hidden until Lock"
+    },
+    "locked": {
+      "label": "At Lock",
+      "status": "Locked",
+      "footer": "Everyone's picks, revealed",
+      "teamPicks_one": "{{team}}: {{count}} pick",
+      "teamPicks_other": "{{team}}: {{count}} picks"
+    }
+  },
   "how": {
     "title": "How it works",
     "league": {
