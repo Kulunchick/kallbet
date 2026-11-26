@@ -90,6 +90,7 @@ pub(crate) fn solve_swiss(
     cutoff: Instant,
     simulations: usize,
     rng: &mut dyn RandomSource,
+    avoid: Option<super::Avoid<'_>>,
 ) -> Result<Option<Value>> {
     let Some(teams_arr) = stage_val["teams"].as_array() else {
         return Ok(None);
@@ -367,9 +368,24 @@ pub(crate) fn solve_swiss(
     }
 
     let inv = 1.0 / (sims as f64);
-    let p30: [f64; SWISS_TEAMS] = std::array::from_fn(|i| count_3_0[i] as f64 * inv);
-    let p03: [f64; SWISS_TEAMS] = std::array::from_fn(|i| count_0_3[i] as f64 * inv);
-    let padv: [f64; SWISS_TEAMS] = std::array::from_fn(|i| count_adv[i] as f64 * inv);
+    let mut p30: [f64; SWISS_TEAMS] = std::array::from_fn(|i| count_3_0[i] as f64 * inv);
+    let mut p03: [f64; SWISS_TEAMS] = std::array::from_fn(|i| count_0_3[i] as f64 * inv);
+    let mut padv: [f64; SWISS_TEAMS] = std::array::from_fn(|i| count_adv[i] as f64 * inv);
+    if let Some(avoid) = avoid {
+        // A pick the field shares gains nothing against the field: it is worth
+        // less in the assignment.
+        for (bucket, p) in [
+            ("three_nil", &mut p30),
+            ("zero_three", &mut p03),
+            ("advance", &mut padv),
+        ] {
+            for id in avoid.picks[bucket].as_array().into_iter().flatten() {
+                if let Some(i) = id.as_i64().and_then(index_of) {
+                    p[i] *= 1.0 - avoid.discount;
+                }
+            }
+        }
+    }
 
     let (mut three_nil_idx, mut zero_three_idx, mut advance_idx) =
         optimal_swiss_assignment(&p30, &p03, &padv);

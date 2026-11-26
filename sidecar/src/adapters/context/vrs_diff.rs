@@ -44,7 +44,9 @@ impl VrsRosterIndex {
             .next()
             .and_then(|s| s.strip_prefix("### Standings as of "))
             .ok_or("missing Valve header")?;
-        let date = NaiveDate::parse_from_str(header.split('<').next().unwrap(), "%Y_%m_%d")?;
+        let header = header.split('<').next().unwrap();
+        let date = NaiveDate::parse_from_str(header, "%Y_%m_%d")
+            .or_else(|_| NaiveDate::parse_from_str(header, "%Y-%m-%d"))?;
         let observed = date
             .and_hms_nano_opt(23, 59, 59, 999_999_999)
             .unwrap()
@@ -89,13 +91,33 @@ impl VrsRosterIndex {
         let Some(snapshot) = self.0.iter().rev().find(|s| s.observed < cutoff) else {
             return Ok(None);
         };
-        let lookup = std::iter::once(team)
+        let keys: Vec<_> = std::iter::once(team)
             .chain(aliases.iter().map(String::as_str))
-            .find_map(|candidate| snapshot.rosters.get(&team_key(candidate)));
-        let Some(roster) = lookup else {
+            .map(team_key)
+            .collect();
+        let Some(roster) = snapshot.lookup(&keys) else {
             return Ok(None);
         };
         Ok(Some(AsOf::new(roster.clone(), snapshot.observed, cutoff)?))
+    }
+
+    /// Dated observations of a team's five, in chronological order.
+    pub fn roster_history(
+        &self,
+        team: &str,
+        aliases: &[String],
+        cutoff: Instant,
+    ) -> Result<Vec<AsOf<Vec<String>>>> {
+        let keys: Vec<_> = std::iter::once(team)
+            .chain(aliases.iter().map(String::as_str))
+            .map(team_key)
+            .collect();
+        self.0
+            .iter()
+            .take_while(|s| s.observed < cutoff)
+            .filter_map(|s| Some(AsOf::new(s.lookup(&keys)?.clone(), s.observed, cutoff)))
+            .collect::<std::result::Result<_, _>>()
+            .map_err(Into::into)
     }
 
     /// Compares a team's active pre-cutoff Liquipedia roster against the latest pre-cutoff
@@ -151,5 +173,11 @@ impl VrsRosterIndex {
             changed,
         };
         Ok(Some(AsOf::new(fact, observed_at, cutoff)?))
+    }
+}
+
+impl VrsRosterSnapshot {
+    fn lookup(&self, keys: &[String]) -> Option<&Vec<String>> {
+        keys.iter().find_map(|key| self.rosters.get(key))
     }
 }

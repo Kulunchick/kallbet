@@ -1,0 +1,15 @@
+{
+  "llm": {
+    "providers": {
+      "claude": {"kind": "claude", "timeout_seconds": 300},
+      "codex": {"kind": "codex", "timeout_seconds": 300},
+      "antigravity": {"kind": "antigravity", "timeout_seconds": 300}
+    }
+  },
+  "single": ["claude"],
+  "seatings": [
+    {"name": "claude-codex-antigravity", "advocate": ["claude"], "devil": ["codex"], "arbiter": ["antigravity"]},
+    {"name": "codex-antigravity-claude", "advocate": ["codex"], "devil": ["antigravity"], "arbiter": ["claude"]},
+    {"name": "antigravity-claude-codex", "advocate": ["antigravity"], "devil": ["claude"], "arbiter": ["codex"]}
+  ]
+}

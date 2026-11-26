@@ -51,6 +51,9 @@ impl SignalEstimator for ReplaySignal {
     }
 }
 
+mod history;
+pub use history::PriceHistory;
+
 /// The market sources of a replay, in the live chain's order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MarketSource {
