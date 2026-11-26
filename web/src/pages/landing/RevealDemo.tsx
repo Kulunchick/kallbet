@@ -1,4 +1,7 @@
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
+
+import { revealDelayMs } from "../matches/reveal";
 
 const DEMO_TEAM_A = "Astralis";
 const DEMO_TEAM_B = "Falcons";
@@ -59,12 +62,59 @@ function ChevronDownIcon() {
   );
 }
 
-/** Static illustration of how Predictions stay hidden until Lock and then Reveal together. */
+/**
+ * How the demo plays: `armed` until it scrolls into view, then `played` (the
+ * At Lock picks fade up, the lock icon swaps in). `static` shows the final
+ * state at once: no IntersectionObserver, or reduced motion.
+ */
+type DemoPhase = "static" | "armed" | "played";
+
+function initialPhase(): DemoPhase {
+  if (typeof window === "undefined" || typeof IntersectionObserver === "undefined") return "static";
+  try {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return "static";
+  } catch {
+    return "static";
+  }
+  return "armed";
+}
+
+function useDemoPhase() {
+  const ref = useRef<HTMLElement>(null);
+  const [phase, setPhase] = useState<DemoPhase>(initialPhase);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (phase !== "armed" || !element) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          setPhase("played");
+        }
+      },
+      { threshold: 0.4 },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [phase]);
+
+  return { ref, phase };
+}
+
+function delayStyle(index: number): CSSProperties {
+  return { "--reveal-delay": `${revealDelayMs(index)}ms` } as CSSProperties;
+}
+
+/** Illustration of how Predictions stay hidden until Lock and then Reveal together; plays once in view. */
 export function RevealDemo() {
   const { t } = useTranslation("landing");
+  const { ref, phase } = useDemoPhase();
 
   return (
     <section
+      ref={ref}
+      data-reveal={phase}
       aria-labelledby="reveal-demo-title"
       aria-describedby="reveal-demo-desc"
       className="reveal-demo flex min-w-0 flex-col gap-3"
@@ -136,7 +186,14 @@ export function RevealDemo() {
               {t("demo.locked.label")}
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-2.5 py-0.5 font-semibold text-fg">
-              <LockIcon />
+              <span className="reveal-demo-icon">
+                <span className="reveal-demo-icon-before inline-flex">
+                  <ClockIcon />
+                </span>
+                <span className="reveal-demo-icon-after inline-flex">
+                  <LockIcon />
+                </span>
+              </span>
               <span>{t("demo.locked.status")}</span>
             </span>
           </header>
@@ -147,9 +204,10 @@ export function RevealDemo() {
                 {DEMO_TEAM_A}
               </span>
               <div className="reveal-demo-picks flex flex-wrap gap-1.5" aria-hidden="true">
-                {REVEALED_TEAM_A.map((initial) => (
+                {REVEALED_TEAM_A.map((initial, index) => (
                   <span
                     key={initial}
+                    style={delayStyle(index)}
                     className="reveal-demo-avatar flex size-7 items-center justify-center rounded-full border border-line bg-raised font-display text-xs font-bold text-fg"
                   >
                     {initial}
@@ -173,9 +231,10 @@ export function RevealDemo() {
                 {DEMO_TEAM_B}
               </span>
               <div className="reveal-demo-picks flex flex-wrap justify-end gap-1.5" aria-hidden="true">
-                {REVEALED_TEAM_B.map((initial) => (
+                {REVEALED_TEAM_B.map((initial, index) => (
                   <span
                     key={initial}
+                    style={delayStyle(index)}
                     className="reveal-demo-avatar flex size-7 items-center justify-center rounded-full border border-line bg-raised font-display text-xs font-bold text-fg"
                   >
                     {initial}
