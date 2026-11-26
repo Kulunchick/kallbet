@@ -36,6 +36,7 @@ pub fn team_key(name: &str) -> String {
     match key.as_str() {
         "pvision" => "parivision".into(),
         "dendelecs" => "dendele".into(),
+        "1w" => "1win".into(),
         _ => key,
     }
 }
@@ -67,6 +68,8 @@ mod tests {
         assert_eq!(team_key("Team Vitality"), team_key("Vitality"));
         assert_eq!(team_key("G2 Esports"), team_key("G2"));
         assert_eq!(team_key("FaZe Clan"), team_key("FaZe"));
+        assert_eq!(team_key("1w Team"), team_key("1win"));
+        assert_eq!(team_key("1w"), team_key("1win"));
         assert_eq!(team_key("Ninjas in Pyjamas"), "ninjasinpyjamas");
         assert_ne!(team_key("NAVI"), team_key("Natus Vincere"));
     }
