@@ -5,7 +5,7 @@
 //! ```text
 //! kallbet-ai lab [--archive DIR] [--out DIR] [--seed N] [--resamples N] [--signal NAME]...
 //!               [--catch-up-trials N] [--pickem-simulations N]
-//!               [--tiers s,a] [--train-tiers s,a]
+//!               [--tiers s,a] [--train-tiers s,a] [--include-qualifiers]
 //!               [--llm FILE --budget NAME=RUNS...] [--answers FILE] [--training-cutoff RFC3339]
 //! ```
 //!
@@ -27,7 +27,7 @@ use std::path::PathBuf;
 use tracing::info;
 
 pub const USAGE: &str = "usage: kallbet-ai lab [--archive DIR] [--out DIR] [--seed N] \
-[--resamples N] [--signal NAME]... [--catch-up-trials N] [--pickem-simulations N] [--tiers s,a] [--train-tiers s,a] \
+[--resamples N] [--signal NAME]... [--catch-up-trials N] [--pickem-simulations N] [--tiers s,a] [--train-tiers s,a] [--include-qualifiers] \
 [--llm FILE --budget NAME=RUNS...] [--answers FILE] [--training-cutoff RFC3339]";
 
 #[derive(Debug, PartialEq)]
@@ -44,6 +44,7 @@ pub struct Options {
     pub pickem_simulations: usize,
     pub llm: super::llm::Options,
     pub tiers: super::runner::TierFilter,
+    pub include_qualifiers: bool,
 }
 impl Default for Options {
     fn default() -> Self {
@@ -57,6 +58,7 @@ impl Default for Options {
             pickem_simulations: super::pickem::PickemOptions::default().simulations,
             llm: Default::default(),
             tiers: Default::default(),
+            include_qualifiers: false,
         }
     }
 }
@@ -82,6 +84,7 @@ pub fn parse(args: &[String]) -> Result<Options> {
                 o.resamples = Some(n);
             }
             "--signal" => o.signals.push(value()?),
+            "--include-qualifiers" => o.include_qualifiers = true,
             "--tiers" => o.tiers.evaluate = Some(super::runner::TierFilter::parse(&value()?)?),
             "--train-tiers" => o.tiers.train = Some(super::runner::TierFilter::parse(&value()?)?),
             "--catch-up-trials" => o.catch_up_trials = value()?.parse()?,
@@ -119,6 +122,7 @@ pub async fn run(args: &[String]) -> Result<String> {
         lab.signals = chosen;
     }
     lab.tiers = o.tiers.clone();
+    lab.include_qualifiers = o.include_qualifiers;
     if let Some(seed) = o.seed {
         lab.protocol.seed = seed;
     }
