@@ -119,9 +119,8 @@ def manifest(stage, directory):
     )
 
 
-def forecast_all():
-    history, maps, _ = load_table()
-    history, hltv = with_hltv(history, paths.ARCHIVE)
+def rank_history(history, hltv):
+    """Dated HLTV rank badges of every archived match page, by team key."""
     ranks = RankHistory()
     for row in history.itertuples():
         pre = hltv[0].get(row.match_id)
@@ -130,6 +129,13 @@ def forecast_all():
                 if badge:
                     ranks.add(key, end_of_day(badge["date"]), badge["rank"])
     ranks.finish()
+    return ranks
+
+
+def forecast_all():
+    history, maps, _ = load_table()
+    history, hltv = with_hltv(history, paths.ARCHIVE)
+    ranks = rank_history(history, hltv)
     stages, skipped, synthetic, metadata = {}, [], [], {}
     for directory in (paths.ARCHIVE, FIXTURES):
         data = archive.load(directory, with_hltv=False)

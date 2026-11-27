@@ -19,7 +19,20 @@ uv run python -m kbml.parity    # Python anchor vs docs/lab/research/report.json
 uv run python -m kbml.run --model logreg,lgbm,mlp --features baseline   # ~1.5 min (mlp is most of it)
 uv run pytest -q                # leak tests, HLTV point-in-time checks, walk-forward rules, parity
 uv run python -m kbml.report    # phase 2: primary config, all models, ablation → REPORT.md (~20 min)
+uv run python -m kbml.pickem_check --runs 200000 --jobs 3   # 28-stage Swiss Pick'em replay → PICKEM.md
+uv run python -m kbml.pickem_forecast --device numpy        # Singapore Stage 2 forecast → forecasts/ (CPU)
 ```
+
+GPU (optional): the `gpu` dependency group swaps in the CUDA 13.2 build of the same torch. Keep it in
+its own environment so the default `.venv` stays on CPU torch:
+
+```
+$env:UV_PROJECT_ENVIRONMENT=".venv-gpu"; uv sync --no-default-groups --group gpu
+uv run --no-default-groups --group gpu python -m kbml.pickem_forecast --runs 50000000 --random-starts 8
+```
+
+`kbml/swiss_gpu.py` vectorises the Swiss simulation over runs (1M runs per batch fits a 6 GB card);
+`tests/test_swiss_gpu.py` checks it returns the numpy simulator's outcomes exactly from the same draws.
 
 Options of `kbml.run`: `--model` (comma list of `logreg`, `lgbm`, `mlp`), `--features` (comma list
 of groups or sets, below), `--archive DIR` (default the research snapshot; env `KBML_ARCHIVE`),
