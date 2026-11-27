@@ -27,6 +27,7 @@ pub mod player_form;
 pub mod recent_form;
 pub mod round_diff_rating;
 pub mod stacker;
+pub mod stacker_no_map_elo;
 pub mod veto_sim;
 
 /// What a Candidate Signal may read of one Match: the Match as the pipeline
@@ -277,6 +278,7 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(market_rank_rule::MarketRankRule),
         std::sync::Arc::new(round_diff_rating::RoundDiffRating),
         std::sync::Arc::new(stacker::Stacker::default()),
+        std::sync::Arc::new(stacker_no_map_elo::StackerNoMapElo::default()),
     ];
     signals.extend(roster::candidates());
     signals.extend(match_context::registry());
