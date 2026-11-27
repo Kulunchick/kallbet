@@ -522,9 +522,13 @@ async fn the_research_reports_promoted_criteria_load_and_fall_back_per_match_wit
     let view = live_view(&lab, id).await;
     for (name, needs) in [
         ("own_rating", "results history"),
+        ("per_map_rating", "no port"),
+        ("lan_online", "no port"),
         ("lineup_strength", "no port"),
         ("bo1_veto_sim", "no port"),
-        ("combination", "results history"),
+        ("rank_gap", "no port"),
+        ("round_diff_rating", "HLTV map round scores"),
+        ("combination", "HLTV map round scores"),
     ] {
         let p = Promotion::load(name, &report).unwrap_or_else(|e| panic!("{name}: {e}"));
         let live = p.live(&view).unwrap();
@@ -534,7 +538,7 @@ async fn the_research_reports_promoted_criteria_load_and_fall_back_per_match_wit
         assert!(reason.contains(needs) && reason.contains("no port"), "{name}: {reason}");
     }
     // signal-lab/3: better probabilities but fewer winners picked is not promoted.
-    for name in ["per_map_rating", "bo3_veto_sim", "lan_online"] {
+    for name in ["bo3_veto_sim", "veto_sim"] {
         let e = Promotion::load(name, &report).err().map(|e| e.to_string()).unwrap_or_default();
         assert!(e.contains("fewer winners picked"), "{name}: {e}");
     }
@@ -553,7 +557,10 @@ async fn the_frozen_combination_of_the_research_report_runs_live_on_the_anchor()
     assert!(l.sidecar.audit.failures().await.unwrap().is_empty());
     l.reveal().await;
     let picks = l.picks().await;
-    let lab = Live::by_summary(&picks, "No live data for the Signal Lab criterion own_rating");
+    let lab = Live::by_summary(
+        &picks,
+        "No live data for the Signal Lab criterion round_diff_rating + rank_gap + lineup_strength",
+    );
     let en = lab["rationale"]["summary"]["en"].as_str().unwrap();
-    assert!(en.contains("results history"), "{en}");
+    assert!(en.contains("HLTV map round scores"), "{en}");
 }

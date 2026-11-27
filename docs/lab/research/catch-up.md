@@ -1,6 +1,6 @@
 # Catch-up mode
 
-Archive SHA-256 `cd61333be4709fc8cab6b1951f7b01cf253c15f616e80fa58423ac75239455a7`. Seed 33. Each of 2000 paired trials draws one of 62 archived training-side Events uniformly (the Holdout is not drawn) and replays all its scored Matches. Of 2288 Matches, 2243 have an anchor and 777 have a market line. An unavailable input means a missed pick. Favourite followers independently reverse the anchor favourite with the stated probability. Market followers always take the market favourite. Exact ties pick team A.
+Archive SHA-256 `a556cc446e2f5e75d4494b0fee8b4240e58e8147b3954e23cd959d5cdc0c7c8a`. Seed 33. Each of 2000 paired trials draws one of 62 archived training-side Events uniformly (the Holdout is not drawn) and replays all its scored Matches. Of 2288 Matches, 2243 have an anchor and 777 have a market line. An unavailable input means a missed pick. Favourite followers independently reverse the anchor favourite with the stated probability. Market followers always take the market favourite. Exact ties pick team A.
 
 Both bots face identical opponents. The variant reverses a favourite of over 50% through 60% whenever it trails. Only results published strictly before the cutoff enter standings. Missing end times enter final scoring only. Default Stage weights award one Match Point per correct pick. Equal points share place, including first.
 

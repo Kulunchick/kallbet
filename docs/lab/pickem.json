@@ -1,5 +1,5 @@
 {
-  "protocol_version": "signal-lab/3",
+  "protocol_version": "signal-lab/4",
   "seed": 33,
   "resamples": 2000,
   "level": 0.9,

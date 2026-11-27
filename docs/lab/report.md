@@ -1,6 +1,6 @@
 # Signal Lab report
 
-Archive SHA-256 `25459d150e1fac87409e38d17a73ab2110444401703a056b1c4d4c846c4df782` (272 files), protocol `signal-lab/3`, seed 33, 2000 Event resamples, 90% intervals, floor 100 paired Matches.
+Archive SHA-256 `25459d150e1fac87409e38d17a73ab2110444401703a056b1c4d4c846c4df782` (272 files), protocol `signal-lab/4`, seed 33, 2000 Event resamples, 90% intervals, floor 100 paired Matches.
 
 Baseline: the anchor: HybridAnchored without LLM, 0.80 market and 0.20 Valve rating logit (`debate::base`). Each Candidate Signal is fitted, for each Event, only on the Matches of the Events that ended before it began, and every datum it reads is observed before the Match cutoff. Differences are variant − anchor on the Matches both predicted (log-loss and Brier: below zero is better). The interval resamples whole Events. Verdict: `promote` when the interval of the log-loss difference is below zero, the Matches with a market line are not worse and the interval of the accuracy difference (same Matches and resamples) is not wholly below zero, since KallBet scores only the picked winner (else `no evidence`: better probabilities but fewer winners picked); `harmful` when it is above zero; `no evidence` otherwise or under the floor; `not testable` when the data could not be had. "Detectable" is the smallest log-loss difference these Matches would show with 80% probability: an effect smaller than it can hide as `no evidence`.
 
@@ -21,8 +21,16 @@ Baseline: the anchor: HybridAnchored without LLM, 0.80 market and 0.20 Valve rat
 | `lineup_strength` | not testable | 0 | 0 | 0 | — | — | — | — | — | — | — |
 | `player_form` | not testable | 0 | 0 | 0 | — | — | — | — | — | — | — |
 | `per_map_rating` | not testable | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `bo1_pool_depth` | not testable (added after list fixed) | 0 | 0 | 0 | — | — | — | — | — | — | — |
 | `bo1_veto_sim` | not testable | 0 | 0 | 0 | — | — | — | — | — | — | — |
 | `bo3_veto_sim` | not testable (added after list fixed) | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `bo5_veto_sim` | not testable (added after list fixed) | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `veto_sim` | not testable (added after list fixed) | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `rank_gap` | no evidence (added after list fixed) | 415 | 415 | 5 | -0.0769 | [-0.1340, +0.0054] | 0.0962 | -0.0165 | +0.0024 | [+0.0000, +0.0057] | 112, +0.0022 |
+| `market_rank_rule` | no evidence (added after list fixed) | 415 | 415 | 5 | +0.0005 | [+0.0000, +0.0020] | 0.0016 | +0.0002 | -0.0024 | [-0.0106, +0.0000] | 112, +0.0017 |
+| `round_diff_rating` | not testable (added after list fixed) | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `stacker` | no evidence (added after list fixed) | 415 | 415 | 5 | -0.0801 | [-0.1493, +0.0112] | 0.1121 | -0.0158 | +0.0072 | [+0.0000, +0.0134] | 112, +0.0133 |
+| `stacker_no_map_elo` | no evidence (added after list fixed) | 415 | 415 | 5 | -0.0801 | [-0.1493, +0.0112] | 0.1121 | -0.0158 | +0.0072 | [+0.0000, +0.0134] | 112, +0.0133 |
 | `roster_stand_in` | no evidence | 203 | 203 | 3 | -0.0008 | [-0.0040, +0.0068] | 0.0112 | -0.0005 | +0.0099 | [-0.0165, +0.0212] | 112, -0.0004 |
 | `roster_change_30d` | no evidence | 14 | 14 | 2 | -0.0711 | [-0.3319, +0.0000] | 0.3128 | -0.0345 | +0.0714 | [+0.0000, +0.3333] | 13, -0.0766 |
 | `roster_stability` | no evidence | 115 | 115 | 2 | +0.0066 | [+0.0000, +0.0362] | 0.0346 | +0.0031 | -0.0087 | [-0.0476, +0.0000] | 100, +0.0076 |
@@ -32,6 +40,53 @@ Baseline: the anchor: HybridAnchored without LLM, 0.80 market and 0.20 Valve rat
 | `lan_online` | no evidence | 120 | 120 | 2 | -0.0000 | [-0.0002, +0.0000] | 0.0003 | -0.0000 | +0.0000 | [+0.0000, +0.0000] | 103, -0.0001 |
 | `series_format` | no evidence | 254 | 254 | 4 | +0.0013 | [-0.0001, +0.0027] | 0.0022 | +0.0005 | +0.0000 | [+0.0000, +0.0000] | 87, +0.0009 |
 | `region_travel` | not testable | 0 | 0 | 0 | — | — | — | — | — | — | — |
+
+## Qualifiers and RMRs
+
+A qualifier is an Event whose name contains `RMR` or `Qualifier` (case-insensitive): many unknown teams and near-random outcomes. Its Matches are neither scored nor used to fit a parameter, but they stay in the results, player and map histories, so ratings still update after them.
+
+No Event of the training side is excluded.
+
+## Tier slice `s` (secondary view)
+
+The slice was chosen after results were seen, so it is a secondary view: the verdict that counts for promotion is the full-archive one above, and the Holdout is unchanged. Main columns evaluate tiers `all`; fits may use Events of tiers `all`; the slice evaluates `s`, fitted walk-forward as before. Scored Matches: tier s: 488.
+
+| Candidate Signal | Verdict (full) | Paired (full) | Verdict (`s`) | Paired | Events | Δ log-loss | 90% interval |
+|---|---|---|---|---|---|---|---|
+| `rating_calibration` | no evidence | 342 | no evidence | 342 | 4 | -0.1066 | [-0.1779, +0.0037] |
+| `learned_weights` | no evidence | 415 | no evidence | 415 | 5 | -0.0783 | [-0.1361, +0.0051] |
+| `market_source_pinnacle` | no evidence | 19 | no evidence | 19 | 1 | +0.0000 | [+0.0000, +0.0000] |
+| `market_source_polymarket` | no evidence | 19 | no evidence | 19 | 1 | -0.0003 | [-0.0003, -0.0003] |
+| `market_source_kalshi` | no evidence | 19 | no evidence | 19 | 1 | -0.0049 | [-0.0049, -0.0049] |
+| `market_source_average` | no evidence | 19 | no evidence | 19 | 1 | -0.0018 | [-0.0018, -0.0018] |
+| `line_movement` | no evidence | 24 | no evidence | 24 | 1 | -0.0349 | [-0.0349, -0.0349] |
+| `favourite_longshot` | no evidence | 24 | no evidence | 24 | 1 | +0.0441 | [+0.0441, +0.0441] |
+| `own_rating` | no evidence | 384 | no evidence | 384 | 5 | -0.0694 | [-0.1539, +0.0262] |
+| `recent_form` | no evidence | 262 | no evidence | 262 | 4 | +0.0018 | [-0.0004, +0.0045] |
+| `head_to_head` | no evidence | 64 | no evidence | 64 | 3 | +0.0058 | [-0.0057, +0.0164] |
+| `llm_adjustment` | not testable | 0 | not testable | 0 | 0 | — | — |
+| `lineup_strength` | not testable | 0 | not testable | 0 | 0 | — | — |
+| `player_form` | not testable | 0 | not testable | 0 | 0 | — | — |
+| `per_map_rating` | not testable | 0 | not testable | 0 | 0 | — | — |
+| `bo1_pool_depth` | not testable | 0 | not testable | 0 | 0 | — | — |
+| `bo1_veto_sim` | not testable | 0 | not testable | 0 | 0 | — | — |
+| `bo3_veto_sim` | not testable | 0 | not testable | 0 | 0 | — | — |
+| `bo5_veto_sim` | not testable | 0 | not testable | 0 | 0 | — | — |
+| `veto_sim` | not testable | 0 | not testable | 0 | 0 | — | — |
+| `rank_gap` | no evidence | 415 | no evidence | 415 | 5 | -0.0769 | [-0.1340, +0.0054] |
+| `market_rank_rule` | no evidence | 415 | no evidence | 415 | 5 | +0.0005 | [+0.0000, +0.0020] |
+| `round_diff_rating` | not testable | 0 | not testable | 0 | 0 | — | — |
+| `stacker` | no evidence | 415 | no evidence | 415 | 5 | -0.0801 | [-0.1493, +0.0112] |
+| `stacker_no_map_elo` | no evidence | 415 | no evidence | 415 | 5 | -0.0801 | [-0.1493, +0.0112] |
+| `roster_stand_in` | no evidence | 203 | no evidence | 203 | 3 | -0.0008 | [-0.0040, +0.0068] |
+| `roster_change_30d` | no evidence | 14 | no evidence | 14 | 2 | -0.0711 | [-0.3319, +0.0000] |
+| `roster_stability` | no evidence | 115 | no evidence | 115 | 2 | +0.0066 | [+0.0000, +0.0362] |
+| `roster_coach_change` | no evidence | 69 | no evidence | 69 | 2 | -0.0074 | [-0.0243, +0.0000] |
+| `rest_schedule_load` | no evidence | 318 | no evidence | 318 | 4 | -0.0039 | [-0.0125, +0.0065] |
+| `stakes` | no evidence | 342 | no evidence | 342 | 4 | -0.0336 | [-0.0593, -0.0009] |
+| `lan_online` | no evidence | 120 | no evidence | 120 | 2 | -0.0000 | [-0.0002, +0.0000] |
+| `series_format` | no evidence | 254 | no evidence | 254 | 4 | +0.0013 | [-0.0001, +0.0027] |
+| `region_travel` | not testable | 0 | not testable | 0 | 0 | — | — |
 
 ## `rating_calibration`: no evidence
 
@@ -322,6 +377,21 @@ Verdict: No played Liquipedia maps linked to completed PandaScore Matches in the
 | IEM Cologne Major 2026 | 358 | 0 | 0 | — | — |
 | PGL Major Singapore 2026 | 464 | 0 | 0 | — | — |
 
+## `bo1_pool_depth`: not testable (added after list fixed)
+
+Bo1 map-pool depth, first-ban stability, pool overlap (interacted with anchor) and first-ban disruption from all prior complete HLTV vetoes, fitted as a walk-forward logit offset to the anchor.
+
+Verdict: No complete HLTV vetoes linked to finished PandaScore Matches in the archive (added after spec #33's candidate list was fixed).
+
+| Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |
+|---|---|---|---|---|---|
+| PGL Major Copenhagen 2024 | 0 | 0 | 0 | — | — |
+| Perfect World Major Shanghai Major 2024 | 73 | 0 | 0 | — | — |
+| BLAST.tv Major Austin 2025 | 146 | 0 | 0 | — | — |
+| StarLadder Major Budapest 2025 | 252 | 0 | 0 | — | — |
+| IEM Cologne Major 2026 | 358 | 0 | 0 | — | — |
+| PGL Major Singapore 2026 | 464 | 0 | 0 | — | — |
+
 ## `bo1_veto_sim`: not testable
 
 Bo1 ban simulation from past HLTV vetoes and map results, blended with the market.
@@ -351,6 +421,133 @@ Verdict: No complete HLTV Bo3 vetoes linked to finished PandaScore Matches in th
 | StarLadder Major Budapest 2025 | 252 | 0 | 0 | — | — |
 | IEM Cologne Major 2026 | 358 | 0 | 0 | — | — |
 | PGL Major Singapore 2026 | 464 | 0 | 0 | — | — |
+
+## `bo5_veto_sim`: not testable (added after list fixed)
+
+Bo5 veto simulation from past HLTV vetoes and per-map Elo ratings, blended with the market.
+
+Verdict: No complete HLTV Bo5 vetoes linked to finished PandaScore Matches in the archive (added after spec #33's candidate list was fixed).
+
+| Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |
+|---|---|---|---|---|---|
+| PGL Major Copenhagen 2024 | 0 | 0 | 0 | — | — |
+| Perfect World Major Shanghai Major 2024 | 73 | 0 | 0 | — | — |
+| BLAST.tv Major Austin 2025 | 146 | 0 | 0 | — | — |
+| StarLadder Major Budapest 2025 | 252 | 0 | 0 | — | — |
+| IEM Cologne Major 2026 | 358 | 0 | 0 | — | — |
+| PGL Major Singapore 2026 | 464 | 0 | 0 | — | — |
+
+## `veto_sim`: not testable (added after list fixed)
+
+Format-agnostic veto simulation routing each Match to Bo1, Bo3 or Bo5 simulation.
+
+Verdict: No complete HLTV vetoes linked to finished PandaScore Matches in the archive (added after spec #33's candidate list was fixed).
+
+| Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |
+|---|---|---|---|---|---|
+| PGL Major Copenhagen 2024 | 0 | 0 | 0 | — | — |
+| Perfect World Major Shanghai Major 2024 | 73 | 0 | 0 | — | — |
+| BLAST.tv Major Austin 2025 | 146 | 0 | 0 | — | — |
+| StarLadder Major Budapest 2025 | 252 | 0 | 0 | — | — |
+| IEM Cologne Major 2026 | 358 | 0 | 0 | — | — |
+| PGL Major Singapore 2026 | 464 | 0 | 0 | — | — |
+
+## `rank_gap`: no evidence (added after list fixed)
+
+the log rank gap of the two teams in Valve's dated standings (VRS) and in HLTV's dated weekly world ranking (HLTV match page badges), combined with the anchor's market and rating by the combiner fitted on the Events that ended before.
+
+Verdict: the interval of the log-loss difference includes zero (added after spec #33's candidate list was fixed).
+
+| On the 415 paired Matches | Log-loss | Brier | Accuracy |
+|---|---|---|---|
+| anchor | 0.7484 | 0.2485 | 62.2% |
+| rank_gap | 0.6715 | 0.2320 | 62.4% |
+
+| Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |
+|---|---|---|---|---|---|
+| PGL Major Copenhagen 2024 | 0 | 0 | 0 | — | `{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":0,"rating":1.0,"vrs_rank_gap":0.0}}` |
+| Perfect World Major Shanghai Major 2024 | 73 | 73 | 73 | -0.0000 | `{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":0,"rating":1.0,"vrs_rank_gap":0.0}}` |
+| BLAST.tv Major Austin 2025 | 146 | 106 | 106 | -0.1650 | `{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":73,"rating":0.72066,"vrs_rank_gap":-0.238799}}` |
+| StarLadder Major Budapest 2025 | 252 | 106 | 106 | -0.1491 | `{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":179,"rating":0.373047,"vrs_rank_gap":-0.093728}}` |
+| IEM Cologne Major 2026 | 358 | 106 | 106 | +0.0107 | `{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":285,"rating":0.363191,"vrs_rank_gap":-0.0947}}` |
+| PGL Major Singapore 2026 | 464 | 24 | 24 | +0.0103 | `{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.965313,"matches":88,"rating":0.184819,"vrs_rank_gap":-0.121919},"rating":{"hltv_rank_gap":0.0,"matches":303,"rating":0.364062,"vrs_rank_gap":-0.068466}}` |
+
+## `market_rank_rule`: no evidence (added after list fixed)
+
+where the market favourite and the rank favourite (VRS, else HLTV, else the Valve rating) disagree, picks the side that won more often in such disagreements on the Events that ended before, by size of the disagreement and series format; where they agree it follows the anchor.
+
+Verdict: the interval of the log-loss difference includes zero (added after spec #33's candidate list was fixed).
+
+18 disagreement Matches (market favourite and rank favourite differ): accuracy of the anchor 0.5556, of `market_rank_rule` 0.5000.
+
+| On the 415 paired Matches | Log-loss | Brier | Accuracy |
+|---|---|---|---|
+| anchor | 0.7484 | 0.2485 | 62.2% |
+| market_rank_rule | 0.7489 | 0.2488 | 61.9% |
+
+| Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |
+|---|---|---|---|---|---|
+| PGL Major Copenhagen 2024 | 0 | 0 | 0 | — | `{"cells":[]}` |
+| Perfect World Major Shanghai Major 2024 | 73 | 73 | 73 | +0.0000 | `{"cells":[]}` |
+| BLAST.tv Major Austin 2025 | 146 | 106 | 106 | +0.0000 | `{"cells":[]}` |
+| StarLadder Major Budapest 2025 | 252 | 106 | 106 | +0.0000 | `{"cells":[]}` |
+| IEM Cologne Major 2026 | 358 | 106 | 106 | +0.0000 | `{"cells":[]}` |
+| PGL Major Singapore 2026 | 464 | 24 | 24 | +0.0081 | `{"cells":[{"format":1,"rank_wins":2,"rows":5,"size_bucket":0},{"format":3,"rank_wins":2,"rows":5,"size_bucket":0},{"format":1,"rank_wins":0,"rows":1,"size_bucket":1},{"format":3,"rank_wins":0,"rows":3,"size_bucket":1}]}` |
+
+## `round_diff_rating`: not testable (added after list fixed)
+
+Opponent-adjusted Elo updated by mean normalized HLTV map round differential, blended with the market.
+
+Verdict: No complete HLTV map round scores linked to finished PandaScore Matches (added after spec #33's candidate list was fixed).
+
+| Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |
+|---|---|---|---|---|---|
+| PGL Major Copenhagen 2024 | 0 | 0 | 0 | — | — |
+| Perfect World Major Shanghai Major 2024 | 73 | 0 | 0 | — | — |
+| BLAST.tv Major Austin 2025 | 146 | 0 | 0 | — | — |
+| StarLadder Major Budapest 2025 | 252 | 0 | 0 | — | — |
+| IEM Cologne Major 2026 | 358 | 0 | 0 | — | — |
+| PGL Major Singapore 2026 | 464 | 0 | 0 | — | — |
+
+## `stacker`: no evidence (added after list fixed)
+
+a combiner fitted to pick winners: the market line and the calibrated Valve rating (one logit scale per format) as base inputs, own_rating, per_map_rating and the VRS and HLTV rank gaps as extras (a missing one reads as no shift), fitted on the Events that ended before. Objective: the weights minimise the log-loss penalised towards the anchor; the penalty, which sets how far the fit moves from the anchor, is chosen from 1/3/10/30/100/1000 by accuracy (share of winners picked at probability above one half) on the latest third of the training Events, refitted on the training Events before them (ties: lower log-loss, then the larger penalty); so the side it picks is that of the setting that picked most winners on Matches it was not fitted on, and its probability stays a log-loss fit.
+
+Verdict: the interval of the log-loss difference includes zero (added after spec #33's candidate list was fixed).
+
+| On the 415 paired Matches | Log-loss | Brier | Accuracy |
+|---|---|---|---|
+| anchor | 0.7484 | 0.2485 | 62.2% |
+| stacker | 0.6683 | 0.2327 | 62.9% |
+
+| Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |
+|---|---|---|---|---|---|
+| PGL Major Copenhagen 2024 | 0 | 0 | 0 | — | `{"calibration_scales":{"bo1":null,"bo3":null,"bo5":null},"chosen_by":"default","fitted_through":null,"lambda":10.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":0,"training_matches":0,"validation":[],"validation_events":0,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"rating":1.0,"vrs_rank_gap":0.0}}}` |
+| Perfect World Major Shanghai Major 2024 | 73 | 73 | 73 | -0.0000 | `{"calibration_scales":{"bo1":null,"bo3":null,"bo5":null},"chosen_by":"default","fitted_through":"2024-03-31T17:45:00Z","lambda":10.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":1,"training_matches":73,"validation":[],"validation_events":0,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"rating":1.0,"vrs_rank_gap":0.0}}}` |
+| BLAST.tv Major Austin 2025 | 146 | 106 | 106 | -0.2106 | `{"calibration_scales":{"bo1":0.493748,"bo3":0.54253,"bo5":0.520063},"chosen_by":"default","fitted_through":"2024-12-15T09:05:00Z","lambda":10.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":2,"training_matches":146,"validation":[],"validation_events":0,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":73,"own_rating":-0.159939,"per_map_rating":0.0,"rating":1.055413,"vrs_rank_gap":-0.025729}}}` |
+| StarLadder Major Budapest 2025 | 252 | 106 | 106 | -0.1292 | `{"calibration_scales":{"bo1":0.256071,"bo3":0.348338,"bo5":0.301463},"chosen_by":"validation_accuracy","fitted_through":"2025-06-22T19:15:00Z","lambda":3.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":3,"training_matches":252,"validation":[{"accuracy":0.613208,"lambda":1.0,"log_loss":0.719422,"matches":106},{"accuracy":0.622642,"lambda":3.0,"log_loss":0.710252,"matches":106},{"accuracy":0.603774,"lambda":10.0,"log_loss":0.705002,"matches":106},{"accuracy":0.613208,"lambda":30.0,"log_loss":0.704893,"matches":106},{"accuracy":0.613208,"lambda":100.0,"log_loss":0.707416,"matches":106},{"accuracy":0.603774,"lambda":1000.0,"log_loss":0.710039,"matches":106}],"validation_events":1,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":179,"own_rating":-0.222888,"per_map_rating":0.0,"rating":0.878589,"vrs_rank_gap":0.171461}}}` |
+| IEM Cologne Major 2026 | 358 | 106 | 106 | +0.0143 | `{"calibration_scales":{"bo1":0.242746,"bo3":0.357087,"bo5":0.300288},"chosen_by":"validation_accuracy","fitted_through":"2025-12-14T16:45:00Z","lambda":100.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":4,"training_matches":358,"validation":[{"accuracy":0.613208,"lambda":1.0,"log_loss":0.678425,"matches":106},{"accuracy":0.603774,"lambda":3.0,"log_loss":0.675293,"matches":106},{"accuracy":0.613208,"lambda":10.0,"log_loss":0.66962,"matches":106},{"accuracy":0.613208,"lambda":30.0,"log_loss":0.662979,"matches":106},{"accuracy":0.613208,"lambda":100.0,"log_loss":0.657512,"matches":106},{"accuracy":0.59434,"lambda":1000.0,"log_loss":0.654306,"matches":106}],"validation_events":1,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":285,"own_rating":-0.008224,"per_map_rating":0.0,"rating":0.998382,"vrs_rank_gap":0.017864}}}` |
+| PGL Major Singapore 2026 | 464 | 24 | 24 | +0.0523 | `{"calibration_scales":{"bo1":0.271516,"bo3":0.376729,"bo5":0.330669},"chosen_by":"validation_accuracy","fitted_through":"2026-06-21T14:45:00Z","lambda":1.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":5,"training_matches":464,"validation":[{"accuracy":0.688679,"lambda":1.0,"log_loss":0.607204,"matches":106},{"accuracy":0.688679,"lambda":3.0,"log_loss":0.60737,"matches":106},{"accuracy":0.688679,"lambda":10.0,"log_loss":0.607587,"matches":106},{"accuracy":0.688679,"lambda":30.0,"log_loss":0.607756,"matches":106},{"accuracy":0.688679,"lambda":100.0,"log_loss":0.607931,"matches":106},{"accuracy":0.688679,"lambda":1000.0,"log_loss":0.608154,"matches":106}],"validation_events":1,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"per_map_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":1.507891,"matches":88,"own_rating":-0.064053,"per_map_rating":0.0,"rating":0.50752,"vrs_rank_gap":-0.366586},"rating":{"hltv_rank_gap":0.0,"matches":303,"own_rating":-0.007653,"per_map_rating":0.0,"rating":0.758518,"vrs_rank_gap":0.153462}}}` |
+
+## `stacker_no_map_elo`: no evidence (added after list fixed)
+
+ablation of `stacker` with identical fitting and inputs minus `per_map_rating`: `stacker` vs `stacker_no_map_elo` isolates the map-level Elo input on the same Matches.
+
+Verdict: the interval of the log-loss difference includes zero (added after spec #33's candidate list was fixed).
+
+| On the 415 paired Matches | Log-loss | Brier | Accuracy |
+|---|---|---|---|
+| anchor | 0.7484 | 0.2485 | 62.2% |
+| stacker_no_map_elo | 0.6683 | 0.2327 | 62.9% |
+
+| Event | Fitted on | Computed on | Paired | Δ log-loss | Fitted parameters |
+|---|---|---|---|---|---|
+| PGL Major Copenhagen 2024 | 0 | 0 | 0 | — | `{"calibration_scales":{"bo1":null,"bo3":null,"bo5":null},"chosen_by":"default","fitted_through":null,"lambda":10.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":0,"training_matches":0,"validation":[],"validation_events":0,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"own_rating":0.0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":0,"own_rating":0.0,"rating":1.0,"vrs_rank_gap":0.0}}}` |
+| Perfect World Major Shanghai Major 2024 | 73 | 73 | 73 | -0.0000 | `{"calibration_scales":{"bo1":null,"bo3":null,"bo5":null},"chosen_by":"default","fitted_through":"2024-03-31T17:45:00Z","lambda":10.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":1,"training_matches":73,"validation":[],"validation_events":0,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"own_rating":0.0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":0,"own_rating":0.0,"rating":1.0,"vrs_rank_gap":0.0}}}` |
+| BLAST.tv Major Austin 2025 | 146 | 106 | 106 | -0.2106 | `{"calibration_scales":{"bo1":0.493748,"bo3":0.54253,"bo5":0.520063},"chosen_by":"default","fitted_through":"2024-12-15T09:05:00Z","lambda":10.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":2,"training_matches":146,"validation":[],"validation_events":0,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"own_rating":0.0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":73,"own_rating":-0.159939,"rating":1.055413,"vrs_rank_gap":-0.025729}}}` |
+| StarLadder Major Budapest 2025 | 252 | 106 | 106 | -0.1292 | `{"calibration_scales":{"bo1":0.256071,"bo3":0.348338,"bo5":0.301463},"chosen_by":"validation_accuracy","fitted_through":"2025-06-22T19:15:00Z","lambda":3.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":3,"training_matches":252,"validation":[{"accuracy":0.613208,"lambda":1.0,"log_loss":0.719422,"matches":106},{"accuracy":0.622642,"lambda":3.0,"log_loss":0.710252,"matches":106},{"accuracy":0.603774,"lambda":10.0,"log_loss":0.705002,"matches":106},{"accuracy":0.613208,"lambda":30.0,"log_loss":0.704893,"matches":106},{"accuracy":0.613208,"lambda":100.0,"log_loss":0.707416,"matches":106},{"accuracy":0.603774,"lambda":1000.0,"log_loss":0.710039,"matches":106}],"validation_events":1,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"own_rating":0.0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":179,"own_rating":-0.222888,"rating":0.878589,"vrs_rank_gap":0.171461}}}` |
+| IEM Cologne Major 2026 | 358 | 106 | 106 | +0.0143 | `{"calibration_scales":{"bo1":0.242746,"bo3":0.357087,"bo5":0.300288},"chosen_by":"validation_accuracy","fitted_through":"2025-12-14T16:45:00Z","lambda":100.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":4,"training_matches":358,"validation":[{"accuracy":0.613208,"lambda":1.0,"log_loss":0.678425,"matches":106},{"accuracy":0.603774,"lambda":3.0,"log_loss":0.675293,"matches":106},{"accuracy":0.613208,"lambda":10.0,"log_loss":0.66962,"matches":106},{"accuracy":0.613208,"lambda":30.0,"log_loss":0.662979,"matches":106},{"accuracy":0.613208,"lambda":100.0,"log_loss":0.657512,"matches":106},{"accuracy":0.59434,"lambda":1000.0,"log_loss":0.654306,"matches":106}],"validation_events":1,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":0.8,"matches":0,"own_rating":0.0,"rating":0.2,"vrs_rank_gap":0.0},"rating":{"hltv_rank_gap":0.0,"matches":285,"own_rating":-0.008224,"rating":0.998382,"vrs_rank_gap":0.017864}}}` |
+| PGL Major Singapore 2026 | 464 | 24 | 24 | +0.0523 | `{"calibration_scales":{"bo1":0.271516,"bo3":0.376729,"bo5":0.330669},"chosen_by":"validation_accuracy","fitted_through":"2026-06-21T14:45:00Z","lambda":1.0,"objective":"penalised log-loss; λ chosen by accuracy on the latest training Events","training_events":5,"training_matches":464,"validation":[{"accuracy":0.688679,"lambda":1.0,"log_loss":0.607204,"matches":106},{"accuracy":0.688679,"lambda":3.0,"log_loss":0.60737,"matches":106},{"accuracy":0.688679,"lambda":10.0,"log_loss":0.607587,"matches":106},{"accuracy":0.688679,"lambda":30.0,"log_loss":0.607756,"matches":106},{"accuracy":0.688679,"lambda":100.0,"log_loss":0.607931,"matches":106},{"accuracy":0.688679,"lambda":1000.0,"log_loss":0.608154,"matches":106}],"validation_events":1,"weights":{"market":{"hltv_rank_gap":0.0,"market":1.0,"matches":0,"own_rating":0.0,"vrs_rank_gap":0.0},"market+rating":{"hltv_rank_gap":0.0,"market":1.507891,"matches":88,"own_rating":-0.064053,"rating":0.50752,"vrs_rank_gap":-0.366586},"rating":{"hltv_rank_gap":0.0,"matches":303,"own_rating":-0.007653,"rating":0.758518,"vrs_rank_gap":0.153462}}}` |
 
 ## `roster_stand_in`: no evidence
 

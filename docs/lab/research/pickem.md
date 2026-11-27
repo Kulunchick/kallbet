@@ -1,6 +1,6 @@
 # Pick'em variants in Pick'em Points
 
-Protocol `signal-lab/3`, archive SHA-256 `cd61333be4709fc8cab6b1951f7b01cf253c15f616e80fa58423ac75239455a7`, seed 33, 2000 Event resamples, 90% intervals. Each Stage's Pick'em is made 1 s before its first Match from the Liquipedia opening view saved from before it and the ratings the replay ports gave before that instant; the solver refuses a view that holds a result or a later-round pairing. Pick'em Points are KallBet's (Swiss 1 per correct 3-0, 0-3 and advance pick; Playoffs 1 per correct slot). The difference is the mean Points per Stage minus the baseline's, with the Event bootstrap; under 10 Stages the verdict is `no evidence`. Stages of the Holdout are not read.
+Protocol `signal-lab/4`, archive SHA-256 `a556cc446e2f5e75d4494b0fee8b4240e58e8147b3954e23cd959d5cdc0c7c8a`, seed 33, 2000 Event resamples, 90% intervals. Each Stage's Pick'em is made 1 s before its first Match from the Liquipedia opening view saved from before it and the ratings the replay ports gave before that instant; the solver refuses a view that holds a result or a later-round pairing. Pick'em Points are KallBet's (Swiss 1 per correct 3-0, 0-3 and advance pick; Playoffs 1 per correct slot). The difference is the mean Points per Stage minus the baseline's, with the Event bootstrap; under 10 Stages the verdict is `no evidence`. Stages of the Holdout are not read.
 
 The field is 6 simulated Members who submit the baseline's solver on ratings disturbed by a normal noise of 0.5 on the logit; the bot trails when its public Pick'em Points (Stages that ended before) are below the best Member's; the variance-seeking variant then discounts the field's shared picks by 50%. 5000 simulations per Swiss Pick'em.
 
@@ -53,16 +53,16 @@ The field is 6 simulated Members who submit the baseline's solver on ratings dis
 - Thunderpick World Championship 2024 / Group C: no opening view: no Liquipedia Stage revision saved
 - Thunderpick World Championship 2024 / Group D: no opening view: no Liquipedia Stage revision saved
 - Thunderpick World Championship 2024 / Playoffs: no opening view: no Liquipedia Stage revision saved
-- Perfect World Major Shanghai: European RMR A 2024 / Group Stage: no opening view: no Liquipedia Stage revision saved
-- Perfect World Major Shanghai: European RMR B 2024 / Group Stage: no opening view: no Liquipedia Stage revision saved
-- Perfect World Major Shanghai: American RMR 2024 / Group Stage: no opening view: no Liquipedia Stage revision saved
+- Perfect World Major Shanghai: European RMR A 2024 / Group Stage: a qualifier or RMR, neither scored nor fitted on
+- Perfect World Major Shanghai: European RMR B 2024 / Group Stage: a qualifier or RMR, neither scored nor fitted on
+- Perfect World Major Shanghai: American RMR 2024 / Group Stage: a qualifier or RMR, neither scored nor fitted on
 - BLAST Premier World Final 2024 / Group A: no opening view: no Liquipedia Stage revision saved
 - BLAST Premier World Final 2024 / Group B: no opening view: no Liquipedia Stage revision saved
 - BLAST Premier World Final 2024 / Playoffs: no opening view: no Liquipedia Stage revision saved
 - Perfect World Major Shanghai Major 2024 / Opening Stage: no opening view: no Liquipedia Stage revision saved
 - Perfect World Major Shanghai Major 2024 / Elimination Stage: no opening view: no Liquipedia Stage revision saved
 - Perfect World Major Shanghai Major 2024 / Playoffs: no opening view: no Liquipedia Stage revision saved
-- BLAST Premier Bounty Closed Qualifier 2025 / Playoffs: no opening view: no Liquipedia Stage revision saved
+- BLAST Premier Bounty Closed Qualifier 2025 / Playoffs: a qualifier or RMR, neither scored nor fitted on
 - IEM Katowice 2025 / Play-in: no opening view: no Liquipedia Stage revision saved
 - IEM Katowice 2025 / Group A: no opening view: no Liquipedia Stage revision saved
 - IEM Katowice 2025 / Group B: no opening view: no Liquipedia Stage revision saved
@@ -80,8 +80,8 @@ The field is 6 simulated Members who submit the baseline's solver on ratings dis
 - IEM Melbourne 2025 / Group A: no opening view: no Liquipedia Stage revision saved
 - IEM Melbourne 2025 / Group B: no opening view: no Liquipedia Stage revision saved
 - IEM Melbourne 2025 / Playoffs: no opening view: no Liquipedia Stage revision saved
-- BLAST.tv Major Austin: European Regional Qualifier 2025 / Group Stage: no opening view: no Liquipedia Stage revision saved
-- BLAST.tv Major Austin: European Regional Qualifier 2025 / Play-Ins: no opening view: no Liquipedia Stage revision saved
+- BLAST.tv Major Austin: European Regional Qualifier 2025 / Group Stage: a qualifier or RMR, neither scored nor fitted on
+- BLAST.tv Major Austin: European Regional Qualifier 2025 / Play-Ins: a qualifier or RMR, neither scored nor fitted on
 - BLAST Rivals Spring 2025 / Group B: no opening view: no Liquipedia Stage revision saved
 - BLAST Rivals Spring 2025 / Group A: no opening view: no Liquipedia Stage revision saved
 - BLAST Rivals Spring 2025 / Playoffs: no opening view: no Liquipedia Stage revision saved
