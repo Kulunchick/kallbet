@@ -486,3 +486,74 @@ class Stakes(Group):
                 "st_playoff": float(playoff), "st_final": float(final), "has_stage": float(bool(text)),
                 "elim_x_anchor": float(elim) * la, "playoff_x_anchor": float(playoff) * la,
                 "bo1_x_anchor": float(m["format"] == "bo1") * la, "bo5_x_anchor": float(m["format"] == "bo5") * la}
+
+
+# ------------------------------------------------------------------ map-level model (online)
+
+@register
+class MapModel(MapPool):
+    """A map-level model, point in time by construction: an online logistic regression (no
+    intercept, antisymmetric inputs) on single maps. When a Match is described, the per-map inputs
+    of every pool map are stored; once its record is released (known finish before a later
+    cutoff), each map it actually played is one SGD step with that map's stored inputs. The
+    prediction combines the per-map probabilities over the expected pre-veto pool (`MapPool`'s
+    veto shares) and goes through the series conversion. Inputs per map: the teams' decayed win
+    share on it (logit difference), the lineups' per-map player rating difference, the overall map
+    Elo difference and the Valve map probability's logit."""
+    name = "map_model"
+    columns = {"mm_series_logit": "anti", "mm_map_logit": "anti", "mm_trained": "sym"}
+    LR, L2 = 0.03, 1e-3
+
+    def __init__(self):
+        super().__init__()
+        self.w = np.zeros(4)
+        self.n = 0
+        self.stored: dict[int, tuple[str, dict]] = {}
+        self.elo = defaultdict(lambda: 1500.0)
+
+    def update(self, new):
+        if len(new.records):
+            for mid, rec in zip(new.records["match_id"], new.records["rec"]):
+                got = self.stored.pop(int(mid), None)
+                if got is None:
+                    continue
+                a_key, xs = got
+                flip = rec["keys"][0] != a_key
+                for mp in rec["maps"]:
+                    if not mp.get("played") or mp.get("winner") not in ("a", "b") or mp["map_name"] not in xs:
+                        continue
+                    y = 1.0 if (mp["winner"] == "a") != flip else 0.0
+                    x = xs[mp["map_name"]]
+                    p = 1.0 / (1.0 + math.exp(-float(self.w @ x)))
+                    self.w += self.LR * ((y - p) * x - self.L2 * self.w)
+                    self.n += 1
+        if len(new.maps):
+            for a, b, won in zip(new.maps.team_a_key, new.maps.team_b_key, new.maps.a_won):
+                ea = 1.0 / (1.0 + 10 ** ((self.elo[b] - self.elo[a]) / 400.0))
+                d = 20.0 * ((1.0 if won else 0.0) - ea)
+                self.elo[a] += d
+                self.elo[b] -= d
+        super().update(new)
+
+    def features(self, m):
+        a, b, c = m["team_a_key"], m["team_b_key"], m.cutoff
+        pool = sorted(mp for mp, t in self.seen.items() if c - t <= 120 * DAY)
+        if not pool:
+            return {"mm_series_logit": 0.0, "mm_map_logit": 0.0, "mm_trained": 0.0}
+        w = np.array([(1 - self._share(a, mp, "removed")) * (1 - self._share(b, mp, "removed")) *
+                      (1 + self._share(a, mp, "picked") + self._share(b, mp, "picked")) for mp in pool])
+        p = w / w.sum()
+        vrs = m["vrs_map_p"]
+        vrs_logit = logit(float(vrs)) / 4.0 if vrs is not None and not (isinstance(vrs, float) and math.isnan(vrs)) else 0.0
+        la, lb = _lineup(m, 0), _lineup(m, 1)
+        elo = (self.elo[a] - self.elo[b]) / 100.0
+        xs = {}
+        for mp in pool:
+            wa, wb = self._wr(a, mp, c)[0], self._wr(b, mp, c)[0]
+            pl = (self._lineup_map(la, mp, c) - self._lineup_map(lb, mp, c)) * 10 if la and lb else 0.0
+            xs[mp] = np.array([logit(wa) - logit(wb), pl, elo, vrs_logit])
+        self.stored[int(m["match_id"])] = (a, xs)
+        q = np.array([1.0 / (1.0 + math.exp(-float(self.w @ xs[mp]))) for mp in pool])
+        pbar = float(np.clip((p * q).sum(), 1e-4, 1 - 1e-4))
+        return {"mm_series_logit": logit(series_probability(pbar, m["format"])), "mm_map_logit": logit(pbar),
+                "mm_trained": math.log1p(self.n)}

@@ -199,7 +199,7 @@ def test_post_match_data_only_reaches_later_matches(real):
     moves no feature of any Match whose cutoff is not after that Match's known finish, and moves
     some later ones."""
     m, mp, pre, rec, _, _ = real
-    groups = F.SETS["hltv"]
+    groups = F.SETS["hltv"] + ["map_model"]
     base, _ = F.compute(m, mp, groups, (pre, rec))
     i = len(rec) // 2
     target = rec.iloc[i]

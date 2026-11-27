@@ -17,7 +17,8 @@ uv sync                         # numpy, pandas, pyarrow, scikit-learn, lightgbm
 uv run python -m kbml.table     # (re)build the Match table cache from the archive (~35 s)
 uv run python -m kbml.parity    # Python anchor vs docs/lab/research/report.json: must print PARITY OK
 uv run python -m kbml.run --model logreg,lgbm,mlp --features baseline   # ~1.5 min (mlp is most of it)
-uv run pytest -q                # leak tests, walk-forward rules, bootstrap port, parity
+uv run pytest -q                # leak tests, HLTV point-in-time checks, walk-forward rules, parity
+uv run python -m kbml.report    # phase 2: primary config, all models, ablation → REPORT.md (~20 min)
 ```
 
 Options of `kbml.run`: `--model` (comma list of `logreg`, `lgbm`, `mlp`), `--features` (comma list
@@ -66,6 +67,29 @@ teams swap) or `sym`. Groups: `anchor` (market, Valve, blend logits and flags), 
 `map_elo` (HLTV map Elo, overall and per map pool), `form` (last 10 results, round difference of last
 15 maps), `h2h`, `rest` (days since last result, results in 7 days), `lan` (venue and venue form),
 `format`. Sets: `baseline` (all), `anchor`, `no_anchor`.
+
+## HLTV pages (phase 2: `kbml/hltv_html.py`, `kbml/hltv_data.py`, `kbml/features_hltv.py`)
+
+The raw match pages are parsed once (cached `hltv_pages.pkl`, ~1 min on all cores) into `pre`
+(known before the Match: HLTV rank badge with its ranking date, lineups with stand-in and IGL/AWP
+markers, past-3-months lists team and core with streaks, head-to-head summary and map listing,
+stage line and coach substitutions of the note) and `post` (CT/T side of each regulation half,
+per-player CT-only and T-only stats). Never read: the VRS badge (it holds the Match's own result),
+odds widgets, fetch-relative "time ago" texts, map pick badges and the Match's own veto
+(post-veto), POTM, VODs, comments, free `**` admin notes.
+
+`pre` of a Match feeds only that Match (oriented to PandaScore team A; rows not strictly earlier are
+dropped as a guard: none were). HLTV rank follows `rank_history.rs`: a ranking is known from the end
+of its UTC day, read strictly before the cutoff, at most 35 days old. Everything a Match produced
+(JSON stats overall and per map, maps, veto, `post`, its lineups) is an HLTV record released by the
+timeline only once the Match's known finish is before the cutoff. `tests/test_hltv.py` checks each
+field (synthetic page with leaky decoys, and on the archive: ranks, past-matches, streak badge,
+head-to-head, lineups vs stats, half scores vs map scores, and that scrambling one Match's record or
+page moves only what it may).
+
+Groups: `rank`, `opp_form`, `past_form`, `hltv_h2h`, `players`, `map_pool` (pre-veto expected map
+edge from earlier vetoes), `sides`, `standin`, `roster`, `stakes` (format × stage × anchor). Sets:
+`hltv`, `full` (= `baseline` + `hltv`).
 
 ## Models and evaluation (`kbml/models.py`, `kbml/evaluate.py`)
 
