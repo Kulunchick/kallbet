@@ -28,7 +28,7 @@ fn gap(pair: &Option<AsOf<(u32, u32)>>, cutoff: Instant) -> Result<Option<AsOf<f
 }
 
 /// The two gaps of `view`, VRS then HLTV.
-fn gaps(view: &MatchView) -> Result<[Option<AsOf<f64>>; 2]> {
+pub fn gaps(view: &MatchView) -> Result<[Option<AsOf<f64>>; 2]> {
     Ok([
         gap(&view.ranks.vrs, view.cutoff)?,
         gap(&view.ranks.hltv, view.cutoff)?,
