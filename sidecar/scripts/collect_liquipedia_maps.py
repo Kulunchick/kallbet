@@ -185,6 +185,37 @@ def stage_subpages(titles, root):
     return sorted(out)
 
 
+def words(text):
+    return sorted(re.findall(r"[a-z0-9]+", text.lower()))
+
+
+def pick_title(label, hits):
+    """The one search hit whose words are exactly the Event label's words, else None."""
+    exact = [h["title"] for h in hits if words(h["title"]) == words(label)]
+    return exact[0] if len(exact) == 1 else None
+
+
+def resolve_titles(series, known, lp_dir, tsv_path, limiter, max_calls):
+    """Verified Liquipedia titles for series without a curated one: one search request each
+    (cached under `search-<serie>.json.gz`), accepted only on an exact word match."""
+    found = {}
+    for sid, label in sorted(series.items(), key=lambda kv: int(kv[0])):
+        if sid in known:
+            continue
+        if not (lp_dir / f"search-{sid}.json.gz").exists() and limiter.calls >= max_calls:
+            break
+        data, _ = cached_query(
+            lp_dir, tsv_path, f"search-{sid}.json.gz",
+            {"action": "query", "list": "search", "srsearch": label, "srnamespace": 0,
+             "srlimit": 10, "format": "json"},
+            limiter,
+        )
+        title = pick_title(label, data.get("query", {}).get("search", []))
+        if title:
+            found[sid] = title
+    return found
+
+
 def discover_series(archive_dir):
     series = {}
     for p in sorted(archive_dir.glob("panda-*.json.gz")):
@@ -212,6 +243,10 @@ def main():
     ap.add_argument("--archive", type=pathlib.Path, required=True)
     ap.add_argument("--out", type=pathlib.Path)
     ap.add_argument("--max-calls", type=int, default=120)
+    ap.add_argument("--resolve", action="store_true",
+                    help="search Liquipedia for the title of series without a curated one (exact word match only)")
+    ap.add_argument("--titles", type=pathlib.Path,
+                    help="JSON object mapping PandaScore serie IDs to verified Liquipedia titles")
     args = ap.parse_args()
 
     out_root = args.out or (args.archive / "hltv")
@@ -221,6 +256,10 @@ def main():
 
     series, titles = discover_series(args.archive)
     limiter = Limiter(2.2)
+    if args.titles:
+        titles.update(json.loads(args.titles.read_text(encoding="utf8")))
+    if args.resolve:
+        titles.update(resolve_titles(series, titles, lp_dir, tsv_path, limiter, args.max_calls))
     total_hltv_ids = set()
     resolved = 0
     unresolved = []
