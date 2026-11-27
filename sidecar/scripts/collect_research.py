@@ -110,23 +110,26 @@ class Archive:
         return json.loads(body) if name.endswith(".json") else body
 
 
-def month_ranges(until):
-    start = FIRST
+def month_ranges(until, first=FIRST):
+    start = first
     while start <= until:
         following = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
         yield start, min(until, following - timedelta(days=1))
         start = following
 
 
-def collect_panda(a, until):
-    for start, end in month_ranges(until):
+def collect_panda(a, until, first=FIRST, tiers=("s", "a")):
+    """Default tiers and first day keep the original catalog names; others carry the tiers in the name."""
+    tag = "" if tuple(tiers) == ("s", "a") else ",".join(tiers) + "-"
+    for start, end in month_ranges(until, first):
         window = f"{start}T00:00:00Z,{end}T23:59:59Z"
         for page in range(1, sys.maxsize):
             query = url(PANDA + "/csgo/tournaments/past", **{
-                "range[end_at]": window, "filter[tier]": "s,a", "sort": "id", "page": page, "per_page": 100})
-            entries = a.read("panda", query, f"catalog/tournaments-{start}-{end}-{page}.json")
+                "range[end_at]": window, "filter[tier]": ",".join(tiers), "sort": "id", "page": page,
+                "per_page": 100})
+            entries = a.read("panda", query, f"catalog/tournaments-{tag}{start}-{end}-{page}.json")
             for entry in entries:
-                if entry.get("tier") not in ("s", "a"):
+                if entry.get("tier") not in tiers:
                     continue
                 tid = int(entry["id"])
                 for part in range(1, sys.maxsize):
@@ -284,6 +287,11 @@ def main():
     parser.add_argument("--until", type=date.fromisoformat, default=datetime.now(UTC).date() - timedelta(days=1))
     parser.add_argument("--env", type=Path, default=ROOT / ".env")
     parser.add_argument("--titles", type=Path, help="JSON object mapping PandaScore serie IDs to verified wiki titles")
+    parser.add_argument("--from", dest="first", type=date.fromisoformat, default=FIRST,
+                        help="first day of the PandaScore Event window (default 2024-08-01)")
+    parser.add_argument("--tiers", default="s,a", help="PandaScore tiers to collect, comma separated")
+    parser.add_argument("--sources", default="panda,valve,liquipedia",
+                        help="comma separated steps to run: panda, valve, liquipedia")
     parser.add_argument("--maps-only", action="store_true", help="collect played maps for already archived Stages")
     parser.add_argument("--stage-titles", type=Path,
                         help="JSON object mapping PandaScore tournament IDs to verified Liquipedia Stage page titles")
@@ -301,8 +309,14 @@ def main():
     args = parser.parse_args()
     if args.archive.resolve().is_relative_to((ROOT / "sidecar/tests/fixtures").resolve()):
         parser.error("research archives must be outside the test fixtures")
-    if not FIRST <= args.until < datetime.now(UTC).date():
-        parser.error("--until must be a completed UTC day since August 2024")
+    if not args.first <= args.until < datetime.now(UTC).date():
+        parser.error("--until must be a completed UTC day, not before --from")
+    tiers = tuple(t for t in args.tiers.split(",") if t)
+    if not tiers or any(t not in ("s", "a", "b", "c", "d") for t in tiers):
+        parser.error("--tiers takes a comma separated list of s, a, b, c, d")
+    wanted = set(args.sources.split(","))
+    if not wanted <= {"panda", "valve", "liquipedia"}:
+        parser.error("--sources takes panda, valve, liquipedia")
     import os
     from collect_backtest import SECRETS, load_secrets
     if args.env.exists():
@@ -332,9 +346,10 @@ def main():
     titles = known_titles()
     if args.titles:
         titles.update(json.loads(args.titles.read_text(encoding="utf8")))
-    steps = (("panda", lambda: collect_panda(archive, args.until)),
-             ("valve", lambda: collect_valve(archive, args.until)),
-             ("liquipedia", lambda: collect_rosters(archive, args.until, titles)))
+    steps = tuple(step for step in (
+        ("panda", lambda: collect_panda(archive, args.until, first=args.first, tiers=tiers)),
+        ("valve", lambda: collect_valve(archive, args.until)),
+        ("liquipedia", lambda: collect_rosters(archive, args.until, titles))) if step[0] in wanted)
     if args.maps_only:
         stage_titles = known_stage_titles()
         if args.stage_titles:

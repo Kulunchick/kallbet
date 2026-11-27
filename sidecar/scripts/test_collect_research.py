@@ -141,3 +141,49 @@ class ArchiveTest(unittest.TestCase):
             self.assertEqual(a.spent("panda"), 2)
             self.assertEqual(len(list(path.glob("roster-*.json.gz"))), 1)
             a.db.close()
+
+
+class ExtensionTest(unittest.TestCase):
+    def test_extension_window_and_tiers_use_their_own_catalog_names(self):
+        urls = []
+
+        def fetch(source, request):
+            urls.append(request)
+            params = parse_qs(urlparse(request).query)
+            if "/tournaments/past?" in request:
+                self.assertEqual(params["filter[tier]"], ["b,c"])
+                self.assertTrue(params["range[end_at]"][0].startswith("2024-08-01T00:00:00Z,2024-08-31"))
+                return json.dumps([{"tier": "b", "id": 5}, {"tier": "s", "id": 6}]).encode()
+            self.assertIn("/tournaments/5/matches", request)
+            return b"[]"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            a = research.Archive(Path(tmp), research.DEFAULT_CAPS, fetch)
+            research.collect_panda(a, research.date(2024, 8, 31), tiers=("b", "c"))
+            self.assertEqual(len(urls), 2)
+            self.assertTrue((Path(tmp) / "catalog/tournaments-b,c-2024-08-01-2024-08-31-1.json.gz").exists())
+            a.db.close()
+
+    def test_earlier_window_starts_at_the_requested_day(self):
+        months = list(research.month_ranges(research.date(2023, 11, 5), research.date(2023, 9, 27)))
+        self.assertEqual(months, [(research.date(2023, 9, 27), research.date(2023, 9, 30)),
+                                  (research.date(2023, 10, 1), research.date(2023, 10, 31)),
+                                  (research.date(2023, 11, 1), research.date(2023, 11, 5))])
+        self.assertEqual(next(iter(research.month_ranges(research.date(2024, 8, 5)))),
+                         (research.FIRST, research.date(2024, 8, 5)))
+
+    def test_main_accepts_from_and_tiers_and_restricts_sources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = ["collector", "--archive", tmp, "--panda-cap", "0", "--from", "2023-09-27",
+                    "--until", "2024-07-31", "--tiers", "s,a", "--sources", "panda"]
+            with (patch.object(research.sys, "argv", args),
+                  patch.object(research, "collect_panda", return_value=None) as panda,
+                  patch.object(research, "collect_valve", return_value=None) as valve,
+                  patch.object(research, "collect_rosters", return_value=[]) as wiki,
+                  redirect_stdout(StringIO()), redirect_stderr(StringIO())):
+                self.assertEqual(research.main(), 0)
+            panda.assert_called_once()
+            self.assertEqual(panda.call_args.args[1], research.date(2024, 7, 31))
+            self.assertEqual(panda.call_args.kwargs, {"first": research.date(2023, 9, 27), "tiers": ("s", "a")})
+            valve.assert_not_called()
+            wiki.assert_not_called()
