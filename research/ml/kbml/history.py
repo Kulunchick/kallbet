@@ -27,6 +27,9 @@ PRE_MATCH = [
     "round", "team_a_id", "team_a", "team_a_key", "team_b_id", "team_b", "team_b_key", "format",
     "scheduled_start", "cutoff", "market_p", "market_source", "vrs_map_p", "vrs_series_p",
     "vrs_points_a", "vrs_points_b", "anchor_p", "hltv_is_lan",
+    "hltv_rank_a", "hltv_rank_b", "hltv_rank28_a", "hltv_rank28_b", "hltv_rank84_a", "hltv_rank84_b",
+    # the pre-match part of the Match's own HLTV page (hltv_data.build), oriented to team A
+    "hltv_pre",
 ]
 
 #: Columns a past result exposes to features.
@@ -45,7 +48,7 @@ class MatchInfo:
     def __getitem__(self, key):
         if key not in PRE_MATCH:
             raise LeakError(f"{key!r} is not known before the Match")
-        return self.row[key]
+        return self.row.get(key)
 
     @property
     def cutoff(self) -> int:
@@ -72,12 +75,23 @@ class _Sorted:
         return out
 
 
+@dataclass(frozen=True)
+class Release:
+    """What the timeline releases at one step: results, played maps, HLTV records."""
+    results: pd.DataFrame
+    maps: pd.DataFrame
+    records: pd.DataFrame
+
+
 class History:
-    def __init__(self, matches: pd.DataFrame, maps: pd.DataFrame | None = None):
+    def __init__(self, matches: pd.DataFrame, maps: pd.DataFrame | None = None,
+                 records: pd.DataFrame | None = None):
         self._matches = _Sorted(matches, RESULT)
         map_cols = ["match_id", "hltv_match_id", "known_finish", "map_name", "team_a_key", "team_b_key",
                     "rounds_a", "rounds_b", "a_won", "is_lan", "position"]
         self._maps = _Sorted(maps, map_cols) if maps is not None and len(maps) else None
+        self._records = (_Sorted(records, ["match_id", "known_finish", "rec"])
+                         if records is not None and len(records) else None)
 
     def before(self, cutoff: int) -> "Slice":
         return Slice(self._matches.before(cutoff),
@@ -103,12 +117,16 @@ class Timeline:
         self._rfinish = history._matches.finish
         self._maps = history._maps.frame if history._maps is not None else None
         self._mfinish = history._maps.finish if history._maps is not None else None
+        self._recs = history._records.frame if history._records is not None else None
+        self._cfinish = history._records.finish if history._records is not None else None
         self._ri = 0
         self._mi = 0
+        self._ci = 0
         self.now: int | None = None
 
-    def advance_to(self, cutoff: int):
-        """(new results, new maps) whose known finish is strictly before `cutoff`."""
+    def advance_to(self, cutoff: int) -> Release:
+        """The results, maps and records whose known finish is strictly before `cutoff`, not
+        released before."""
         cutoff = int(cutoff)
         if self.now is not None and cutoff < self.now:
             raise LeakError("the timeline only moves forward")
@@ -121,4 +139,9 @@ class Timeline:
             mj = int(np.searchsorted(self._mfinish, cutoff, side="left"))
             new_m = self._maps.iloc[self._mi:mj]
             self._mi = mj
-        return new_r, new_m
+        new_c = pd.DataFrame()
+        if self._recs is not None:
+            cj = int(np.searchsorted(self._cfinish, cutoff, side="left"))
+            new_c = self._recs.iloc[self._ci:cj]
+            self._ci = cj
+        return Release(new_r, new_m, new_c)

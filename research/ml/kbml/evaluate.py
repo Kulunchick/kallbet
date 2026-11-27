@@ -68,6 +68,7 @@ def walk_forward(matches: pd.DataFrame, X: pd.DataFrame, kinds: dict[str, str], 
     cls = MODELS[model]
     order = sorted({int(e) for e in ev_of[evaluated]}, key=lambda e: (events[e].begins, e))
     rows = []
+    importance = np.zeros(len(cols))
     chosen, chosen_at = None, 0
     for eid in order:
         E = events[eid]
@@ -85,6 +86,9 @@ def walk_forward(matches: pd.DataFrame, X: pd.DataFrame, kinds: dict[str, str], 
             params = chosen
             m = cls(anti, seed).fit(feats[tr], y_all[tr], params)
             variant, fallback = m.predict(feats[te]), False
+            if hasattr(m, "importance"):
+                imp = m.importance()
+                importance += te.sum() * imp / max(imp.sum(), 1e-12)  # share of gain, weighted by Matches
         sub = matches[te]
         rows.append(pd.DataFrame({
             "match_id": sub["match_id"].to_numpy(), "event_id": eid, "event": E.title,
@@ -92,7 +96,10 @@ def walk_forward(matches: pd.DataFrame, X: pd.DataFrame, kinds: dict[str, str], 
             "anchor": anchor, "variant": variant, "has_market": sub["market_p"].notna().to_numpy(),
             "fallback": fallback, "train_matches": int(tr.sum()), "params": str(params),
         }))
-    return pd.concat(rows, ignore_index=True)
+    out = pd.concat(rows, ignore_index=True)
+    if importance.sum() > 0:
+        out.attrs["importance"] = dict(zip(cols, importance / importance.sum()))
+    return out
 
 
 def select(cls, train_events, ev_of, tr, feats, y, anti, min_train, seed):
