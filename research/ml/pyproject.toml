@@ -1,0 +1,29 @@
+[project]
+name = "kbml"
+version = "0.1.0"
+description = "KallBet ML prototype: can a learned model pick more CS2 Match winners than the Signal Lab anchor?"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "scikit-learn",
+    "lightgbm",
+    "torch",
+    "pytest",
+]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
