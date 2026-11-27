@@ -135,3 +135,19 @@ fn ranking_cli_needs_one_connection_and_six_seconds() {
     assert!(cli::parse(&args(&["--min-interval-secs", "5"])).is_err());
     assert!(cli::parse(&args(&["--min-interval-secs", "6", "--concurrency", "2"])).is_err());
 }
+
+#[test]
+fn parses_the_saved_ranking_page() {
+    use flate2::read::GzDecoder;
+    use std::io::Read;
+    let raw = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/research/hltv-ranking-2024-01-01.html.gz")).unwrap();
+    let mut html = String::new();
+    GzDecoder::new(&raw[..]).read_to_string(&mut html).unwrap();
+    let page = kallbet_ai::adapters::hltv_research::ranking::parse_ranking(&html).unwrap();
+    assert_eq!(page.date, day("2024-01-01"));
+    assert_eq!(page.teams.len(), 220);
+    let first = &page.teams[0];
+    assert_eq!((first.rank, first.team_id, first.name.as_str(), first.points), (1, 9565, "Vitality", 980));
+    assert!(page.teams.windows(2).all(|w| w[0].rank <= w[1].rank && w[0].points >= w[1].points));
+    assert!(kallbet_ai::adapters::hltv_research::ranking::parse_ranking("<html>Just a moment...<title>Just a moment...</title></html>").is_err());
+}

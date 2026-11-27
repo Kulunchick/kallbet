@@ -287,3 +287,72 @@ pub async fn collect_rankings(
     }
     Ok(report)
 }
+
+/// One team's line of a weekly ranking.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RankedTeam {
+    pub rank: u32,
+    pub team_id: i64,
+    pub name: String,
+    pub points: u32,
+}
+
+/// A parsed weekly ranking: the publication date (from the page's canonical link) and every ranked team.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RankingPage {
+    pub date: NaiveDate,
+    pub teams: Vec<RankedTeam>,
+}
+
+pub fn parse_ranking(html: &str) -> Result<RankingPage, String> {
+    use scraper::{Html, Selector};
+    if is_cloudflare_challenge(200, None, html) {
+        return Err("Cloudflare challenge page".into());
+    }
+    let sel = |s: &str| Selector::parse(s).expect("valid static CSS selector");
+    let doc = Html::parse_document(html);
+    let canonical = doc
+        .select(&sel("link[rel=canonical]"))
+        .next()
+        .and_then(|e| e.value().attr("href"))
+        .ok_or("missing canonical link")?;
+    let parts: Vec<&str> = canonical.split("/ranking/teams/").nth(1).ok_or("canonical is not a ranking page")?.split('/').collect();
+    let month = parts
+        .get(1)
+        .and_then(|m| MONTHS.iter().position(|n| n == m))
+        .ok_or("canonical has no month")?;
+    let date = NaiveDate::from_ymd_opt(
+        parts[0].parse().map_err(|_| "bad year")?,
+        month as u32 + 1,
+        parts.get(2).and_then(|d| d.parse().ok()).ok_or("bad day")?,
+    )
+    .ok_or("invalid canonical date")?;
+    let (position, name, points, link) = (
+        sel(".ranking-header .position"),
+        sel(".teamLine .name"),
+        sel(".teamLine .points"),
+        sel(".more a.moreLink[href^=\"/team/\"]"),
+    );
+    let mut teams = Vec::new();
+    for team in doc.select(&sel(".ranked-team")) {
+        let text = |s: &Selector| team.select(s).next().map(|e| e.text().collect::<String>());
+        let rank = text(&position)
+            .and_then(|t| t.trim().trim_start_matches('#').parse().ok())
+            .ok_or("missing rank")?;
+        let team_id = team
+            .select(&link)
+            .next()
+            .and_then(|a| a.value().attr("href"))
+            .and_then(|h| h.trim_start_matches("/team/").split('/').next()?.parse().ok())
+            .ok_or("missing team id")?;
+        let name = text(&name).map(|t| t.trim().to_owned()).filter(|t| !t.is_empty()).ok_or("missing team name")?;
+        let points = text(&points)
+            .and_then(|t| t.trim_start_matches('(').split_whitespace().next()?.replace(',', "").parse().ok())
+            .ok_or("missing points")?;
+        teams.push(RankedTeam { rank, team_id, name, points });
+    }
+    if teams.is_empty() {
+        return Err("no ranked teams".into());
+    }
+    Ok(RankingPage { date, teams })
+}
