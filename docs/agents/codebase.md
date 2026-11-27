@@ -452,6 +452,7 @@ Paths below are relative to `sidecar/`. Each adapter family owns its factory and
 | #46 | `src/adapters/lab/pickem.rs` (Pick'em variants in Pick'em Points), `Avoid` hook in `src/adapters/pickem/` | `tests/lab_pickem.rs` |
 | #57 | `lab/signals/rank_gap.rs`, `backtest/rank_history.rs` (`MatchView::ranks`), `hltv_research/rank_badges.rs` (badges loaded into `ReplayArchive::hltv_ranks`), `scripts/audit_rank_badges.py` | `tests/lab_rank_gap.rs` (fixtures reused from `tests/fixtures/{backtest,research}`) |
 | #58 | `lab/signals/stacker.rs` (accuracy-fitted combiner; `per_map_rating::map_signal`, `rank_gap::gaps` reused) | `tests/lab_stacker.rs` (fixtures reused from `tests/fixtures/backtest`) |
+| #59 | `lab/signals/stacker_no_map_elo.rs` (ablation of `stacker` without `per_map_rating::map_signal`) | `tests/lab_stacker_no_map_elo.rs` (fixtures reused from `tests/fixtures/{backtest,research}`) |
 
 **Tier slice (#55).** `ReplayStage.tier` is the archived PandaScore tier. `lab --tiers s,a --train-tiers s,a` filter the evaluated Events and the Events a fit may use (`Lab.tiers`, `TierFilter`; default all; an Event with no tier is reported in `tier_view.untiered`). `LabReport.tier_view` always adds every Candidate Signal on the tier-S slice, a secondary view; the full-archive verdict decides promotion. Tests: `tests/lab_tiers.rs`.
 

@@ -40,6 +40,8 @@ pub const EXTRAS: [&str; 4] = [
     "vrs_rank_gap",
     "hltv_rank_gap",
 ];
+/// The extras without `per_map_rating` (ablation `stacker_no_map_elo`, #59).
+pub(super) const EXTRAS_NO_MAP: [&str; 3] = ["own_rating", "vrs_rank_gap", "hltv_rank_gap"];
 /// The penalties the accuracy rule chooses from.
 pub const GRID: [f64; 6] = [1.0, 3.0, 10.0, 30.0, 100.0, 1000.0];
 /// Fewest validation Matches the rule chooses on; below it, `LAMBDA`.
@@ -109,6 +111,7 @@ pub struct Stacked {
 pub struct Fit {
     pub scales: [Option<f64>; 3],
     pub combiner: Combiner,
+    include_map_elo: bool,
 }
 
 fn slot(format: Format) -> usize {
@@ -143,26 +146,33 @@ fn scales(rows: &[&Row]) -> [Option<f64>; 3] {
 }
 
 impl Fit {
-    fn new(rows: &[&Row], lambda: f64) -> Self {
+    fn new(rows: &[&Row], lambda: f64, include_map_elo: bool) -> Self {
         let scales = scales(rows);
-        let names: Vec<String> = EXTRAS.iter().map(|s| (*s).to_owned()).collect();
+        let extras: &[&str] = if include_map_elo {
+            &EXTRAS
+        } else {
+            &EXTRAS_NO_MAP
+        };
+        let names: Vec<String> = extras.iter().map(|s| (*s).to_owned()).collect();
         let data: Vec<(Inputs, bool)> = rows
             .iter()
-            .map(|r| (inputs(&r.raw, r.format, &scales), r.won))
+            .map(|r| (inputs(&r.raw, r.format, &scales, include_map_elo), r.won))
             .collect();
         Self {
             scales,
             combiner: Combiner::fit(&names, &data, lambda),
+            include_map_elo,
         }
     }
     fn predict(&self, raw: &Raw, format: Format) -> Option<f64> {
-        self.combiner.predict(&inputs(raw, format, &self.scales))
+        self.combiner
+            .predict(&inputs(raw, format, &self.scales, self.include_map_elo))
     }
 }
 
 /// The combiner's inputs: market and calibrated Valve series as the base (a
 /// format without a fitted scale keeps Valve's own), the extras on a logit scale.
-fn inputs(raw: &Raw, format: Format, scales: &[Option<f64>; 3]) -> Inputs {
+fn inputs(raw: &Raw, format: Format, scales: &[Option<f64>; 3], include_map_elo: bool) -> Inputs {
     let rating = raw.valve_map.map(|m| {
         let map = sigmoid(scales[slot(format)].unwrap_or(1.0) * logit(m));
         vrs::series_probability(map, format)
@@ -170,10 +180,17 @@ fn inputs(raw: &Raw, format: Format, scales: &[Option<f64>; 3]) -> Inputs {
     let own = raw
         .own_logit
         .map(|x| logit(vrs::series_probability(sigmoid(x), format)));
+    let mut extras = Vec::with_capacity(if include_map_elo { 4 } else { 3 });
+    extras.push(own);
+    if include_map_elo {
+        extras.push(raw.per_map.map(logit));
+    }
+    extras.push(raw.vrs_gap);
+    extras.push(raw.hltv_gap);
     Inputs {
         market: raw.market,
         rating,
-        extras: vec![own, raw.per_map.map(logit), raw.vrs_gap, raw.hltv_gap],
+        extras,
     }
 }
 
@@ -201,6 +218,10 @@ impl Stacked {
     /// (refitted on the Events that ended before those began), then the
     /// weights with it on every row.
     pub fn fit(rows: &[Row]) -> Self {
+        Self::fit_with(rows, true)
+    }
+
+    pub(super) fn fit_with(rows: &[Row], include_map_elo: bool) -> Self {
         // Each Event's first and last cutoff, ordered by its last.
         let mut spans: BTreeMap<i64, (Instant, Instant)> = BTreeMap::new();
         for r in rows {
@@ -234,7 +255,7 @@ impl Stacked {
             if !inner.is_empty() {
                 for lambda in GRID {
                     let (matches, accuracy, log_loss) =
-                        score(&Fit::new(&inner, lambda), &held_rows);
+                        score(&Fit::new(&inner, lambda, include_map_elo), &held_rows);
                     validation.push(Validation {
                         lambda,
                         matches,
@@ -270,7 +291,7 @@ impl Stacked {
                 held
             },
             validation,
-            fit: Fit::new(&all, chosen.0),
+            fit: Fit::new(&all, chosen.0, include_map_elo),
             training_matches: rows.len(),
             training_events: spans.len(),
             fitted_through: rows.iter().map(|r| r.cutoff).max(),
@@ -313,14 +334,19 @@ impl Stacked {
 /// Keyed by the Match, its cutoff and how much history the view holds.
 type Key = (i64, Instant, usize, usize);
 #[derive(Default)]
-struct Cache(Mutex<HashMap<Key, Raw>>);
+pub(super) struct Cache(Mutex<HashMap<Key, Raw>>);
 impl Cache {
-    fn raw(&self, view: &MatchView) -> Result<Raw> {
+    pub(super) fn raw_with(&self, view: &MatchView, include_map_elo: bool) -> Result<Raw> {
+        let map_count = if include_map_elo {
+            view.map_history.at(view.cutoff).count()
+        } else {
+            0
+        };
         let key = (
             view.game.id,
             view.cutoff,
             view.history_before.len(),
-            view.map_history.at(view.cutoff).count(),
+            map_count,
         );
         if let Some(raw) = self
             .0
@@ -330,7 +356,7 @@ impl Cache {
         {
             return Ok(*raw);
         }
-        let raw = raw(view)?;
+        let raw = raw_with(view, include_map_elo)?;
         self.0
             .lock()
             .map_err(|_| "stacker cache poisoned")?
@@ -340,7 +366,7 @@ impl Cache {
 }
 
 /// Reads every input of `view`, each checked against its cutoff.
-fn raw(view: &MatchView) -> Result<Raw> {
+fn raw_with(view: &MatchView, include_map_elo: bool) -> Result<Raw> {
     let mut observed = view.observed_at();
     let mut seen = |at: Instant| observed = Some(observed.map_or(at, |o| o.max(at)));
     let history = view.history_before()?;
@@ -359,10 +385,14 @@ fn raw(view: &MatchView) -> Result<Raw> {
         }
         None => None,
     };
-    let per_map = per_map_rating::map_signal(view)?.map(|(s, at)| {
-        seen(at);
-        s.series
-    });
+    let per_map = if include_map_elo {
+        per_map_rating::map_signal(view)?.map(|(s, at)| {
+            seen(at);
+            s.series
+        })
+    } else {
+        None
+    };
     let [vrs, hltv] = rank_gap::gaps(view)?;
     let mut gap = |g: Option<AsOf<f64>>| -> Result<Option<f64>> {
         let Some(g) = g else { return Ok(None) };
@@ -379,6 +409,30 @@ fn raw(view: &MatchView) -> Result<Raw> {
         hltv_gap,
         observed,
     })
+}
+
+pub(super) fn fit_signal(
+    cache: &Arc<Cache>,
+    training: &[Observed],
+    include_map_elo: bool,
+) -> Result<Box<dyn FittedSignal>> {
+    let rows = training
+        .iter()
+        .map(|o| {
+            Ok(Row {
+                raw: cache.raw_with(&o.view, include_map_elo)?,
+                format: o.view.game.format,
+                event: o.view.game.event_id,
+                cutoff: o.view.cutoff,
+                won: o.team_a_won,
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    Ok(Box::new(Fitted {
+        stacked: Stacked::fit_with(&rows, include_map_elo),
+        cache: cache.clone(),
+        include_map_elo,
+    }))
 }
 
 #[derive(Default)]
@@ -407,32 +461,18 @@ impl CandidateSignal for Stacker {
         true
     }
     fn fit(&self, training: &[Observed]) -> Result<Box<dyn FittedSignal>> {
-        let rows = training
-            .iter()
-            .map(|o| {
-                Ok(Row {
-                    raw: self.0.raw(&o.view)?,
-                    format: o.view.game.format,
-                    event: o.view.game.event_id,
-                    cutoff: o.view.cutoff,
-                    won: o.team_a_won,
-                })
-            })
-            .collect::<Result<Vec<_>>>()?;
-        Ok(Box::new(Fitted {
-            stacked: Stacked::fit(&rows),
-            cache: self.0.clone(),
-        }))
+        fit_signal(&self.0, training, true)
     }
 }
 
 struct Fitted {
     stacked: Stacked,
     cache: Arc<Cache>,
+    include_map_elo: bool,
 }
 impl FittedSignal for Fitted {
     fn predict(&self, m: &MatchView) -> Result<Option<AsOf<f64>>> {
-        let raw = self.cache.raw(m)?;
+        let raw = self.cache.raw_with(m, self.include_map_elo)?;
         let (Some(p), Some(observed)) = (self.stacked.predict(&raw, m.game.format), raw.observed)
         else {
             return Ok(None);
