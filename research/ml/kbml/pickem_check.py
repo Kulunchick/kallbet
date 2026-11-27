@@ -1,64 +1,15 @@
-"""Offline Singapore 2026 Stage 1 Pick'em replay. Run with python -m kbml.pickem_check."""
+"""Reproduce the archived Swiss Pick'em report with python -m kbml.pickem_check."""
+
 import argparse
 from itertools import combinations
+from pathlib import Path
 
 import numpy as np
-import pandas as pd
 from scipy.optimize import linear_sum_assignment
 
-from . import archive, evaluate, features, paths, timeutil
-from .anchor import Markets, Standings, anchor
-from .table import load_table
-from .teams import team_key
+from .pickem_data import forecast_all
 
-# November 16 Liquipedia revision 3471273, lp-22378.json.gz, SwissStandings tiebreaker order.
-SEEDS = ("NIP", "PVISION", "Heroic", "FaZe", "Liquid", "Eternal Fire", "100 Thieves", "9z",
-         "M80", "DENDELE CS", "Imperial", "Wildcard", "GOSH", "FlyQuest", "Chinggis Warriors", "Lynn Vision")
-
-# PandaScore tournaments/22378/matches, final nine matches by ascending ID, winner first.
-LAST_RESULTS = (("Heroic", "FaZe"), ("Eternal Fire", "M80"), ("PVISION", "Lynn Vision"),
-                ("100 Thieves", "9z"), ("Liquid", "Imperial"), ("Wildcard", "Chinggis Warriors"),
-                ("Lynn Vision", "Heroic"), ("Imperial", "Wildcard"), ("100 Thieves", "M80"))
-
-
-def forecast(data, stage, opening):
-    matches, maps, _ = load_table()
-    cutoff = stage.cutoff
-    assert stage.event_id not in set(matches.event_id)
-    standings, markets = Standings(data.standings), Markets(data)
-    lines = {}
-    for m in opening:
-        q = markets.quote(m, cutoff)
-        if q:
-            assert q.observed < cutoff
-            lines[m.team_a.name, m.team_b.name] = q.p
-            lines[m.team_b.name, m.team_a.name] = 1 - q.p
-    rows = []
-    for fmt in ("bo1", "bo3"):
-        for a, b in combinations(SEEDS, 2):
-            rating = standings.estimate(a, b, fmt, cutoff)
-            vr = rating[1] if rating else None
-            market = lines.get((a, b)) if fmt == "bo1" else None
-            p = anchor(market, vr)
-            rows.append(dict(match_id=-len(rows)-1, event_id=stage.event_id, event=stage.event,
-                             event_begins=cutoff, event_ended=None, in_scope=True, tier="s",
-                             is_qualifier=False, cutoff=cutoff, known_finish=None, team_a_won=False,
-                             team_a_key=team_key(a), team_b_key=team_key(b), format=fmt, hltv_is_lan=True,
-                             market_p=market, vrs_series_p=vr, anchor_p=p if p is not None else 0.5,
-                             vrs_points_a=rating[3] if rating else None, vrs_points_b=rating[4] if rating else None))
-    future = pd.DataFrame(rows)
-    frame = pd.concat([matches, future], ignore_index=True)
-    x, kinds = features.compute(frame, maps, features.resolve("baseline"))
-    print("Stage cutoff", timeutil.iso(cutoff), "opening lines", len(lines)//2, "of 8")
-    probabilities = {"anchor": future.anchor_p, "VRS": future.vrs_series_p.fillna(0.5)}
-    for model in ("logreg", "lgbm", "mlp"):
-        # Synthetic evaluation rows have no known finish and an open event. The dummy label
-        # merely satisfies walk_forward's output schema and never enters a fit or score.
-        pred = evaluate.walk_forward(frame, x, kinds, model)
-        target = pred.set_index("match_id").loc[future.match_id]
-        print(model, "training matches", target.train_matches.iloc[0], "params", target.params.iloc[0])
-        probabilities[model] = target.variant
-    return probabilities
+SLOTS = np.repeat(np.arange(3), [2, 2, 6])
 
 
 def matchings(pool):
@@ -67,102 +18,200 @@ def matchings(pool):
         return
     a = pool[0]
     for b in reversed(pool[1:]):
-        rest = [t for t in pool[1:] if t != b]
-        for tail in matchings(rest):
+        for tail in matchings([t for t in pool[1:] if t != b]):
             yield ((a, b),) + tail
 
 
-def simulate(values, opening, runs):
-    rng = np.random.default_rng(33)
-    tables = {n: list(matchings(list(range(n)))) for n in (4, 6, 8)}
-    # Published Valve six-team priority order as encoded by sidecar's swiss.rs.
-    tables[6] = [tuple((int(s[i])-1, int(s[i+1])-1) for i in (0, 2, 4)) for s in
-                 "162534 162435 152634 152436 142635 142536 162345 152346 132645 132546 142356 132456 123645 123546 123456".split()]
+TABLES = {n: list(matchings(list(range(n)))) for n in (4, 8)}
+# Same six-team priority table as sidecar/src/adapters/pickem/swiss.rs.
+TABLES[6] = [
+    tuple((int(s[i]) - 1, int(s[i + 1]) - 1) for i in (0, 2, 4))
+    for s in [
+        "162534",
+        "162435",
+        "152634",
+        "152436",
+        "142635",
+        "142536",
+        "162345",
+        "152346",
+        "132645",
+        "132546",
+        "142356",
+        "132456",
+        "123645",
+        "123546",
+        "123456",
+    ]
+]
+
+
+def simulate(stage, values, runs, rng):
     p = np.zeros((2, 16, 16))
     a, b = np.triu_indices(16, 1)
     p[:, a, b] = np.asarray(values).reshape(2, -1)
     p[:, b, a] = 1 - p[:, a, b]
-    wins = np.zeros((runs, 16), dtype=int)
+    seed = np.arange(16) if stage.published else stage.seed
+    wins = np.zeros((runs, 16), dtype=np.int8)
     losses = np.zeros_like(wins)
-    played = np.zeros((runs, 16, 16), dtype=bool)
+    played = np.zeros((runs, 16), dtype=np.uint16)
+    opponents = np.zeros((4, runs, 16), dtype=np.uint8)
     row = np.arange(runs)
+    bits = (1 << np.arange(16)).astype(np.uint16)
 
-    def play(a, b, bo3):
-        win = rng.random(runs) < p[int(bo3), a, b]
+    def play(a, b, best_of, rnd):
+        win = rng.random(runs) < p[int(best_of == 3), a, b]
         wins[row, np.where(win, a, b)] += 1
         losses[row, np.where(win, b, a)] += 1
-        played[row, a, b] = played[row, b, a] = True
+        played[row, a] |= bits[b]
+        played[row, b] |= bits[a]
+        if rnd < 4:
+            opponents[rnd, row, a] = b
+            opponents[rnd, row, b] = a
 
-    for m in opening:
-        play(SEEDS.index(m.team_a.name), SEEDS.index(m.team_b.name), False)
+    for a, b in stage.opening:
+        play(a, b, stage.formats[0, 0], 0)
     for r in range(1, 5):
-        buchholz = (played * (wins - losses)[:, None, :]).sum(axis=2)
-        # Freeze all records and pairings at the start of the round.
+        diff = wins - losses
+        buchholz = sum(np.take_along_axis(diff, opponent, axis=1) for opponent in opponents[:r])
+        priority = seed - 16 * buchholz.astype(np.int16)
         pending = []
-        for w in range(max(0, r-2), min(2, r)+1):
-            l = r-w
+        for w in range(max(0, r - 2), min(2, r) + 1):
+            l = r - w
             mask = (wins == w) & (losses == l)
             n = int(mask[0].sum())
-            order = np.argsort(np.where(mask, -buchholz*16 + np.arange(16), 10000), axis=1)[:, :n]
-            choices = np.zeros((runs, n//2, 2), dtype=int)
+            pool = np.argsort(np.where(mask, priority, 10000), axis=1)[:, :n]
+            choices = np.empty((runs, n // 2, 2), dtype=np.uint8)
             unresolved = row
-            for pairing in tables[n]:
+            for pairing in TABLES[n]:
                 if not len(unresolved):
                     break
-                pairs = order[unresolved][:, pairing]
-                bad = played[unresolved[:, None], pairs[:, :, 0], pairs[:, :, 1]].any(axis=1)
+                pairs = pool[unresolved][:, pairing]
+                bad = (played[unresolved[:, None], pairs[:, :, 0]] & bits[pairs[:, :, 1]]).any(axis=1)
                 choices[unresolved[~bad]] = pairs[~bad]
                 unresolved = unresolved[bad]
             if len(unresolved):
-                choices[unresolved] = order[unresolved][:, tables[n][0]]
-            pending.append((choices, max(w, l) == 2))
-        for choices, bo3 in pending:
+                choices[unresolved] = pool[unresolved][:, TABLES[n][0]]
+            pending.append((choices, stage.formats[w, l]))
+        for choices, fmt in pending:
             for a, b in choices.transpose(1, 2, 0):
-                play(a, b, bo3)
-    return np.array([((wins == 3) & (losses == 0)).mean(axis=0),
-                     ((wins == 0) & (losses == 3)).mean(axis=0),
-                     ((wins == 3) & (losses > 0)).mean(axis=0)])
+                play(a, b, fmt, r)
+    return np.select(
+        [(wins == 3) & (losses == 0), (losses == 3) & (wins == 0), (wins == 3) & (losses > 0)],
+        [0, 1, 2],
+        default=3,
+    ).astype(np.uint8)
+
+
+def expected_picks(outcomes):
+    marginals = np.array([(outcomes == role).mean(axis=0) for role in range(3)])
+    _, teams = linear_sum_assignment(marginals[SLOTS], maximize=True)
+    roles = np.full(16, 3)
+    roles[teams] = SLOTS
+    return roles
+
+
+def scores(outcomes, roles):
+    return ((outcomes == roles) & (roles != 3)).sum(axis=-1)
+
+
+def packed(bits):
+    return np.packbits(bits)
+
+
+def search(outcomes, starts):
+    # The change in score from swapping two team roles is in [-2,2]. Only
+    # simulations currently scoring 3,4,5,6 can change the threshold count.
+    hits = [
+        [packed(outcomes[:, t] == k) if k != 3 else packed(np.zeros(len(outcomes), bool)) for k in range(4)]
+        for t in range(16)
+    ]
+    visited = {}
+    best = None
+    for initial in starts:
+        roles = initial.copy()
+        while roles.tobytes() not in visited:
+            old = scores(outcomes, roles)
+            value = int((old >= 5).sum())
+            visited[roles.tobytes()] = value
+            if best is None or value > best[0]:
+                best = (value, roles.copy())
+            s3, s4, s5, s6 = (packed(old == k) for k in (3, 4, 5, 6))
+            gain, move = 0, None
+            for a, b in combinations(range(16), 2):
+                i, j = roles[a], roles[b]
+                if i == j:
+                    continue
+                add_a, add_b = hits[a][j], hits[b][i]
+                rem_a, rem_b = hits[a][i], hits[b][j]
+                up = (add_a & ~rem_b) | (add_b & ~rem_a)
+                down = (rem_a & ~add_b) | (rem_b & ~add_a)
+                better = (s3 & add_a & add_b) | (s4 & up)
+                worse = (s6 & rem_a & rem_b) | (s5 & down)
+                delta = int(np.bitwise_count(better).sum()) - int(np.bitwise_count(worse).sum())
+                if delta > gain:
+                    gain, move = delta, (a, b)
+            if move is None:
+                break
+            a, b = move
+            roles[a], roles[b] = roles[b], roles[a]
+    return best[1]
+
+
+def evaluate_strategy(task):
+    stage, model, values, runs = task
+    rng = np.random.default_rng(33)
+    outcomes = np.concatenate(
+        [simulate(stage, values, min(5000, runs - i), rng) for i in range(0, runs, 5000)]
+    )
+    small = outcomes[: runs // 2]
+    a_small, a = expected_picks(small), expected_picks(outcomes)
+    # Multistart best-improvement exchange search; warm-start the larger search.
+    gen = np.random.default_rng(33)
+    starts = [gen.permutation(a_small) for _ in range(2)]
+    b_small = search(small, [a_small, *starts])
+    b = search(outcomes, [b_small, a, *starts])
+    result = []
+    for strategy, roles, half in (("A", a, a_small), ("B", b, b_small)):
+        sim = scores(outcomes, roles)
+        changed = np.count_nonzero((roles != 3) & (roles != half))
+        result.append(
+            (
+                model,
+                strategy,
+                roles,
+                int(scores(stage.truth, roles)),
+                changed,
+                float(sim.mean()),
+                float((sim >= 5).mean()),
+            )
+        )
+    return stage.id, result
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--runs", type=int, default=20000)
-    parser.add_argument("--pairs", action="store_true", help="also print every stage-start series probability")
+    parser.add_argument("--runs", type=int, default=200000)
+    parser.add_argument("--jobs", type=int, default=3)
+    parser.add_argument(
+        "--pairs", action="store_true", help="also print both formats for all stage-start pairs"
+    )
+    parser.add_argument("--report", type=Path, default=Path(__file__).resolve().parents[1] / "PICKEM.md")
     args = parser.parse_args()
-    data = archive.load(paths.REPO / "sidecar/tests/fixtures/backtest", with_hltv=False)
-    stage = next(s for s in data.stages if s.id == 22378)
-    opening = [m for m in stage.matches if m.name.startswith("Round 1:")]
-    assert len(opening) == 8 and len(stage.matches) == 24
-    forecasts = forecast(data, stage, opening)
+    from .pickem_report import run_report
+
+    rows = list(forecast_all())
     if args.pairs:
-        labels = [(fmt, a, b) for fmt in ("bo1", "bo3") for a, b in combinations(SEEDS, 2)]
-        pairs = pd.DataFrame(labels, columns=["format", "team_a", "team_b"])
-        for model, values in forecasts.items():
-            pairs[model] = np.asarray(values)
-        print(pairs.to_csv(index=False, float_format="%.6f"))
-    wins, losses = dict.fromkeys(SEEDS, 0), dict.fromkeys(SEEDS, 0)
-    for m in stage.matches:
-        a, b = m.team_a, m.team_b
-        winner, loser = (a, b) if a.id == m.winner else (b, a)
-        wins[winner.name] += 1
-        losses[loser.name] += 1
-    for winner, loser in LAST_RESULTS:
-        wins[winner] += 1
-        losses[loser] += 1
-    truth = [{t for t in SEEDS if wins[t] == 3 and losses[t] == 0},
-             {t for t in SEEDS if losses[t] == 3 and wins[t] == 0},
-             {t for t in SEEDS if wins[t] == 3 and losses[t] > 0}]
-    assert list(map(len, truth)) == [2, 2, 6]
-    print("Actual (3-0, 0-3, other advance):", [sorted(g) for g in truth])
-    for model, values in forecasts.items():
-        prob = simulate(values, opening, args.runs)
-        slots = np.repeat(np.arange(3), [2, 2, 6])
-        # Same maximum expected correct, disjoint 2/2/6 objective as swiss.rs.
-        _, teams = linear_sum_assignment(prob[slots], maximize=True)
-        picks = [[SEEDS[t] for t in teams[slots == k]] for k in range(3)]
-        score = sum(len(set(p) & g) for p, g in zip(picks, truth))
-        print(model, *(", ".join(p) for p in picks), score, score >= 5,
-              f"{prob[slots, teams].sum():.3f}", sep=" | ")
+        import csv
+        import sys
+
+        writer = csv.writer(sys.stdout)
+        writer.writerow(["stage_id", "format", "team_a", "team_b", *rows[0][1]])
+        for stage, forecasts, *_ in rows:
+            pairs = [(fmt, a, b) for fmt in ("bo1", "bo3") for a, b in combinations(stage.teams, 2)]
+            for position, pair in enumerate(pairs):
+                writer.writerow([stage.id, *pair, *(v[position] for v in forecasts.values())])
+    run_report(rows, args.runs, args.jobs, args.report)
 
 
 if __name__ == "__main__":
