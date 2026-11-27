@@ -29,7 +29,10 @@ SETS = {
     "anchor": ["anchor"],
     "baseline": ["anchor", "elo", "map_elo", "form", "h2h", "rest", "lan", "format"],
     "no_anchor": ["elo", "map_elo", "form", "h2h", "rest", "lan", "format"],
+    "hltv": ["rank", "opp_form", "past_form", "hltv_h2h", "players", "map_pool", "sides", "standin", "roster",
+             "stakes"],
 }
+SETS["full"] = SETS["baseline"] + SETS["hltv"]
 
 
 def register(cls):
@@ -41,7 +44,8 @@ class Group:
     name = ""
     columns: dict[str, str] = {}
 
-    def update(self, results: pd.DataFrame, maps: pd.DataFrame) -> None:
+    def update(self, new) -> None:
+        """`new`: a `history.Release` (results, maps, records) known before the next cutoff."""
         pass
 
     def features(self, m: MatchInfo) -> dict:
@@ -94,7 +98,8 @@ class Elo(Group):
         self.r = defaultdict(lambda: self.START)
         self.n = defaultdict(int)
 
-    def update(self, results, maps):
+    def update(self, new):
+        results, maps = new.results, new.maps
         for a, b, won, ma, mb in zip(results.team_a_key, results.team_b_key, results.team_a_won,
                                      results.maps_a, results.maps_b):
             ea = 1.0 / (1.0 + 10 ** ((self.r[b] - self.r[a]) / 400.0))
@@ -131,7 +136,8 @@ class MapElo(Group):
         self.nm = defaultdict(int)
         self.pool = defaultdict(set)  # team -> maps it has played
 
-    def update(self, results, maps):
+    def update(self, new):
+        results, maps = new.results, new.maps
         if maps is None or not len(maps):
             return
         for a, b, mp, won in zip(maps.team_a_key, maps.team_b_key, maps.map_name, maps.a_won):
@@ -173,7 +179,8 @@ class Form(Group):
         self.res = defaultdict(lambda: deque(maxlen=10))
         self.rounds = defaultdict(lambda: deque(maxlen=15))
 
-    def update(self, results, maps):
+    def update(self, new):
+        results, maps = new.results, new.maps
         for a, b, won in zip(results.team_a_key, results.team_b_key, results.team_a_won):
             self.res[a].append(1.0 if won else 0.0)
             self.res[b].append(0.0 if won else 1.0)
@@ -207,7 +214,8 @@ class HeadToHead(Group):
     def __init__(self):
         self.w = defaultdict(float)  # (x, y) -> wins of x over y
 
-    def update(self, results, maps):
+    def update(self, new):
+        results, maps = new.results, new.maps
         for a, b, won in zip(results.team_a_key, results.team_b_key, results.team_a_won):
             if won:
                 self.w[(a, b)] += 1
@@ -232,7 +240,8 @@ class Rest(Group):
     def __init__(self):
         self.finishes = defaultdict(list)
 
-    def update(self, results, maps):
+    def update(self, new):
+        results, maps = new.results, new.maps
         for a, b, f in zip(results.team_a_key, results.team_b_key, results.known_finish):
             self.finishes[a].append(int(f))
             self.finishes[b].append(int(f))
@@ -262,7 +271,8 @@ class Lan(Group):
     def __init__(self):
         self.rec = defaultdict(lambda: [0.0, 0.0])  # (team, lan) -> [wins, n]
 
-    def update(self, results, maps):
+    def update(self, new):
+        results, maps = new.results, new.maps
         for a, b, won, lan in zip(results.team_a_key, results.team_b_key, results.team_a_won, results.hltv_is_lan):
             if lan is None or pd.isna(lan):
                 continue
@@ -304,19 +314,26 @@ def resolve(spec: str) -> list[str]:
     return names
 
 
-def compute(matches: pd.DataFrame, maps: pd.DataFrame, groups: list[str]) -> tuple[pd.DataFrame, dict[str, str]]:
+def compute(matches: pd.DataFrame, maps: pd.DataFrame, groups: list[str], hltv=None
+            ) -> tuple[pd.DataFrame, dict[str, str]]:
     """One feature row per Match (index = match_id), each computed at that Match's cutoff from
-    the results released by the timeline. Returns the frame and {column: anti|sym}."""
+    what the timeline released. `hltv`: `(pre by match_id, records frame)` from `hltv_data.build`,
+    for the HLTV groups (their rank columns must already be on `matches`). Returns the frame and
+    {column: anti|sym}."""
     inst = [REGISTRY[g]() for g in groups]
     kinds = {c: k for g in inst for c, k in g.columns.items()}
-    timeline = Timeline(History(matches, maps))
-    infos = sorted(match_infos(matches), key=lambda i: (i.cutoff, i.row["match_id"]))
+    pre, records = hltv if hltv is not None else ({}, None)
+    timeline = Timeline(History(matches, maps, records))
+    infos = match_infos(matches)
+    for info in infos:
+        info.row["hltv_pre"] = pre.get(info.row["match_id"])
+    infos.sort(key=lambda i: (i.cutoff, i.row["match_id"]))
     rows, ids = [], []
     for info in infos:
-        new_r, new_m = timeline.advance_to(info.cutoff)
-        for g in inst:
-            if len(new_r) or len(new_m):
-                g.update(new_r, new_m)
+        new = timeline.advance_to(info.cutoff)
+        if len(new.results) or len(new.maps) or len(new.records):
+            for g in inst:
+                g.update(new)
         row = {}
         for g in inst:
             row.update(g.features(info))
@@ -324,3 +341,6 @@ def compute(matches: pd.DataFrame, maps: pd.DataFrame, groups: list[str]) -> tup
         ids.append(info.row["match_id"])
     frame = pd.DataFrame(rows, index=pd.Index(ids, name="match_id"))
     return frame[list(kinds)], kinds
+
+
+from . import features_hltv  # noqa: E402,F401  (registers the HLTV groups)

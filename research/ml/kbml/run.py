@@ -14,6 +14,13 @@ from . import evaluate, features, paths
 from .table import cache_dir, load_table
 
 
+def with_hltv(matches, archive, rebuild=False):
+    """The Match table with the HLTV rank columns, and (pre, records) for the HLTV groups."""
+    from . import hltv_data
+    m, pre, records, _ = hltv_data.load(matches, cache_dir(archive), rebuild=rebuild)
+    return m, (pre, records)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="kbml.run")
     ap.add_argument("--model", default="logreg", help="logreg, lgbm, mlp, or a comma list")
@@ -35,7 +42,8 @@ def main(argv=None):
     t0 = time.time()
     matches, maps, meta = load_table(args.archive, rebuild=args.rebuild)
     groups = features.resolve(args.features)
-    X, kinds = features.compute(matches, maps, groups)
+    matches, hltv = with_hltv(matches, args.archive, args.rebuild)
+    X, kinds = features.compute(matches, maps, groups, hltv)
     print(f"{len(matches)} Matches ({int(matches.in_scope.sum())} in scope), {len(kinds)} features from {groups} "
           f"[{time.time() - t0:.0f}s]")
     results = {}

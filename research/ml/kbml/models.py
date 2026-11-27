@@ -92,6 +92,10 @@ class Lgbm(Model):
             warnings.simplefilter("ignore")
             self.m.fit(X, y.astype(int))
 
+    def importance(self):
+        """Total gain per feature (both orientations pooled)."""
+        return self.m.booster_.feature_importance(importance_type="gain")
+
     def _predict(self, X):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
