@@ -304,7 +304,11 @@ pub fn match_record(
         Some(w) => Some(side_of(w).ok_or_else(|| bad(at("winner_id is not one of the opponents")))?),
     };
 
-    let score = if raw.results.is_empty() || teams.len() < 2 {
+    // PandaScore sends 0-0 placeholder `results` before a match starts.
+    let score = if matches!(status, MatchStatus::Upcoming | MatchStatus::Cancelled)
+        || raw.results.is_empty()
+        || teams.len() < 2
+    {
         None
     } else {
         let of = |team: &RawTeam| {

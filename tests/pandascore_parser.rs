@@ -449,6 +449,38 @@ fn a_tbd_versus_tbd_upcoming_match_parses_without_teams() {
     assert_eq!(m.placement, MatchPlacement::Unplaced);
 }
 
+#[test]
+fn upcoming_and_cancelled_matches_drop_zero_placeholder_scores() {
+    for raw_status in ["not_started", "postponed", "canceled"] {
+        let mut m = doc_example("doc-example-csgo_matches-1-0.json");
+        m["status"] = json!(raw_status);
+        m["winner_id"] = Value::Null;
+        m["opponents"] = json!([
+            { "type": "Team", "opponent": { "id": 1, "name": "Team A" } },
+            { "type": "Team", "opponent": { "id": 2, "name": "Team B" } },
+        ]);
+        m["results"] = json!([
+            { "team_id": 1, "score": 0 },
+            { "team_id": 2, "score": 0 },
+        ]);
+        let serie = m["serie"].clone();
+        let t = TournamentInput {
+            tournament: m["tournament"].clone(),
+            matches: vec![m],
+        };
+        let s = parse::snapshot(&serie, &[t]).unwrap();
+        let parsed = &s.matches[0];
+        let expected_status = if raw_status == "canceled" {
+            MatchStatus::Cancelled
+        } else {
+            MatchStatus::Upcoming
+        };
+        assert_eq!(parsed.status, expected_status, "{raw_status}");
+        assert_eq!(parsed.score, None, "{raw_status}");
+        assert_eq!(parsed.actual_start, None, "{raw_status}");
+    }
+}
+
 // Anything not understood is an error, never empty data.
 
 fn parse_err(mutate: impl FnOnce(&mut Value)) -> SourceError {
