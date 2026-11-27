@@ -164,6 +164,19 @@ class ExtensionTest(unittest.TestCase):
             self.assertTrue((Path(tmp) / "catalog/tournaments-b,c-2024-08-01-2024-08-31-1.json.gz").exists())
             a.db.close()
 
+    def test_catalog_only_skips_each_events_matches(self):
+        urls = []
+
+        def fetch(source, request):
+            urls.append(request)
+            return json.dumps([{"tier": "b", "id": 5}]).encode()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            a = research.Archive(Path(tmp), research.DEFAULT_CAPS, fetch)
+            research.collect_panda(a, research.date(2024, 8, 31), tiers=("b",), catalog_only=True)
+            self.assertEqual(len(urls), 1)
+            a.db.close()
+
     def test_earlier_window_starts_at_the_requested_day(self):
         months = list(research.month_ranges(research.date(2023, 11, 5), research.date(2023, 9, 27)))
         self.assertEqual(months, [(research.date(2023, 9, 27), research.date(2023, 9, 30)),
@@ -184,6 +197,6 @@ class ExtensionTest(unittest.TestCase):
                 self.assertEqual(research.main(), 0)
             panda.assert_called_once()
             self.assertEqual(panda.call_args.args[1], research.date(2024, 7, 31))
-            self.assertEqual(panda.call_args.kwargs, {"first": research.date(2023, 9, 27), "tiers": ("s", "a")})
+            self.assertEqual(panda.call_args.kwargs, {"first": research.date(2023, 9, 27), "tiers": ("s", "a"), "catalog_only": False})
             valve.assert_not_called()
             wiki.assert_not_called()

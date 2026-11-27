@@ -118,7 +118,7 @@ def month_ranges(until, first=FIRST):
         start = following
 
 
-def collect_panda(a, until, first=FIRST, tiers=("s", "a")):
+def collect_panda(a, until, first=FIRST, tiers=("s", "a"), catalog_only=False):
     """Default tiers and first day keep the original catalog names; others carry the tiers in the name."""
     tag = "" if tuple(tiers) == ("s", "a") else ",".join(tiers) + "-"
     for start, end in month_ranges(until, first):
@@ -130,6 +130,8 @@ def collect_panda(a, until, first=FIRST, tiers=("s", "a")):
             entries = a.read("panda", query, f"catalog/tournaments-{tag}{start}-{end}-{page}.json")
             for entry in entries:
                 if entry.get("tier") not in tiers:
+                    continue
+                if catalog_only:
                     continue
                 tid = int(entry["id"])
                 for part in range(1, sys.maxsize):
@@ -290,6 +292,10 @@ def main():
     parser.add_argument("--from", dest="first", type=date.fromisoformat, default=FIRST,
                         help="first day of the PandaScore Event window (default 2024-08-01)")
     parser.add_argument("--tiers", default="s,a", help="PandaScore tiers to collect, comma separated")
+    parser.add_argument("--catalog-only", action="store_true",
+                        help="fetch only the dated tournament catalogs, not each Event's Matches")
+    parser.add_argument("--panda-interval", type=float, default=1.1,
+                        help="minimum seconds between PandaScore requests (keep it above 18 for the hourly limit)")
     parser.add_argument("--sources", default="panda,valve,liquipedia",
                         help="comma separated steps to run: panda, valve, liquipedia")
     parser.add_argument("--maps-only", action="store_true", help="collect played maps for already archived Stages")
@@ -332,7 +338,7 @@ def main():
             headers["Authorization"] = "Bearer " + token
         if source == "valve" and "/git/blobs/" in request:
             headers["Accept"] = "application/vnd.github.raw+json"
-        spacing = {"liquipedia": 2.1, "panda": 1.1}.get(source, 0)
+        spacing = {"liquipedia": 2.1, "panda": args.panda_interval}.get(source, 0)
         time.sleep(max(0, last_request.get(source, 0) + spacing - time.monotonic()))
         last_request[source] = time.monotonic()
         with urllib.request.urlopen(urllib.request.Request(request, headers=headers), timeout=45) as response:
@@ -347,7 +353,8 @@ def main():
     if args.titles:
         titles.update(json.loads(args.titles.read_text(encoding="utf8")))
     steps = tuple(step for step in (
-        ("panda", lambda: collect_panda(archive, args.until, first=args.first, tiers=tiers)),
+        ("panda", lambda: collect_panda(archive, args.until, first=args.first, tiers=tiers,
+                                     catalog_only=args.catalog_only)),
         ("valve", lambda: collect_valve(archive, args.until)),
         ("liquipedia", lambda: collect_rosters(archive, args.until, titles))) if step[0] in wanted)
     if args.maps_only:
