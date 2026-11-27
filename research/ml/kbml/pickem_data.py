@@ -132,7 +132,8 @@ def rank_history(history, hltv):
     return ranks
 
 
-def forecast_all():
+def forecast_all(extra=None):
+    """`extra(future, stages)` -> {stage id: {name: probabilities}} adds forecasters (kbml.forecaster)."""
     history, maps, _ = load_table()
     history, hltv = with_hltv(history, paths.ARCHIVE)
     ranks = rank_history(history, hltv)
@@ -198,6 +199,7 @@ def forecast_all():
                             row[f"{col}_{suffix}"] = ranks.at(team_key(t), stage.cutoff - days * T.DAY)
                     synthetic.append(row)
     future = pd.DataFrame(synthetic)
+    added = extra(future, stages) if extra is not None else {}
     frame = pd.concat([history, future], ignore_index=True)
     groups = features.resolve("full")
     x, kinds = features.compute(frame, maps, groups, hltv)
@@ -235,4 +237,5 @@ def forecast_all():
                     model = cls(anti, 33).fit(train[tr], targets[tr], params)
                     pred = model.predict(x.loc[rows.match_id, cols].to_numpy(float))
                 forecasts[f"{name} {label}"] = pred
+        forecasts.update(added.get(stage.id, {}))
         yield stage, forecasts, metadata[stage.id], int(tr.sum()), skipped
