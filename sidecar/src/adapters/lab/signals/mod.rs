@@ -20,6 +20,7 @@ pub mod learned_weights;
 pub mod line_movement;
 pub mod market_sources;
 pub mod lineup_strength;
+pub mod market_rank_rule;
 pub mod own_rating;
 pub mod rank_gap;
 pub mod per_map_rating;
@@ -206,6 +207,11 @@ pub trait CandidateSignal: Send + Sync {
     fn feature_names(&self) -> Vec<&'static str> {
         vec!["shift"]
     }
+    /// A subset of Matches the report singles out (accuracy of the anchor and
+    /// of this signal on it), by its label; `None`: no subset.
+    fn subset_label(&self) -> Option<&'static str> {
+        None
+    }
 }
 
 /// A fitted Candidate Signal.
@@ -233,6 +239,10 @@ pub trait FittedSignal: Send + Sync {
         };
         let shift = logit(*p.at(m.cutoff)?) - logit(anchor);
         Ok(vec![Some(AsOf::new(shift, p.observed_at(), m.cutoff)?)])
+    }
+    /// Whether `m` is in the subset named by `CandidateSignal::subset_label`.
+    fn in_subset(&self, _m: &MatchView) -> Result<bool> {
+        Ok(false)
     }
     /// Optional unblended series rating probability for direct comparison
     /// against the Valve rating (`m.signal()?.series`), without the market line.
@@ -265,6 +275,7 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(bo5_veto_sim::Bo5VetoSim),
         std::sync::Arc::new(veto_sim::VetoSim),
         std::sync::Arc::new(rank_gap::RankGap),
+        std::sync::Arc::new(market_rank_rule::MarketRankRule),
         std::sync::Arc::new(round_diff_rating::RoundDiffRating),
     ];
     signals.extend(roster::candidates());

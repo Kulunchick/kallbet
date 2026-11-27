@@ -23,6 +23,17 @@ pub struct MarketSubset {
     pub log_loss_difference: f64,
 }
 
+/// A subset a Candidate Signal singles out (`CandidateSignal::subset_label`):
+/// the paired Matches in it, and the picked-winner accuracy of the anchor and
+/// of the variant on them alone.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct SubsetReport {
+    pub label: String,
+    pub matches: usize,
+    pub anchor_accuracy: f64,
+    pub variant_accuracy: f64,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct EventRow {
     pub event_id: i64,
@@ -86,6 +97,9 @@ pub struct CandidateReport {
     pub detectable: Option<f64>,
     /// The paired Matches with a market line (`None`: there are none).
     pub market: Option<MarketSubset>,
+    /// The Candidate Signal's own subset of the paired Matches, if it names one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subset: Option<SubsetReport>,
     /// Optional direct comparison against the Valve rating (unblended).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vs_valve: Option<DirectComparison>,
@@ -389,6 +403,14 @@ Events with no archived tier (never in a tier slice): {}.",
                 );
             } else {
                 let _ = writeln!(md, "{}.\n\nVerdict: {}.\n", c.description, c.reason);
+            }
+            if let Some(s) = &c.subset {
+                let _ = writeln!(
+                    md,
+                    "{} {}: accuracy of the anchor {:.4}, of `{}` {:.4}.
+",
+                    s.matches, s.label, s.anchor_accuracy, c.name, s.variant_accuracy
+                );
             }
             if let (Some(b), Some(v)) = (c.baseline, c.variant) {
                 let _ = writeln!(
