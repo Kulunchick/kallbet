@@ -7,6 +7,7 @@ use crate::adapters::backtest::feeds::MarketSource;
 use crate::*;
 use std::collections::BTreeMap;
 
+pub mod bo1_pool_depth;
 pub mod bo1_veto_sim;
 pub mod bo3_veto_sim;
 pub mod bo5_veto_sim;
@@ -258,6 +259,7 @@ pub fn registry() -> Vec<std::sync::Arc<dyn CandidateSignal>> {
         std::sync::Arc::new(lineup_strength::LineupStrength),
         std::sync::Arc::new(player_form::PlayerForm),
         std::sync::Arc::new(per_map_rating::PerMapRating),
+        std::sync::Arc::new(bo1_pool_depth::Bo1PoolDepth),
         std::sync::Arc::new(bo1_veto_sim::Bo1VetoSim),
         std::sync::Arc::new(bo3_veto_sim::Bo3VetoSim),
         std::sync::Arc::new(bo5_veto_sim::Bo5VetoSim),
