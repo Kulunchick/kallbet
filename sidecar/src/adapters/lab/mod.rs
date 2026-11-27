@@ -33,7 +33,7 @@ pub mod stats;
 pub use holdout::{Freeze, Holdout};
 pub use report::{
     CandidateReport, DirectComparison, EventInfo, EventRow, HoldoutReport, HoldoutStatus,
-    LabReport, MarketSubset, Metrics, SelectionReport, TierView,
+    LabReport, MarketSubset, Metrics, SelectionReport, SubsetReport, TierView,
 };
 pub use runner::{Lab, LabOutcome, LabPrediction, TierFilter};
 pub use runs::{LabRun, record_lab_run};
