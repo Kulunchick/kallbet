@@ -427,10 +427,12 @@ pub async fn run(lab: &Lab, options: &PickemOptions) -> Result<PickemOutcome> {
         let Some(event) = split.training.iter().find(|e| e.info.id == *event_id) else {
             for i in order {
                 let s = &lab.archive.stages[*i];
-                excluded.push(format!(
-                    "{}: in the Holdout, left unread until the selection is frozen",
-                    s.title()
-                ));
+                let reason = if !lab.include_qualifiers && super::runner::is_qualifier(&s.event) {
+                    "a qualifier or RMR, neither scored nor fitted on"
+                } else {
+                    "in the Holdout, left unread until the selection is frozen"
+                };
+                excluded.push(format!("{}: {reason}", s.title()));
             }
             continue;
         };
