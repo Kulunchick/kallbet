@@ -22,7 +22,7 @@ TOL = 1e-9
 def check(archive=paths.ARCHIVE, report=paths.LAB_REPORT, log=print) -> bool:
     r = json.loads(report.read_text(encoding="utf-8"))
     m, _, _ = load_table(archive, log=lambda *a: None)
-    scored = m[~m["is_qualifier"]]
+    scored = m[m["in_scope"]]  # on the snapshot: every non-qualifier Match
     a = scored[scored["anchor_p"].notna()]
     p, y = a["anchor_p"].to_numpy(float), a["team_a_won"].to_numpy(bool)
     mine = {"log_loss": float(stats.log_loss(p, y).mean()), "brier": float(stats.brier(p, y).mean()),
@@ -64,4 +64,7 @@ def check(archive=paths.ARCHIVE, report=paths.LAB_REPORT, log=print) -> bool:
 
 
 if __name__ == "__main__":
-    sys.exit(0 if check() else 1)
+    from pathlib import Path
+    arch = Path(sys.argv[sys.argv.index("--archive") + 1]) if "--archive" in sys.argv else paths.ARCHIVE
+    print(f"archive: {arch}")
+    sys.exit(0 if check(arch) else 1)

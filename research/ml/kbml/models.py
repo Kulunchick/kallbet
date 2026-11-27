@@ -31,9 +31,10 @@ class Model:
         self.anti = anti
         self.seed = seed
 
-    def fit(self, X, y, params):
+    def fit(self, X, y, params, weight=None):
         Xa, ya = augment(np.asarray(X, float), np.asarray(y, float), self.anti)
-        self._fit(Xa, ya, params)
+        wa = None if weight is None else np.concatenate([weight, weight]).astype(float)
+        self._fit(Xa, ya, params, wa)
         return self
 
     def predict(self, X):
@@ -42,7 +43,7 @@ class Model:
         q = self._predict(swap(X, self.anti))
         return np.clip((p + 1.0 - q) / 2.0, 1e-6, 1 - 1e-6)
 
-    def _fit(self, X, y, params):
+    def _fit(self, X, y, params, w=None):
         raise NotImplementedError
 
     def _predict(self, X):
@@ -66,10 +67,10 @@ class LogReg(_Scaled):
     name = "logreg"
     grid = [{"C": 0.01}, {"C": 0.1}, {"C": 1.0}]
 
-    def _fit(self, X, y, params):
+    def _fit(self, X, y, params, w=None):
         from sklearn.linear_model import LogisticRegression
         self.m = LogisticRegression(C=params["C"], max_iter=2000)
-        self.m.fit(self._scale_fit(X), y.astype(int))
+        self.m.fit(self._scale_fit(X), y.astype(int), sample_weight=w)
 
     def _predict(self, X):
         return self.m.predict_proba(self._scale(X))[:, 1]
@@ -84,13 +85,13 @@ class Lgbm(Model):
         {"num_leaves": 4, "n_estimators": 400, "learning_rate": 0.03, "min_child_samples": 40},
     ]
 
-    def _fit(self, X, y, params):
+    def _fit(self, X, y, params, w=None):
         import lightgbm as lgb
         self.m = lgb.LGBMClassifier(subsample=0.8, subsample_freq=1, colsample_bytree=0.8, reg_lambda=1.0,
                                     random_state=self.seed, verbose=-1, n_jobs=4, **params)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.m.fit(X, y.astype(int))
+            self.m.fit(X, y.astype(int), sample_weight=w)
 
     def importance(self):
         """Total gain per feature (both orientations pooled)."""
@@ -109,7 +110,7 @@ class Mlp(_Scaled):
             {"hidden": 16, "weight_decay": 1e-3, "epochs": 200},
             {"hidden": 32, "weight_decay": 1e-2, "epochs": 400}]
 
-    def _fit(self, X, y, params):
+    def _fit(self, X, y, params, w=None):
         import torch
         torch.manual_seed(self.seed)
         torch.set_num_threads(4)
@@ -119,7 +120,8 @@ class Mlp(_Scaled):
         self.net = torch.nn.Sequential(torch.nn.Linear(X.shape[1], h), torch.nn.ReLU(), torch.nn.Dropout(0.1),
                                        torch.nn.Linear(h, 1))
         opt = torch.optim.Adam(self.net.parameters(), lr=1e-2, weight_decay=params["weight_decay"])
-        loss_fn = torch.nn.BCEWithLogitsLoss()
+        wt = torch.ones(len(y)) if w is None else torch.tensor(w / w.mean(), dtype=torch.float32)
+        loss_fn = torch.nn.BCEWithLogitsLoss(weight=wt)
         self.net.train()
         for _ in range(params["epochs"]):
             opt.zero_grad()

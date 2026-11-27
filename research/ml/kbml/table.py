@@ -25,7 +25,7 @@ from .archive import Archive, load
 from .teams import team_key
 
 SINGAPORE_STAGE_1 = 22378
-CACHE_VERSION = "kbml-table/2"
+CACHE_VERSION = "kbml-table/3"
 
 #: Evaluation scope (coordinator, 2026-11-27): tier S/A, not a qualifier, from the start of the
 #: research archive. Its first Event (BLAST Premier Groups Fall 2024) begins 2024-07-29 and is
@@ -94,9 +94,49 @@ def _hltv_links(archive: Archive):
     return links
 
 
-def build(archive_dir: Path = paths.ARCHIVE, log=print) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+def reference_stages(reference_dir: Path) -> set[int]:
+    """PandaScore tournament ids whose Match lists the reference archive holds."""
+    out = set()
+    for p in Path(reference_dir).glob("panda-*.json*"):
+        head = p.name[len("panda-"):].split("-")[0]
+        if head.isdigit():
+            out.add(int(head))
+    return out
+
+
+def separate_new_stages(archive: Archive, reference: set[int]) -> int:
+    """A Stage the reference archive lacks never changes an Event of the reference: if it shares a
+    PandaScore serie with reference Stages, it forms its own Event (id = −serie). Returns the count."""
+    ref_events = {s.event_id for s in archive.stages if s.id in reference}
+    moved = 0
+    for s in archive.stages:
+        if s.id not in reference and s.event_id in ref_events:
+            s.event_id = -s.event_id
+            for m in s.matches:
+                m.event_id = s.event_id
+            moved += 1
+    return moved
+
+
+def block_of(tier, qualifier: bool, scope: bool) -> str:
+    """Training block of a row: scope (evaluated), sa_old (tier S/A before the scope), b, c,
+    qualifier (never fitted), other (no tier)."""
+    if scope:
+        return "scope"
+    if qualifier:
+        return "qualifier"
+    if tier in ("s", "a"):
+        return "sa_old"
+    return tier if tier in ("b", "c") else "other"
+
+
+def build(archive_dir: Path = paths.ARCHIVE, log=print, reference_dir: Path | None = None
+          ) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     t0 = time.time()
     archive = load(archive_dir)
+    moved = 0
+    if reference_dir is not None and Path(reference_dir).resolve() != Path(archive_dir).resolve():
+        moved = separate_new_stages(archive, reference_stages(reference_dir))
     log(f"archive read: {archive.files} files, {len(archive.stages)} Stages, {len(archive.hltv)} HLTV records "
         f"({time.time() - t0:.0f}s)")
     standings = Standings(archive.standings)
@@ -146,6 +186,7 @@ def build(archive_dir: Path = paths.ARCHIVE, log=print) -> tuple[pd.DataFrame, p
                 "tier": e["tier"],
                 "is_qualifier": is_qualifier(s.event),
                 "in_scope": in_scope(e["tier"], is_qualifier(s.event), e["begins"]),
+                "block": block_of(e["tier"], is_qualifier(s.event), in_scope(e["tier"], is_qualifier(s.event), e["begins"])),
                 "event_begins": e["begins"],
                 "event_ended": ends[s.event_id],
                 "stage_id": s.id,
@@ -229,6 +270,8 @@ def build(archive_dir: Path = paths.ARCHIVE, log=print) -> tuple[pd.DataFrame, p
         "holdout_stages": sorted(holdout),
         "holdout_matches_dropped": len(holdout_matches),
         "unknown_files": archive.unknown[:50],
+        "reference": str(reference_dir) if reference_dir else None,
+        "stages_separated_from_reference_events": moved,
         "build_seconds": round(time.time() - t0, 1),
     }
     return matches, maps, meta
@@ -238,7 +281,8 @@ def cache_dir(archive_dir: Path = paths.ARCHIVE) -> Path:
     return paths.CACHE / Path(archive_dir).name
 
 
-def load_table(archive_dir: Path = paths.ARCHIVE, rebuild: bool = False, log=print):
+def load_table(archive_dir: Path = paths.ARCHIVE, rebuild: bool = False, log=print,
+               reference_dir: Path | None = paths.ARCHIVE):
     """(matches, maps, meta), from the parquet cache when present."""
     d = cache_dir(archive_dir)
     mf, pf, jf = d / "matches.parquet", d / "maps.parquet", d / "meta.json"
@@ -246,7 +290,7 @@ def load_table(archive_dir: Path = paths.ARCHIVE, rebuild: bool = False, log=pri
         meta = json.loads(jf.read_text())
         if meta.get("version") == CACHE_VERSION:
             return pd.read_parquet(mf), pd.read_parquet(pf), meta
-    matches, maps, meta = build(archive_dir, log=log)
+    matches, maps, meta = build(archive_dir, log=log, reference_dir=reference_dir)
     d.mkdir(parents=True, exist_ok=True)
     matches.to_parquet(mf, index=False)
     maps.to_parquet(pf, index=False)

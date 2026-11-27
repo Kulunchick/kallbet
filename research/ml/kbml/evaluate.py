@@ -53,7 +53,9 @@ def _ll(p, y):
 
 
 def walk_forward(matches: pd.DataFrame, X: pd.DataFrame, kinds: dict[str, str], model: str,
-                 train_extra: bool = True, min_train: int = 150, seed: int = 33, log=print) -> pd.DataFrame:
+                 train_extra: bool = True, min_train: int = 150, seed: int = 33, log=print,
+                 train_blocks: set[str] | None = None, block_weights: dict[str, float] | None = None
+                 ) -> pd.DataFrame:
     """Per evaluated Match: event_id, team_a_won, anchor, variant, has_market, tier, fallback."""
     cols = list(kinds)
     anti = np.array([kinds[c] == "anti" for c in cols])
@@ -64,6 +66,11 @@ def walk_forward(matches: pd.DataFrame, X: pd.DataFrame, kinds: dict[str, str], 
     trainable = ~matches["is_qualifier"].to_numpy()
     if not train_extra:
         trainable &= matches["in_scope"].to_numpy()
+    if train_blocks is not None and "block" in matches:
+        trainable &= matches["block"].isin(train_blocks).to_numpy()
+    weight_all = np.ones(len(matches))
+    if block_weights and "block" in matches:
+        weight_all = matches["block"].map(lambda b: block_weights.get(b, 1.0)).to_numpy(dtype=float)
     evaluated = (matches["in_scope"] & matches["anchor_p"].notna()).to_numpy()
     cls = MODELS[model]
     order = sorted({int(e) for e in ev_of[evaluated]}, key=lambda e: (events[e].begins, e))
@@ -81,10 +88,11 @@ def walk_forward(matches: pd.DataFrame, X: pd.DataFrame, kinds: dict[str, str], 
             variant, fallback, params = anchor, True, None
         else:
             if chosen is None or tr.sum() >= 1.25 * chosen_at:
-                chosen = select(cls, train_events, ev_of, tr, feats, y_all, anti, min_train, seed)
+                chosen = select(cls, train_events, ev_of, tr, feats, y_all, anti, min_train, seed, weight_all,
+                                matches["in_scope"].to_numpy())
                 chosen_at = tr.sum()
             params = chosen
-            m = cls(anti, seed).fit(feats[tr], y_all[tr], params)
+            m = cls(anti, seed).fit(feats[tr], y_all[tr], params, weight_all[tr])
             variant, fallback = m.predict(feats[te]), False
             if hasattr(m, "importance"):
                 imp = m.importance()
@@ -102,7 +110,7 @@ def walk_forward(matches: pd.DataFrame, X: pd.DataFrame, kinds: dict[str, str], 
     return out
 
 
-def select(cls, train_events, ev_of, tr, feats, y, anti, min_train, seed):
+def select(cls, train_events, ev_of, tr, feats, y, anti, min_train, seed, weight=None, target=None):
     """Inner walk-forward: validate on the latest ~30% of the training Events, fitting on the
     training Events that ended before the first of them began. Lowest validation log-loss wins."""
     grid = cls.grid
@@ -115,11 +123,14 @@ def select(cls, train_events, ev_of, tr, feats, y, anti, min_train, seed):
     inner = [e for e in evs if e.ended is not None and e.ended < first and e not in val_events]
     itr = tr & np.isin(ev_of, [e.id for e in inner])
     iva = tr & np.isin(ev_of, [e.id for e in val_events])
+    if target is not None and (iva & target).sum() >= 50:
+        iva &= target  # validate on the kind of Match that is evaluated (in scope), when enough
     if itr.sum() < min_train or iva.sum() < 50:
         return grid[0]
     scores = []
     for params in grid:
-        m = cls(anti, seed).fit(feats[itr], y[itr], params)
+        w = None if weight is None else weight[itr]
+        m = cls(anti, seed).fit(feats[itr], y[itr], params, w)
         scores.append(_ll(m.predict(feats[iva]), y[iva].astype(bool)))
     return grid[int(np.argmin(scores))]
 

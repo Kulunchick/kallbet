@@ -33,6 +33,10 @@ SETS = {
              "stakes"],
 }
 SETS["full"] = SETS["baseline"] + SETS["hltv"]
+# phase 3 grid (ext archive): every set carries the tier indicators
+SETS["p3_baseline"] = SETS["baseline"] + ["tier"]
+SETS["p3_rw"] = SETS["baseline"] + ["hltv_rank_weekly", "tier"]
+SETS["p3_all"] = SETS["full"] + ["hltv_rank_weekly", "tier"]
 
 
 def register(cls):

@@ -557,3 +557,44 @@ class MapModel(MapPool):
         pbar = float(np.clip((p * q).sum(), 1e-4, 1 - 1e-4))
         return {"mm_series_logit": logit(series_probability(pbar, m["format"])), "mm_map_logit": logit(pbar),
                 "mm_trained": math.log1p(self.n)}
+
+
+# ------------------------------------------------------------------ weekly HLTV world ranking (ext archive)
+
+@register
+class HltvRankWeekly(Group):
+    """Both teams on the latest weekly HLTV world ranking page known strictly before the cutoff
+    (`hltv_data.weekly_columns`): log rank ratio, rank and points gaps, and an unranked flag. An
+    unranked team gets rank = page size + 1 and 0 points. No page (other archives): all 0."""
+    name = "hltv_rank_weekly"
+    columns = {"rw_log_ratio": "anti", "rw_rank_diff": "anti", "rw_points_log_ratio": "anti",
+               "rw_unranked_diff": "anti", "rw_has_page": "sym"}
+
+    def features(self, m):
+        size = m["rw_size"]
+        if size is None or (isinstance(size, float) and math.isnan(size)):
+            return {c: 0.0 for c in self.columns}
+        size = int(size)
+        ra, rb = _rank(m["rw_rank_a"]), _rank(m["rw_rank_b"])
+        pa, pb = _s(m["rw_points_a"]), _s(m["rw_points_b"])
+        a, b = (ra if ra is not None else size + 1), (rb if rb is not None else size + 1)
+        return {"rw_log_ratio": math.log(b) - math.log(a), "rw_rank_diff": (min(b, 150) - min(a, 150)) / 10.0,
+                "rw_points_log_ratio": math.log1p(pa) - math.log1p(pb),
+                "rw_unranked_diff": float(rb is None) - float(ra is None), "rw_has_page": 1.0}
+
+
+@register
+class Tier(Group):
+    """The Event's tier, for training on lower tiers: one-hot (symmetric) and its interaction with
+    the anchor's logit and the series Elo logit (antisymmetric), so a model can weigh a lower-tier
+    Match's strength signals differently. Evaluated Matches are all tier S or A."""
+    name = "tier"
+    columns = {"tier_s": "sym", "tier_a": "sym", "tier_b": "sym", "tier_c": "sym",
+               "tier_bc_x_anchor": "anti", "tier_c_x_anchor": "anti"}
+
+    def features(self, m):
+        t = m["tier"]
+        la = _logit_anchor(m)
+        low = t in ("b", "c")
+        return {"tier_s": float(t == "s"), "tier_a": float(t == "a"), "tier_b": float(t == "b"),
+                "tier_c": float(t == "c"), "tier_bc_x_anchor": float(low) * la, "tier_c_x_anchor": float(t == "c") * la}

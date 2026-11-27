@@ -174,6 +174,21 @@ def kalshi_start(event_ticker: str) -> int | None:
 PINNACLE, FREE_PINNACLE, WINNER, PARTICIPANTS = "pinnacle", "pinnacle+30", "171", ("171", "172")
 
 
+def _pair(keys) -> frozenset | None:
+    return frozenset(keys) if len(keys) == 2 else None
+
+
+def _index(items, keys_of):
+    """Items grouped by their unordered team-key pair, original order kept: a Match only ever
+    matches a listing of its own two teams, so scanning the group is the same as scanning all."""
+    out: dict = {}
+    for item in items:
+        k = _pair(keys_of(item))
+        if k is not None:
+            out.setdefault(k, []).append(item)
+    return out
+
+
 class Markets:
     def __init__(self, archive: Archive):
         self.lists = archive.fixture_lists
@@ -208,6 +223,12 @@ class Markets:
                 except ValueError:
                     start = None
             self._poly_lines.append((event, [team_key(o) for o in outcomes], start))
+        self._poly_index = _index(self._poly_lines, lambda x: x[1])
+        self._kalshi_index = _index(self.kalshi_events, lambda x: x[2])
+        self._fixture_index = [
+            _index(fx, lambda f: [team_key(f.get("participant1Name") or ""), team_key(f.get("participant2Name") or "")]
+                   if isinstance(f.get("participant1Name"), str) and isinstance(f.get("participant2Name"), str) else [])
+            for fx in self.lists]
 
     # OddsPapi -----------------------------------------------------------
     def _settled(self, fixtures, m: ReplayMatch):
@@ -242,8 +263,9 @@ class Markets:
         return nearest
 
     def oddspapi(self, m: ReplayMatch, cutoff: int) -> Quote | None:
-        for fixtures in self.lists:
-            settled = self._settled(fixtures, m)
+        pair = frozenset((team_key(m.team_a.name), team_key(m.team_b.name)))
+        for index in self._fixture_index:
+            settled = self._settled(index.get(pair, []), m)
             if settled is None:
                 continue
             fid, side, hard_lock = settled
@@ -280,7 +302,8 @@ class Markets:
 
     # Polymarket ---------------------------------------------------------
     def polymarket_quote(self, m: ReplayMatch, cutoff: int) -> Quote | None:
-        for event, outcomes, start in self._poly_lines:
+        pair = frozenset((team_key(m.team_a.name), team_key(m.team_b.name)))
+        for event, outcomes, start in self._poly_index.get(pair, []):
             side = _same_match(m, outcomes, start)
             if side is None:
                 continue
@@ -302,7 +325,8 @@ class Markets:
 
     # Kalshi -------------------------------------------------------------
     def kalshi(self, m: ReplayMatch, cutoff: int) -> Quote | None:
-        for event, markets, keys, start in self.kalshi_events:
+        pair = frozenset((team_key(m.team_a.name), team_key(m.team_b.name)))
+        for event, markets, keys, start in self._kalshi_index.get(pair, []):
             if len(markets) != 2:
                 continue
             side = _same_match(m, keys, start)

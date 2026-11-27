@@ -17,7 +17,7 @@ from .table import cache_dir, load_table
 def with_hltv(matches, archive, rebuild=False):
     """The Match table with the HLTV rank columns, and (pre, records) for the HLTV groups."""
     from . import hltv_data
-    m, pre, records, _ = hltv_data.load(matches, cache_dir(archive), rebuild=rebuild)
+    m, pre, records, _ = hltv_data.load(matches, cache_dir(archive), rebuild=rebuild, archive_dir=archive)
     return m, (pre, records)
 
 

@@ -191,3 +191,31 @@ def _post(doc) -> dict:
                     sides.setdefault(pid, {})[kind[:-5]] = {
                         k: (_num(_text(v[0])) if v else None) for k, v in cells.items()}
     return {"halves": halves, "sides": sides}
+
+
+# ------------------------------------------------------------------ weekly world ranking
+
+def parse_ranking(text: str) -> dict:
+    """An HLTV world ranking page (`hltv/ranking/hltv-ranking-<date>.html.gz`), as the Rust
+    `hltv_research::ranking::parse_ranking`: the date from the canonical link, and per ranked team
+    rank, HLTV team id, name and points."""
+    doc = html.fromstring(text)
+    canon = doc.cssselect("link[rel=canonical]")
+    href = canon[0].get("href") if canon else ""
+    parts = href.split("/ranking/teams/")[1].split("/") if "/ranking/teams/" in href else []
+    if len(parts) < 3 or parts[1] not in MONTHS:
+        raise ValueError("canonical is not a dated ranking page")
+    date = f"{int(parts[0]):04d}-{MONTHS[parts[1]]:02d}-{int(parts[2]):02d}"
+    teams = []
+    for t in doc.cssselect(".ranked-team"):
+        pos = t.cssselect(".ranking-header .position")
+        name = t.cssselect(".teamLine .name")
+        pts = t.cssselect(".teamLine .points")
+        link = [a for a in t.cssselect(".more a.moreLink") if (a.get("href") or "").startswith("/team/")]
+        if not (pos and name and pts and link):
+            raise ValueError("incomplete ranked team")
+        teams.append({"rank": int(_text(pos[0]).lstrip("#")), "team_id": _id(link[0].get("href")),
+                      "name": _text(name[0]), "points": int(_text(pts[0]).lstrip("(").split()[0].replace(",", ""))})
+    if not teams:
+        raise ValueError("no ranked teams")
+    return {"date": date, "teams": teams}

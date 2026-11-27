@@ -27,6 +27,7 @@ PRE_MATCH = [
     "round", "team_a_id", "team_a", "team_a_key", "team_b_id", "team_b", "team_b_key", "format",
     "scheduled_start", "cutoff", "market_p", "market_source", "vrs_map_p", "vrs_series_p",
     "vrs_points_a", "vrs_points_b", "anchor_p", "hltv_is_lan",
+    "rw_rank_a", "rw_rank_b", "rw_points_a", "rw_points_b", "rw_size", "rw_known", "block",
     "hltv_rank_a", "hltv_rank_b", "hltv_rank28_a", "hltv_rank28_b", "hltv_rank84_a", "hltv_rank84_b",
     # the pre-match part of the Match's own HLTV page (hltv_data.build), oriented to team A
     "hltv_pre",

@@ -163,3 +163,29 @@ Share of total split gain, averaged over the walk-forward fits (weighted by the 
 | `ct_rate_diff` | 0.8% |
 | `mp_series_logit` | 0.8% |
 | `map_elo_diff` | 0.7% |
+
+# Phase 3: the extended archive as training-only rows
+
+<!-- phase 3: kbml.report keeps everything from here on -->
+
+## Primary configuration (declared before its evaluation)
+
+Written and committed before any model was evaluated on the extended archive. The phase 2 results
+above (on the snapshot) had been seen.
+
+- **Archive:** `D:/Projects/KallBet/target/research-archive-ext`. Its scored set is exactly the
+  snapshot's 2087 in-scope anchor Matches (`kbml.parity --archive …` gives the same counts,
+  log-loss and accuracy; `tests/test_ext.py` checks ids and values). Every new row (tier S/A
+  2023-09 to 2024-07, tier B, tier C, qualifiers) is outside the scope: it is used for training (not
+  qualifiers) and for every history, always walk-forward.
+- **Model:** `logreg` (C by inner walk-forward on training Events, validated on in-scope Matches).
+- **Features:** `p3_rw` = phase 1 `baseline` + `hltv_rank_weekly` (latest weekly HLTV world ranking
+  known strictly before the cutoff: log rank ratio, rank and points gaps, unranked flag) + `tier`
+  (tier one-hot and its interaction with the anchor's logit).
+- **Training rows:** in-scope + S/A 2023-24 + tier B + tier C, unweighted.
+- **Question and rule:** as in phase 2: the accuracy difference model − anchor on the 2087
+  Matches; "picks more winners" only if its 90% Event-bootstrap interval (2000 resamples, seed 33)
+  lies wholly above zero.
+
+Everything else (the grid of models × feature sets × training rows, the tier C down-weighting,
+log-loss) is exploratory.
