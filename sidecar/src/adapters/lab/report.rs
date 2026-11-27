@@ -318,9 +318,9 @@ No Event of the training side is excluded.");
                 "
 ### With qualifiers (secondary view)
 
-The same Candidate Signals with the                  qualifiers scored and fitted on too, so an effect that lives only on                  lesser-known teams stays visible. The primary verdicts are the ones above:                  qualifiers never appear in KallBet Leagues.
+The same Candidate Signals with the qualifiers scored and fitted on too, so an effect that lives only on lesser-known teams stays visible. The primary verdicts are the ones above: qualifiers never appear in KallBet Leagues.
 
-| Candidate Signal | Verdict                  (primary) | Paired | Verdict (with qualifiers) | Paired | Δ log-loss | {level}% interval |
+| Candidate Signal | Verdict (primary) | Paired | Verdict (with qualifiers) | Paired | Δ log-loss | {level}% interval |
 |---|---|---|---|---|---|---|"
             );
             for c in &q.with_qualifiers {
@@ -355,7 +355,7 @@ The same Candidate Signals with the                  qualifiers scored and fitte
             .collect();
         let _ = writeln!(
             md,
-            "The slice was chosen after results were seen, so it is a secondary view: the              verdict that counts for promotion is the full-archive one above, and the Holdout              is unchanged. Main columns evaluate tiers `{}`; fits may use Events of tiers `{}`;              the slice evaluates `{}`, fitted walk-forward as before. Scored Matches: {}.",
+            "The slice was chosen after results were seen, so it is a secondary view: the verdict that counts for promotion is the full-archive one above, and the Holdout is unchanged. Main columns evaluate tiers `{}`; fits may use Events of tiers `{}`; the slice evaluates `{}`, fitted walk-forward as before. Scored Matches: {}.",
             v.evaluated,
             v.train,
             v.slice,
@@ -372,7 +372,7 @@ Events with no archived tier (never in a tier slice): {}.",
         let _ = writeln!(
             md,
             "
-| Candidate Signal | Verdict (full) | Paired (full) | Verdict (`{}`) | Paired |              Events | Δ log-loss | {level}% interval |",
+| Candidate Signal | Verdict (full) | Paired (full) | Verdict (`{}`) | Paired | Events | Δ log-loss | {level}% interval |",
             v.slice
         );
         let _ = writeln!(md, "|---|---|---|---|---|---|---|---|");
