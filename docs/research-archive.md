@@ -35,3 +35,18 @@ The replay links played maps by Stage and normalized team pair, checks the serie
 ## Bo1 vetoes from the saved HLTV archive
 
 Place the approved collector's parsed `hltv-match-<id>.json` records at the research archive root or in its `hltv/` or `hltv/matches/` directory. The Lab links each complete Bo1 veto to a finished PandaScore Match by team pair, start time (within ±6 hours) and result. It uses the latest prior completed veto for the pool and ban order, and each team's earlier bans to weight the remaining maps on its turn. The simulation averages the two assignments of teams to veto order, then combines historical map results with the Valve probability and the existing market blend. Coverage requires at least one of the teams to have an earlier linked veto. The Lab run itself uses local files.
+
+## Extending the archive for training data (research-archive-ext)
+
+Copy the archive, then widen the Event window without changing the defaults. Tier, window and source steps are options of `collect_research.py`; only the PandaScore pace needs care (the free token answered 429 at about 200 requests/hour, so use `--panda-interval 20`).
+
+```sh
+A=target/research-archive-ext
+python sidecar/scripts/collect_research.py --archive $A --tiers s,a --from 2023-09-27 --until 2024-07-31 --sources panda --panda-cap 1500 --panda-interval 20
+python sidecar/scripts/collect_research.py --archive $A --tiers b,c --from 2024-08-01 --until 2026-11-25 --sources panda --panda-cap 1500 --panda-interval 20
+python sidecar/scripts/collect_liquipedia_maps.py --archive $A --resolve --max-calls 1500 --titles $A/hltv/extra-titles.json
+kallbet-ai hltv-collect --archive $A --out $A/hltv --concurrency 4 --min-interval-secs 3 --ios-version 17.2.1 --daily-budget 17000
+kallbet-ai hltv-collect --ranking-from 2023-09-25 --ranking-until 2026-11-23 --out $A/hltv --min-interval-secs 6 --ios-version 17.2.1
+```
+
+`--catalog-only` fetches only the dated tournament catalogs (to count Events and Matches before collecting). `--resolve` searches Liquipedia for the title of a series without a curated one and accepts only an exact word match (`IEM` is expanded). `hltv-collect --ranking-*` fetches HLTV's weekly `/ranking/teams/<year>/<month>/<day>` pages (one connection, at least 6 s apart, own `ranking/sources.tsv`, `stop.json` after a challenge); `ranking::parse_ranking` reads them. Remote HLTV match pages need at least 3 s per connection. Build with `--features hltv-impersonate`.
