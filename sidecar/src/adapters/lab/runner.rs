@@ -3,7 +3,7 @@
 //! Event, walk-forward, against the anchor.
 use super::holdout::{Freeze, Holdout};
 use super::report::{
-    CandidateReport, DirectComparison, EventInfo, EventRow, LabReport, MarketSubset, Metrics,
+    CandidateReport, DirectComparison, EventInfo, EventRow, LabReport, MarketSubset, Metrics, SubsetReport,
     TierView,
 };
 use super::selection::{self, Member};
@@ -632,6 +632,8 @@ impl Lab {
         // (event, a won, baseline, variant, has market) of every paired Match.
         let mut paired: Vec<(i64, bool, f64, f64, bool)> = Vec::new();
         // (event, a won, valve series, unblended rating) for direct comparison with Valve.
+        // Whether each paired Match is in the Candidate Signal's own subset, in `paired` order.
+        let mut in_subset: Vec<bool> = Vec::new();
         let mut vs_valve_paired: Vec<(i64, bool, f64, f64)> = Vec::new();
         let mut vs_valve_per_event = Vec::new();
         let mut per_event = Vec::new();
@@ -694,6 +696,10 @@ impl Lab {
                     both += 1;
                     diff += stats::log_loss(v, m.team_a_won) - stats::log_loss(b, m.team_a_won);
                     paired.push((event.info.id, m.team_a_won, b, v, m.view.market.is_some()));
+                    in_subset.push(match &fitted {
+                        Some(f) => f.in_subset(&m.view)?,
+                        None => false,
+                    });
                 }
                 rows.push(LabPrediction {
                     signal: signal.name().into(),
@@ -793,6 +799,7 @@ impl Lab {
             std_error: None,
             detectable: None,
             market: None,
+            subset: None,
             vs_valve,
             per_event,
         };
@@ -855,6 +862,19 @@ impl Lab {
         report.market = (!market.is_empty()).then(|| MarketSubset {
             matches: market.len(),
             log_loss_difference: market.iter().sum::<f64>() / market.len() as f64,
+        });
+        report.subset = signal.subset_label().map(|label| {
+            let inside: Vec<_> = paired.iter().zip(&in_subset).filter(|(_, s)| **s).collect();
+            let acc = |p: fn(&(i64, bool, f64, f64, bool)) -> f64| {
+                let hits = inside.iter().filter(|(r, _)| stats::correct(p(r), r.1)).count();
+                if inside.is_empty() { 0.0 } else { hits as f64 / inside.len() as f64 }
+            };
+            SubsetReport {
+                label: label.into(),
+                matches: inside.len(),
+                anchor_accuracy: acc(|r| r.2),
+                variant_accuracy: acc(|r| r.3),
+            }
         });
         let (verdict, reason) = stats::verdict(
             report.paired,
