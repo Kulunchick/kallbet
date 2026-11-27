@@ -191,8 +191,14 @@ def words(text):
 
 def pick_title(label, hits):
     """The one search hit whose words are exactly the Event label's words, else None."""
-    exact = [h["title"] for h in hits if words(h["title"]) == words(label)]
-    return exact[0] if len(exact) == 1 else None
+    spelled = label.replace("IEM", "Intel Extreme Masters")
+    yearless = [w for w in words(spelled) if not re.fullmatch(r"20\d\d", w)]
+    for wanted, only_yearless_titles in ((words(spelled), False), (sorted(yearless), True)):
+        exact = [h["title"] for h in hits if words(h["title"]) == wanted and
+                 not (only_yearless_titles and re.search(r"20\d\d", h["title"]))]
+        if len(exact) == 1:
+            return exact[0]
+    return None
 
 
 def resolve_titles(series, known, lp_dir, tsv_path, limiter, max_calls):

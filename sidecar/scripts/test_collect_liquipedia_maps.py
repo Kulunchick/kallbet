@@ -15,6 +15,14 @@ class TitleResolutionTest(unittest.TestCase):
         twin = hits[:1] * 2
         self.assertIsNone(maps.pick_title("BLAST Premier Fall Groups 2024", twin))
 
+    def test_pick_title_expands_iem_and_accepts_yearless_season_titles(self):
+        self.assertEqual(maps.pick_title("IEM Sydney 2023", [{"title": "Intel Extreme Masters/2023/Sydney"}]),
+                         "Intel Extreme Masters/2023/Sydney")
+        self.assertEqual(maps.pick_title("ESL Pro League Season 18 2023", [{"title": "ESL/Pro League/Season 18"}]),
+                         "ESL/Pro League/Season 18")
+        self.assertIsNone(maps.pick_title("BLAST Premier Fall 2023", [{"title": "BLAST/Premier/2024/Fall"}]))
+        self.assertIsNone(maps.pick_title("IEM Sydney 2023", [{"title": "Intel Extreme Masters/2024/Sydney"}]))
+
     def test_resolve_titles_searches_once_and_caches(self):
         calls = []
 
