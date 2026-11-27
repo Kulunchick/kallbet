@@ -37,11 +37,15 @@ REQUEST_COLUMNS = ["team_a_key", "team_b_key", "format", "cutoff", "hltv_is_lan"
 
 
 class PairwiseForecaster:
-    def __init__(self, archive: Path = EXT, log=print):
+    def __init__(self, archive: Path | None = EXT, log=print, frames=None):
+        """`frames=(history, maps, (pre, records), rankings)` instead of an archive (tests)."""
         self.log = log
-        m, self.maps, _ = load_table(archive, log=log)
-        self.history, self.hltv = with_hltv(m, archive)
-        self.rankings = hltv_data.weekly_rankings(archive)
+        if frames is not None:
+            self.history, self.maps, self.hltv, self.rankings = frames
+        else:
+            m, self.maps, _ = load_table(archive, log=log)
+            self.history, self.hltv = with_hltv(m, archive)
+            self.rankings = hltv_data.weekly_rankings(archive)
         self.events = evaluate.event_infos(self.history)
 
     def predict(self, requests: pd.DataFrame, configs=CONFIGS) -> dict[str, np.ndarray]:
