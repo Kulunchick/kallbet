@@ -526,7 +526,7 @@ async fn cli_command_collects_from_local_stand_in_and_guards_remote_hltv_without
     assert_eq!(state.hits.load(Ordering::SeqCst), 1);
     assert!(dir.path().join("matches/hltv-match-2394774.json").exists());
 
-    // Remote HLTV enforces >= 4 s interval per connection and accepts --concurrency.
+    // Remote HLTV enforces >= 3 s interval per connection and accepts --concurrency.
     let too_fast = cli::parse(&[
         "--match-id".into(),
         "2394774".into(),
@@ -535,10 +535,21 @@ async fn cli_command_collects_from_local_stand_in_and_guards_remote_hltv_without
         "--out".into(),
         out.clone(),
         "--min-interval-secs".into(),
-        "3".into(),
+        "2".into(),
     ])
-    .expect_err("remote HLTV requires >= 4 s interval");
-    assert!(too_fast.to_string().contains("at least 4"), "{too_fast}");
+    .expect_err("remote HLTV requires >= 3 s interval");
+    assert!(too_fast.to_string().contains("at least 3"), "{too_fast}");
+    assert!(
+        cli::parse(&[
+            "--archive".into(),
+            out.clone(),
+            "--min-interval-secs".into(),
+            "3".into(),
+            "--concurrency".into(),
+            "4".into(),
+        ])
+        .is_ok()
+    );
 
     let zero_conc = cli::parse(&[
         "--archive".into(),

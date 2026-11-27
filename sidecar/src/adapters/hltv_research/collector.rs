@@ -4,7 +4,7 @@
 //! - `/matches/*` paths only (explicitly refuses `/stats/*` or any other path).
 //! - On-disk raw cache (`matches/hltv-match-<id>.html.gz`) written before parsing
 //!   so nothing is ever fetched twice.
-//! - Minimum rate-limit interval per connection (default 9 s; >= 4 s for remote HLTV),
+//! - Minimum rate-limit interval per connection (default 9 s; >= 3 s for remote HLTV),
 //!   with optional async `--concurrency N` (default 1, aggregate rate = N / interval).
 //! - Daily UTC request budget (default 400), persisted in `manifest.json` and charged
 //!   per actual HTTP request (including redirect hops).
@@ -36,7 +36,7 @@ pub const DEFAULT_DAILY_BUDGET: u32 = 400;
 /// Default spacing between HLTV requests per connection.
 pub const DEFAULT_MIN_INTERVAL_SECS: u64 = 9;
 /// Minimum allowed per-connection spacing for non-loopback HLTV requests.
-pub const REMOTE_MIN_INTERVAL_SECS: u64 = 4;
+pub const REMOTE_MIN_INTERVAL_SECS: u64 = 3;
 /// Default number of concurrent worker connections.
 pub const DEFAULT_CONCURRENCY: usize = 1;
 
