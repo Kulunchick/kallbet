@@ -12,3 +12,4 @@ pub mod impersonate;
 pub mod liquipedia_maps;
 pub mod parse;
 pub mod rank_badges;
+pub mod ranking;
