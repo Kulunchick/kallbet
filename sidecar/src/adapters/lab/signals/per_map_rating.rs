@@ -106,40 +106,50 @@ pub fn map_series_probability(pool: &[f64], format: Format) -> Option<f64> {
     )
 }
 
+/// Team A's per-map Elo rating of `view` (mean map probability and series
+/// probability), dated by the latest played map it read; `None` when either
+/// team has no played map or the pool is smaller than the series.
+pub fn map_signal(view: &MatchView) -> Result<Option<(Signal, crate::Instant)>> {
+    let mut ratings = BTreeMap::<&str, BTreeMap<&str, f64>>::new();
+    let mut observed = None;
+    for entry in view.map_history.at(view.cutoff) {
+        let (game, finished_at) = entry?;
+        observed = Some(finished_at);
+        update_elo(&mut ratings, &game.team_a, &game.team_b, &game.results);
+    }
+    let Some(observed) = observed else {
+        return Ok(None);
+    };
+    let key_a = team_key(&view.game.team_a.name);
+    let key_b = team_key(&view.game.team_b.name);
+    let mut seen_a = false;
+    let mut seen_b = false;
+    let mut pool = Vec::new();
+    for teams in ratings.values() {
+        let a = teams.get(key_a.as_str());
+        let b = teams.get(key_b.as_str());
+        seen_a |= a.is_some();
+        seen_b |= b.is_some();
+        if a.is_some() || b.is_some() {
+            pool.push(elo_expected(*a.unwrap_or(&0.0), *b.unwrap_or(&0.0)));
+        }
+    }
+    if !seen_a || !seen_b {
+        return Ok(None);
+    }
+    let Some(series) = map_series_probability(&pool, view.game.format) else {
+        return Ok(None);
+    };
+    let map = pool.iter().sum::<f64>() / pool.len() as f64;
+    Ok(Some((Signal { map, series }, observed)))
+}
+
 impl FittedSignal for PerMapRating {
     fn predict(&self, view: &MatchView) -> Result<Option<AsOf<f64>>> {
-        let mut ratings = BTreeMap::<&str, BTreeMap<&str, f64>>::new();
-        let mut observed = None;
-        for entry in view.map_history.at(view.cutoff) {
-            let (game, finished_at) = entry?;
-            observed = Some(finished_at);
-            update_elo(&mut ratings, &game.team_a, &game.team_b, &game.results);
-        }
-        let Some(observed) = observed else {
+        let Some((signal, observed)) = map_signal(view)? else {
             return Ok(None);
         };
-        let key_a = team_key(&view.game.team_a.name);
-        let key_b = team_key(&view.game.team_b.name);
-        let mut seen_a = false;
-        let mut seen_b = false;
-        let mut pool = Vec::new();
-        for teams in ratings.values() {
-            let a = teams.get(key_a.as_str());
-            let b = teams.get(key_b.as_str());
-            seen_a |= a.is_some();
-            seen_b |= b.is_some();
-            if a.is_some() || b.is_some() {
-                pool.push(elo_expected(*a.unwrap_or(&0.0), *b.unwrap_or(&0.0)));
-            }
-        }
-        if !seen_a || !seen_b {
-            return Ok(None);
-        }
-        let Some(series) = map_series_probability(&pool, view.game.format) else {
-            return Ok(None);
-        };
-        let map = pool.iter().sum::<f64>() / pool.len() as f64;
-        let Some(p) = view.anchor_with(Some(Signal { map, series }))? else {
+        let Some(p) = view.anchor_with(Some(signal))? else {
             return Ok(None);
         };
         let observed = view
