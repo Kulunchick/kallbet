@@ -96,11 +96,17 @@ def markdown(res: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+P3 = "# Phase 3:"
+
+
 def write_report(res: dict, conclusion: str | None = None):
+    """Rewrites the phase 2 generated part only (between its marker and the phase 3 heading)."""
     text = REPORT.read_text(encoding="utf-8")
     head = text.split(MARK)[0].rstrip() + "\n\n"
+    tail = text[text.index(P3):] if P3 in text else ""
     body = markdown(res)
-    REPORT.write_text(head + body + (("\n" + conclusion) if conclusion else ""), encoding="utf-8")
+    REPORT.write_text(head + body + (("\n" + conclusion) if conclusion else "") + ("\n" + tail if tail else ""),
+                      encoding="utf-8")
 
 
 def main(argv=None):

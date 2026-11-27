@@ -91,6 +91,19 @@ Groups: `rank`, `opp_form`, `past_form`, `hltv_h2h`, `players`, `map_pool` (pre-
 edge from earlier vetoes), `sides`, `standin`, `roster`, `stakes` (format × stage × anchor). Sets:
 `hltv`, `full` (= `baseline` + `hltv`).
 
+## Extended archive (phase 3: `kbml.report3`)
+
+`--archive D:/Projects/KallBet/target/research-archive-ext` (or `kbml.report3`, which defaults to
+it). The table is built against the snapshot as reference (`load_table(..., reference_dir=)`): a
+Stage the snapshot lacks that shares a PandaScore serie with snapshot Stages becomes its own Event
+(id −serie), so no original Event changes tier, start or end, and the scored set stays exactly the
+snapshot's 2087 anchor Matches (`kbml.parity --archive <ext>`, `tests/test_ext.py`). Column `block`
+(`scope`, `sa_old`, `b`, `c`, `qualifier`, `other`) selects training rows (`walk_forward(...,
+train_blocks=, block_weights=)`); qualifiers never train. Weekly HLTV ranking pages
+(`hltv/ranking/`) give `rw_*` columns: the latest page known (end of its UTC day) strictly before the
+cutoff, ≤ 35 days old; group `hltv_rank_weekly`. Group `tier` gives tier indicators. Sets
+`p3_baseline`, `p3_rw`, `p3_all`.
+
 ## Models and evaluation (`kbml/models.py`, `kbml/evaluate.py`)
 
 `logreg`, `lgbm`, `mlp` (torch) share `fit/predict`; each trains on both team orientations and
