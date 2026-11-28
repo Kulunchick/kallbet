@@ -21,6 +21,8 @@ uv run pytest -q                # leak tests, HLTV point-in-time checks, walk-fo
 uv run python -m kbml.report    # phase 2: primary config, all models, ablation → REPORT.md (~20 min)
 uv run python -m kbml.pickem_check --runs 200000 --jobs 3   # 28-stage Swiss Pick'em replay → PICKEM.md
 uv run python -m kbml.pickem_forecast --device numpy        # Singapore Stage 2 forecast → forecasts/ (CPU)
+uv run python -m kbml.veto_eval --device cpu            # W6: veto prediction pass + exact integration → cache veto/veto_results.pkl (~1.5 min with --device cuda in the GPU env; CPU not timed)
+uv run python -m kbml.veto_report                       # tables of VETO.md (everything after its marker)
 ```
 
 GPU (optional): the `gpu` dependency group swaps in the CUDA 13.2 build of the same torch. Keep it in
