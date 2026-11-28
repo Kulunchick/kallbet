@@ -155,12 +155,22 @@ def build(archive_dir: Path = paths.ARCHIVE, log=print, reference_dir: Path | No
         if e["tier"] is None:
             e["tier"] = s.tier
 
-    hltv_links = _hltv_links(archive)
     hltv_by_match: dict[int, dict] = {}
-    for rec in archive.hltv:
-        mid = hltv_links.get(rec["match_id"])
-        if mid is not None and mid not in holdout_matches:
-            hltv_by_match.setdefault(mid, rec)
+    if paths.LINKS:
+        # explicit Match -> page list (one page per Match, one Match per page)
+        links = pd.read_csv(paths.LINKS, sep="	", usecols=["panda_id", "hltv_match_id"])
+        by_id = {rec["match_id"]: rec for rec in archive.hltv}
+        for pid, hid in zip(links["panda_id"], links["hltv_match_id"]):
+            rec = by_id.get(int(hid))
+            if rec is not None and int(pid) not in holdout_matches:
+                hltv_by_match.setdefault(int(pid), rec)
+        log(f"links file {paths.LINKS}: {len(hltv_by_match)} of {len(links)} links have a parsed page")
+    else:
+        hltv_links = _hltv_links(archive)
+        for rec in archive.hltv:
+            mid = hltv_links.get(rec["match_id"])
+            if mid is not None and mid not in holdout_matches:
+                hltv_by_match.setdefault(mid, rec)
 
     rows = []
     seen = set()
@@ -271,6 +281,7 @@ def build(archive_dir: Path = paths.ARCHIVE, log=print, reference_dir: Path | No
         "holdout_matches_dropped": len(holdout_matches),
         "unknown_files": archive.unknown[:50],
         "reference": str(reference_dir) if reference_dir else None,
+        "links": paths.LINKS,
         "stages_separated_from_reference_events": moved,
         "build_seconds": round(time.time() - t0, 1),
     }
@@ -288,7 +299,7 @@ def load_table(archive_dir: Path = paths.ARCHIVE, rebuild: bool = False, log=pri
     mf, pf, jf = d / "matches.parquet", d / "maps.parquet", d / "meta.json"
     if not rebuild and mf.exists() and jf.exists():
         meta = json.loads(jf.read_text())
-        if meta.get("version") == CACHE_VERSION:
+        if meta.get("version") == CACHE_VERSION and meta.get("links") == paths.LINKS:
             return pd.read_parquet(mf), pd.read_parquet(pf), meta
     matches, maps, meta = build(archive_dir, log=log, reference_dir=reference_dir)
     d.mkdir(parents=True, exist_ok=True)

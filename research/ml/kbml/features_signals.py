@@ -437,3 +437,127 @@ class Travel(Group):
         return {"tz_crossed_diff": a["cross"] - b["cross"], "east_diff": a["east"] - b["east"],
                 "jet_recent_diff": a["jet"] - b["jet"], "days_other_region_diff": a["other"] - b["other"],
                 "home_diff": a["home"] - b["home"], "travel_has": 1.0}
+
+
+# ------------------------------------------------------------------ F: rolling player history (W5 table)
+
+PH_STATS = ("rating", "swing", "ekd", "eadr", "ekast")
+PH_SCALE = {"rating": 10.0, "swing": 1.0, "ekd": 10.0, "eadr": 0.1, "ekast": 0.1}
+RATING3_FROM = "2023-10-16"
+
+
+def load_player_maps(path) -> dict[int, list]:
+    """W5's `hltv_player_match_stats.parquet` → {HLTV match id: [(map scope, team_id, player_id,
+    rating3, swing, eK-eD per round, eADR, eKAST)]}: per-map rows of both sides together (`side ==
+    all`, scope ≠ `all`). Rating 3.0, Swing and the eco-adjusted columns only from Rating 3.0 pages
+    (Matches from 2023-10-16; earlier pages are Rating 2.0 and stay NaN). A Match's rows reach a
+    group only when its HLTV record is released (its linked Match finished before the cutoff)."""
+    import pandas as pd
+    d = pd.read_parquet(path, columns=["match_id", "started_at", "scope", "side", "team_id", "player_id",
+                                       "rating_version", "map_rounds", "rating3", "swing_pct", "ekills",
+                                       "edeaths", "eadr", "ekast_pct"])
+    d = d[(d["side"] == "all") & (d["scope"] != "all")]
+    v3 = (d["rating_version"] == "3.0") & (d["started_at"].str[:10] >= RATING3_FROM)
+    rounds = d["map_rounds"].where(d["map_rounds"] > 0).astype(float)
+    ekd = (d["ekills"].astype(float) - d["edeaths"].astype(float)) / rounds
+    cols = {"rating": d["rating3"], "swing": d["swing_pct"], "ekd": ekd, "eadr": d["eadr"], "ekast": d["ekast_pct"]}
+    vals = np.column_stack([np.where(v3, pd.to_numeric(c, errors="coerce").to_numpy(float), np.nan) for c in cols.values()])
+    out: dict[int, list] = defaultdict(list)
+    for mid, scope, tid, pid, row in zip(d["match_id"].to_numpy(), d["scope"].to_numpy(), d["team_id"].to_numpy(),
+                                         d["player_id"].to_numpy(), vals):
+        out[int(mid)].append((scope, int(tid), int(pid), row))
+    return dict(out)
+
+
+@register
+class PlayerHist(Group):
+    """Set `PlayerHist.maps = load_player_maps(...)` before computing. Per player the last `N` maps,
+    shrunk to the team's recent mean with `K` pseudo-maps; per lineup (own page's five, else the
+    team's last five) the mean and the max of each stat; core-five continuity (maps the five played
+    together for this team); coverage (share of the five with ≥ 5 rated maps)."""
+    name = "player_hist"
+    columns = {**{f"ph_{s}_{a}_diff": "anti" for s in PH_STATS for a in ("mean", "max")},
+               "ph_core_diff": "anti", "ph_cover_min": "sym", "ph_has": "sym"}
+    maps: dict = {}
+    N, K, TEAM_N = 20, 5.0, 100
+
+    def __init__(self):
+        self.p = defaultdict(lambda: deque(maxlen=self.N))
+        self.team = defaultdict(lambda: deque(maxlen=self.TEAM_N))
+        self.glob = np.zeros(len(PH_STATS))
+        self.glob_n = np.zeros(len(PH_STATS))
+        self.last5 = {}
+        self.core = defaultdict(Counter)
+
+    def update(self, new):
+        if not len(new.records):
+            return
+        for rec in sorted(new.records["rec"], key=lambda r: r["started_at"]):
+            rows = self.maps.get(rec.get("hltv_match_id"))
+            if not rows:
+                continue
+            key_of = {tid: k for tid, k in zip(rec["team_ids"], rec["keys"]) if tid is not None}
+            by_map = defaultdict(lambda: defaultdict(list))
+            for scope, tid, pid, v in rows:
+                k = key_of.get(tid)
+                if k is None:
+                    continue
+                self.p[pid].append(v)
+                self.team[k].append(v)
+                ok = ~np.isnan(v)
+                self.glob[ok] += v[ok]
+                self.glob_n[ok] += 1
+                by_map[scope][k].append(pid)
+            for scope in sorted(by_map):
+                for k, five in by_map[scope].items():
+                    if len(five) == 5:
+                        self.core[k][frozenset(five)] += 1
+                        self.last5[k] = five
+
+    def _five(self, m, side):
+        pre = m["hltv_pre"]
+        if pre and len(pre.get("lineups") or []) == 2 and len(pre["lineups"][side]) == 5:
+            return [p["id"] for p in pre["lineups"][side]]
+        return self.last5.get(m["team_a_key"] if side == 0 else m["team_b_key"])
+
+    def _team(self, key):
+        prior = np.where(self.glob_n > 0, self.glob / np.maximum(self.glob_n, 1), 0.0)
+        t = self.team.get(key)
+        if not t:
+            return prior
+        a = np.array(t)
+        n = (~np.isnan(a)).sum(axis=0)
+        s = np.nansum(a, axis=0)
+        return (s + self.K * prior) / (n + self.K)  # the team mean itself shrunk to the global mean
+
+    def _lineup(self, five, key):
+        tm = self._team(key)
+        vals, cover = [], 0
+        for pid in five:
+            h = self.p.get(pid)
+            if h:
+                a = np.array(h)
+                n = (~np.isnan(a)).sum(axis=0)
+                s = np.nansum(a, axis=0)
+            else:
+                n, s = np.zeros(len(PH_STATS)), np.zeros(len(PH_STATS))
+            vals.append((s + self.K * tm) / (n + self.K))
+            cover += n[0] >= 5
+        v = np.array(vals)
+        return v.mean(axis=0), v.max(axis=0), cover / 5.0
+
+    def features(self, m):
+        fa, fb = self._five(m, 0), self._five(m, 1)
+        if not fa or not fb or self.glob_n[0] == 0:
+            return {k: 0.0 for k in self.columns}
+        ka, kb = m["team_a_key"], m["team_b_key"]
+        ma, xa, ca = self._lineup(fa, ka)
+        mb, xb, cb = self._lineup(fb, kb)
+        out = {}
+        for i, s in enumerate(PH_STATS):
+            out[f"ph_{s}_mean_diff"] = float(ma[i] - mb[i]) * PH_SCALE[s]
+            out[f"ph_{s}_max_diff"] = float(xa[i] - xb[i]) * PH_SCALE[s]
+        out["ph_core_diff"] = math.log1p(self.core[ka][frozenset(fa)]) - math.log1p(self.core[kb][frozenset(fb)])
+        out["ph_cover_min"] = float(min(ca, cb))
+        out["ph_has"] = 1.0
+        return out

@@ -204,3 +204,43 @@ def test_exact_veto_integration_matches_brute_force_and_gpu():
     torch = pytest.importorskip("torch")
     if torch.cuda.is_available():
         assert np.allclose(fs.veto_series(batch, "cuda"), got, atol=1e-12)
+
+
+def test_player_history_is_point_in_time_and_shrinks(with_records):
+    m, mp, rec = with_records
+    rng = np.random.default_rng(9)
+    pmaps = {}
+    for i, x in enumerate(rec["rec"]):
+        x["hltv_match_id"] = 5000 + i
+        rows = []
+        for j, pm_ in enumerate(x["per_map"]):
+            for t in pm_["teams"]:
+                for p in t["players"]:
+                    rows.append((f"s{i}-{j}", t["team_id"], p["player_id"], rng.normal(1.0, 0.2, 5)))
+        pmaps[5000 + i] = rows
+    fs.PlayerHist.maps = pmaps
+    try:
+        X, _ = F.compute(m, mp, ["player_hist"], ({}, rec))
+        assert X["ph_has"].iloc[0] == 0 and X["ph_has"].iloc[-1] == 1
+        # change one Match's player stats: only Matches with a cutoff after its finish move
+        i = len(m) // 2
+        fs.PlayerHist.maps = {k: ([(s, t, p, v + 1.0) for s, t, p, v in r] if k == 5000 + i else r) for k, r in pmaps.items()}
+        X2, _ = F.compute(m, mp, ["player_hist"], ({}, rec))
+        finish = int(m.loc[i, "known_finish"])
+        early = m.loc[m["cutoff"] <= finish, "match_id"]
+        pd.testing.assert_frame_equal(X.loc[early], X2.loc[early])
+        assert not X.loc[m.loc[m["cutoff"] > finish, "match_id"]].equals(X2.loc[m.loc[m["cutoff"] > finish, "match_id"]])
+    finally:
+        fs.PlayerHist.maps = {}
+    # a player without maps is the team mean; with many maps, close to his own mean
+    g = fs.PlayerHist()
+    g.glob[:] = 5.0
+    g.glob_n[:] = 5.0  # global prior 1.0
+    for _ in range(40):
+        g.team["t"].append(np.full(5, 1.2))
+    for _ in range(20):
+        g.p[1].append(np.full(5, 2.0))
+    mean, mx, cover = g._lineup([1, 2, 3, 4, 5], "t")
+    tm = (40 * 1.2 + 5 * 1.0) / 45
+    assert np.allclose(mx, (20 * 2.0 + 5 * tm) / 25) and cover == 0.2
+    assert np.allclose(mean, ((20 * 2.0 + 5 * tm) / 25 + 4 * tm) / 5)

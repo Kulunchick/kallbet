@@ -143,3 +143,14 @@ columns, stage 2 logistic calibrator on earlier priced Events). `kbml/features_s
 from earlier vetoes), `openskill` (Weng-Lin player ratings, package `openskill`), `travel`.
 `kbml/signal_eval.py`: paired deltas incl. Murphy resolution; `kbml/spa.py`: SPA and stepwise SPA.
 LightGBM's installed build has no GPU learner, so the fits run on CPU.
+
+Phase 5b (rolling player history F on W5's recovered HLTV links, separate cache root):
+
+```
+$env:KBML_CACHE="D:/Projects/KallBet/target/ml-cache-w5"
+$env:KBML_HLTV_LINKS="D:/Projects/KallBet/target/research-archive-ext/derived/recovery/links.tsv"
+uv run python -m kbml.signals_f          # table + HLTV caches rebuilt once (~3 min), then F (~5 min)
+```
+
+`KBML_HLTV_LINKS` (any `links.tsv` with `panda_id`, `hltv_match_id`) replaces the name-and-time linker in
+`table.build`; the table cache records it, so a cache built with other links is not reused.
