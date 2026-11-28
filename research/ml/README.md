@@ -125,3 +125,21 @@ only on complete Events that ended before it began (fewer than 150 training Matc
 Hyperparameters come from an inner walk-forward on the training Events only. Metrics on the same
 Matches as the anchor: accuracy (primary here), log-loss, Brier; differences with the lab's
 Event-level paired bootstrap (its RNG ported bit for bit), 2000 resamples, 90%, seed 33.
+
+## New signals (phase 5: `kbml.signals`, SIGNALS.md)
+
+```
+uv run python -m kbml.spa_inputs --phases 3,2   # per-Match predictions of every phase 2/3 configuration (~45 min, mostly mlp)
+$env:UV_PROJECT_ENVIRONMENT=".venv-gpu"; uv run --no-default-groups --group gpu python -m kbml.signals   # A-D (~6 min)
+uv run python -m kbml.spa                        # E: Hansen SPA over phases 2-5
+uv run python -m kbml.signals_report             # SIGNALS.md generated part
+```
+
+`kbml/market_detail.py` reads each market source on its own (Pinnacle prices and limits, Polymarket,
+Kalshi bid/ask/volume; closing and ~12 h early prices; same listing match and cutoff rule as the chain,
+identical to it on the chain's own source). `kbml/fusion.py`: two-stage fusion (stage 1 without market
+columns, stage 2 logistic calibrator on earlier priced Events). `kbml/features_signals.py`: groups
+`veto_eb` (exact Bo3 veto integration, numpy or torch/CUDA, over empirical-Bayes map strengths, pool
+from earlier vetoes), `openskill` (Weng-Lin player ratings, package `openskill`), `travel`.
+`kbml/signal_eval.py`: paired deltas incl. Murphy resolution; `kbml/spa.py`: SPA and stepwise SPA.
+LightGBM's installed build has no GPU learner, so the fits run on CPU.
