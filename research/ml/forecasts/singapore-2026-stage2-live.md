@@ -1,6 +1,6 @@
 # PGL Major Singapore 2026 Stage 2 — LIVE tracking (post-start)
 
-**Live, made 2026-11-28T14:51:35Z during Stage 2** at git `0bd98228bdac6faa87e9a893a5cd0c5125b018a9` from the PandaScore listing saved as `forecasts/data/panda-22473-matches-live-2026-11-28T144954Z.json.gz` (latest listing change 2026-11-28T14:47:50Z). This is live tracking, separate from the Holdout evaluation, which scores only the pre-registered forecast (`singapore-2026-stage2.md`, unchanged). Probabilities of the remaining Matches come from the pre-Stage models only (inputs as of the cutoff 2026-11-28T04:00:00Z, no refit on any Stage 2 result); finished Matches are fixed, running ones count as unplayed. 5,000,000 GPU runs per model, seed 33.
+**Live, made 2026-11-28T17:15:51Z during Stage 2** at git `d1c34b43d27e030ab51b6fa0cef4ee4bbfd6b31d` from the PandaScore listing saved as `forecasts/data/panda-22473-matches-live-2026-11-28T171338Z.json.gz` (latest listing change 2026-11-28T15:07:55Z). This is live tracking, separate from the Holdout evaluation, which scores only the pre-registered forecast (`singapore-2026-stage2.md`, unchanged). Probabilities of the remaining Matches come from the pre-Stage models only (inputs as of the cutoff 2026-11-28T04:00:00Z, no refit on any Stage 2 result); finished Matches are fixed, running ones count as unplayed. 5,000,000 GPU runs per model, seed 33.
 
 ## Results so far
 
@@ -22,8 +22,16 @@
 | 2 | MIBR vs Imperial | MIBR | finished |
 | 2 | Natus Vincere vs Astralis | Astralis | finished |
 | 2 | FlyQuest vs PARIVISION | FlyQuest | finished |
+| 3 | 100 Thieves vs Nemiga | — | not_started |
+| 3 | NIP vs MIBR | — | not_started |
+| 3 | Natus Vincere vs Liquid | — | not_started |
+| 3 | TheMongolz vs FlyQuest | — | not_started |
+| 3 | G2 vs THE ONE | — | not_started |
+| 3 | Eternal Fire vs Lynn Vision | — | not_started |
+| 3 | FUT Esports vs Astralis | — | not_started |
+| 3 | Imperial vs PARIVISION | — | not_started |
 
-Pairing checks: round 2: listed pairing = simulator's pairing.
+Pairing checks: round 2: listed pairing = simulator's pairing; round 3: listed pairing = simulator's pairing.
 
 ## Current records
 
@@ -129,3 +137,32 @@ Per pick (probability it comes true; settled = 0% or 100% under every model):
 - Models and inputs: as in `singapore-2026-stage2.md` (`lgbm all`, anchor) and `singapore-2026-stage2-ext.md` (`lgbm-ext`, `logreg-ext`), rebuilt from the same saved pre-Stage files; the code refuses to run if those show a started Match.
 - Conditioning: each finished Match's pair gets probability 1 (or 0) in both formats; the Swiss simulator (`kbml/swiss_gpu.py`) then forms every later pairing from the results by its Buchholz rule. Round 1 is checked against the opening, each listed later round against the simulator's own pairing, and no simulated run contradicts a known result (asserted).
 
+## Next Matches: model picks (live, made 2026-11-28T17:18:29Z)
+
+Listing `forecasts/data/panda-22473-matches-live-2026-11-28T171338Z.json.gz`. Round 3 is listed by PandaScore; its pairing equals the simulator's Buchholz pairing from the actual results. P = probability that the first-named team wins the series. Pick = the team with P ≥ 50%. Frozen = the pre-Stage models of the forecast (cutoff 2026-11-28T04:00Z); live = the same configurations refitted on every result known at the Match's cutoff (Scheduled Start − 15 min), Stage 1 and Stage 2 rounds so far included (11,095 training Matches for the ext models). Ensemble = equal-weight average of lgbm-ext and logreg-ext in logit space. The anchor is the Valve rating alone (no Stage 2 market line saved). Live tracking only, not the Holdout evaluation.
+
+### Frozen pre-Stage models
+
+| Time (UTC) | Fmt | Match | lgbm-ext | logreg-ext | ensemble | lgbm all | Anchor | Picks | Note |
+|---|---|---|---:|---:|---:|---:|---:|---|---|
+| 06:00 | BO1 | 100 Thieves vs Nemiga | 40% | 43% | 41% | 41% | 31% | ensemble: **Nemiga** | — |
+| 06:00 | BO1 | NIP vs MIBR | 49% | 58% | 53% | 51% | 53% | ensemble: **NIP** | models disagree; differs from anchor |
+| 07:00 | BO1 | Natus Vincere vs Liquid | 65% | 57% | 61% | 58% | 58% | ensemble: **Natus Vincere** | — |
+| 07:00 | BO1 | TheMongolz vs FlyQuest | 70% | 71% | 71% | 68% | 79% | ensemble: **TheMongolz** | — |
+| 08:00 | BO3 | G2 vs THE ONE | 59% | 55% | 57% | 59% | 54% | ensemble: **G2** | — |
+| 08:00 | BO3 | Eternal Fire vs Lynn Vision | 68% | 71% | 70% | 67% | 89% | ensemble: **Eternal Fire** | — |
+| 10:30 | BO3 | FUT Esports vs Astralis | 65% | 63% | 64% | 65% | 78% | ensemble: **FUT Esports** | — |
+| 10:30 | BO3 | Imperial vs PARIVISION | 43% | 42% | 42% | 38% | 21% | ensemble: **PARIVISION** | — |
+
+### Live models refitted with Stage 2 results so far
+
+| Time (UTC) | Fmt | Match | lgbm-ext | logreg-ext | ensemble | lgbm all | Anchor | Picks | Note |
+|---|---|---|---:|---:|---:|---:|---:|---|---|
+| 06:00 | BO1 | 100 Thieves vs Nemiga | 43% | 38% | 41% | 42% | 31% | ensemble: **Nemiga** | — |
+| 06:00 | BO1 | NIP vs MIBR | 48% | 51% | 50% | 51% | 53% | ensemble: **MIBR** | models disagree; differs from anchor |
+| 07:00 | BO1 | Natus Vincere vs Liquid | 65% | 61% | 63% | 59% | 58% | ensemble: **Natus Vincere** | — |
+| 07:00 | BO1 | TheMongolz vs FlyQuest | 69% | 73% | 71% | 70% | 79% | ensemble: **TheMongolz** | — |
+| 08:00 | BO3 | G2 vs THE ONE | 55% | 50% | 53% | 59% | 54% | ensemble: **G2** | — |
+| 08:00 | BO3 | Eternal Fire vs Lynn Vision | 67% | 70% | 68% | 66% | 89% | ensemble: **Eternal Fire** | — |
+| 10:30 | BO3 | FUT Esports vs Astralis | 63% | 59% | 61% | 65% | 78% | ensemble: **FUT Esports** | — |
+| 10:30 | BO3 | Imperial vs PARIVISION | 41% | 41% | 41% | 38% | 21% | ensemble: **PARIVISION** | — |
