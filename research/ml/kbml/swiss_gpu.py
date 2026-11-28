@@ -22,13 +22,16 @@ def device(name="auto"):
     return torch.device(name)
 
 
-def simulate(stage, values, runs, dev, uniform):
-    """Outcome codes (runs, 16) as a uint8 tensor on `dev`; `uniform(n)` returns n float64 draws on `dev`."""
+def simulate(stage, values, runs, dev, uniform, eta=None):
+    """Outcome codes (runs, 16) as a uint8 tensor on `dev`; `uniform(n)` returns n float64 draws on `dev`.
+    `eta` (runs, 16), optional: per-run team shocks added in logit to all of a team's Matches."""
     p = torch.zeros((2, 16, 16), dtype=torch.float64, device=dev)
     a, b = np.triu_indices(16, 1)
     v = torch.tensor(np.array(values, dtype=np.float64).reshape(2, -1), device=dev)
     p[:, a, b] = v
     p[:, b, a] = 1 - v
+    if eta is not None:
+        lg = torch.logit(p.clamp(1e-9, 1 - 1e-9))
     seed = torch.as_tensor(np.arange(16) if stage.published else stage.seed, dtype=torch.int64, device=dev)
     wins = torch.zeros((runs, 16), dtype=torch.int64, device=dev)
     losses = torch.zeros_like(wins)
@@ -38,7 +41,11 @@ def simulate(stage, values, runs, dev, uniform):
     ones = torch.ones(runs, dtype=torch.int64, device=dev)
 
     def play(x, y, best_of, rnd):
-        win = uniform(runs) < p[int(best_of == 3), x, y]
+        if eta is None:
+            win = uniform(runs) < p[int(best_of == 3), x, y]
+        else:
+            q = torch.sigmoid(lg[int(best_of == 3), x, y] + eta[row, x] - eta[row, y])
+            win = uniform(runs) < q
         wins.index_put_((row, torch.where(win, x, y)), ones, accumulate=True)
         losses.index_put_((row, torch.where(win, y, x)), ones, accumulate=True)
         played[row, x] |= (1 << y)
@@ -82,16 +89,24 @@ def simulate(stage, values, runs, dev, uniform):
     return out
 
 
-def simulate_many(stage, values, runs, dev, batch=2_000_000, seed=33):
-    """`runs` outcomes as a numpy uint8 array; batch b draws from torch.Generator seeded (seed, b)."""
+def simulate_many(stage, values, runs, dev, batch=2_000_000, seed=33, sd=None):
+    """`runs` outcomes as a numpy uint8 array; batch b draws from torch.Generator seeded (seed, b).
+    `sd` (16,): per-team standard deviation of the logit shock; its normals come from a second
+    generator, so the uniforms are the same with or without shocks."""
+    sd_t = None if sd is None else torch.as_tensor(np.asarray(sd, dtype=np.float64), device=dev)
     out = np.empty((runs, 16), dtype=np.uint8)
     for start in range(0, runs, batch):
         n = min(batch, runs - start)
         gen = torch.Generator(device=dev)
         gen.manual_seed(seed * 1_000_003 + start // batch)
+        eta = None
+        if sd_t is not None:
+            g2 = torch.Generator(device=dev)
+            g2.manual_seed(seed * 1_000_003 + start // batch + 500_000_000)
+            eta = torch.randn((n, 16), generator=g2, dtype=torch.float64, device=dev) * sd_t
         out[start:start + n] = simulate(
             stage, values, n, dev,
-            lambda k: torch.rand(k, generator=gen, dtype=torch.float64, device=dev),
+            lambda k: torch.rand(k, generator=gen, dtype=torch.float64, device=dev), eta,
         ).cpu().numpy()
     if dev.type == "cuda":
         torch.cuda.synchronize()
