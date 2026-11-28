@@ -184,6 +184,24 @@ fn rejects_real_cloudflare_challenge_and_broken_markup() {
 }
 
 #[test]
+fn page_without_stats_widget_keeps_match_data_but_changed_stats_markup_still_fails() {
+    let fetched_at = Utc.with_ymd_and_hms(2026, 11, 26, 1, 15, 0).unwrap();
+    let url = "https://www.hltv.org/matches/2394774/x";
+    let bo1 = read_fixture("hltv-match-2394774-heroic-vs-sharks.html.gz");
+
+    // No stats widget at all (showmatch / low-tier page): teams, maps and scores survive, stats are empty.
+    let no_stats = bo1.replace("matchstats", "xx").replace("stats-content", "xx-content");
+    let rec = parse_match_page(2394774, url, fetched_at, &no_stats).expect("page without stats parses");
+    assert!(rec.overall_stats.is_empty() && rec.per_map_stats.is_empty());
+    assert!(!rec.maps.is_empty());
+
+    // The stats widget is there but its tables are not recognised: changed markup, never silent empty data.
+    let broken = bo1.replace("totalstats", "renamedtotalstats");
+    let err = parse_match_page(2394774, url, fetched_at, &broken).expect_err("changed stats markup must fail");
+    assert!(matches!(err, ParseError::InvalidMarkup(_)), "{err:?}");
+}
+
+#[test]
 fn parses_real_liquipedia_postmatch_stage_maps() {
     let raw = read_fixture("liquipedia-cologne-playoffs-postmatch.json");
     let parsed = parse_stage_maps(&raw).expect("parse Liquipedia Cologne Playoffs post-match");

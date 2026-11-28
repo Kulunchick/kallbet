@@ -7,6 +7,7 @@
 pub mod archive;
 pub mod cli;
 pub mod collector;
+pub mod demo;
 #[cfg(feature = "hltv-impersonate")]
 pub mod impersonate;
 pub mod liquipedia_maps;

@@ -391,9 +391,18 @@ pub fn parse_match_page(
     }
 
     if overall_stats.is_empty() {
-        return Err(ParseError::InvalidMarkup(
-            "missing overall player stats (#all-content)".into(),
-        ));
+        // A page that has no `.matchstats` widget at all (showmatches, some lower-tier events) is a
+        // finished Match without player statistics: keep its teams, maps, scores and veto with
+        // empty stats. A stats widget whose tables did not parse is changed markup and stays an error.
+        let no_stats_widget = doc.select(&sel(".matchstats")).next().is_none();
+        let has_scored_map = maps
+            .iter()
+            .any(|m| m.team_a_score.is_some() && m.team_b_score.is_some());
+        if !(no_stats_widget && has_scored_map) {
+            return Err(ParseError::InvalidMarkup(
+                "missing overall player stats (#all-content)".into(),
+            ));
+        }
     }
 
     Ok(HltvMatchRecord {

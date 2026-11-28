@@ -12,6 +12,7 @@
 //!       [--base-url https://www.hltv.org] [--concurrency 1] [--min-interval-secs 9]
 //!       [--daily-budget 400] [--max-requests N] [--ios-version 17.2.1]
 
+use super::demo::{DEMO_MIN_INTERVAL_SECS, DemoConfig, ResearchDownload, collect_demos};
 use super::ranking::{RANKING_MIN_INTERVAL_SECS, RankingConfig, collect_rankings, mondays};
 use super::collector::{
     CollectorConfig, DEFAULT_CONCURRENCY, DEFAULT_DAILY_BUDGET, DEFAULT_MIN_INTERVAL_SECS,
@@ -23,13 +24,14 @@ use chrono::NaiveDate;
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
 pub const USAGE: &str = "usage: kallbet-ai hltv-collect (--match-id ID --url URL --out DIR | --archive DIR [--out DIR]) \
-[--base-url URL] [--concurrency N] [--min-interval-secs N] [--daily-budget N] [--max-requests N] [--ios-version MAJOR.MINOR.PATCH] | --ranking-from YYYY-MM-DD --ranking-until YYYY-MM-DD --out DIR (weekly /ranking/teams/ pages into DIR/ranking, one connection, >= 6 s apart)";
+[--base-url URL] [--concurrency N] [--min-interval-secs N] [--daily-budget N] [--max-requests N] [--ios-version MAJOR.MINOR.PATCH] | --ranking-from YYYY-MM-DD --ranking-until YYYY-MM-DD --out DIR (weekly /ranking/teams/ pages into DIR/ranking, one connection, >= 6 s apart) | --demo-ids FILE --out DIR (demo pilot: /download/demo/<id> one at a time into DIR/demos, one connection, >= 6 s apart)";
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Mode {
     Single { match_id: i64, url: String },
     Archive { archive_dir: PathBuf, base_url: String },
     Ranking { from: NaiveDate, until: NaiveDate, base_url: String },
+    Demo { ids: Vec<i64>, base_url: String },
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -88,6 +90,7 @@ pub fn parse_with_clock(args: &[String], clock: &dyn Clock) -> Result<Options> {
     let mut ios_version: Option<(u8, u8, u8)> = None;
     let mut ranking_from: Option<NaiveDate> = None;
     let mut ranking_until: Option<NaiveDate> = None;
+    let mut demo_ids_file: Option<PathBuf> = None;
 
     let mut it = args.iter();
     while let Some(arg) = it.next() {
@@ -104,6 +107,7 @@ pub fn parse_with_clock(args: &[String], clock: &dyn Clock) -> Result<Options> {
             "--max-requests" => max_requests = Some(value()?.parse()?),
             "--ranking-from" => ranking_from = Some(value()?.parse()?),
             "--ranking-until" => ranking_until = Some(value()?.parse()?),
+            "--demo-ids" => demo_ids_file = Some(value()?.into()),
             "--ios-version" => ios_version = Some(parse_ios_version(&value()?)?),
             other => return Err(format!("unknown hltv-collect option {other:?}\n{USAGE}").into()),
         }
@@ -112,6 +116,39 @@ pub fn parse_with_clock(args: &[String], clock: &dyn Clock) -> Result<Options> {
     if concurrency == 0 {
         return Err("--concurrency must be at least 1".into());
     }
+
+    let demo_ids: Option<Vec<i64>> = match demo_ids_file {
+        None => None,
+        Some(file) => {
+            if archive_dir.is_some()
+                || match_id.is_some()
+                || url.is_some()
+                || ranking_from.is_some()
+                || ranking_until.is_some()
+            {
+                return Err(format!("--demo-ids cannot be combined with other modes
+{USAGE}").into());
+            }
+            if concurrency != 1 {
+                return Err("demo downloads use one connection: --concurrency must be 1".into());
+            }
+            if min_interval_secs < DEMO_MIN_INTERVAL_SECS {
+                return Err(format!("--min-interval-secs must be at least {DEMO_MIN_INTERVAL_SECS} for demo downloads").into());
+            }
+            let text = std::fs::read_to_string(&file)?;
+            let mut ids: Vec<i64> = Vec::new();
+            for line in text.lines() {
+                let first = line.split('\t').next().unwrap_or("").trim();
+                if let Ok(id) = first.parse::<i64>()
+                    && id > 0
+                    && !ids.contains(&id)
+                {
+                    ids.push(id);
+                }
+            }
+            Some(ids)
+        }
+    };
 
     let ranking = match (ranking_from, ranking_until) {
         (None, None) => None,
@@ -139,6 +176,10 @@ pub fn parse_with_clock(args: &[String], clock: &dyn Clock) -> Result<Options> {
         }
     };
     let (mode, default_out, target_url_for_guard) = match (archive_dir, match_id, url) {
+        _ if demo_ids.is_some() => {
+            let u = base_url.clone();
+            (Mode::Demo { ids: demo_ids.unwrap(), base_url }, None, u)
+        }
         _ if ranking.is_some() => {
             let (from, until) = ranking.unwrap();
             let u = base_url.clone();
@@ -198,6 +239,23 @@ fn is_loopback_url(url: &str) -> bool {
     host == "127.0.0.1" || host == "localhost" || host == "[::1]"
 }
 
+fn build_download_transport(url: &str, ios_major: u8) -> Result<Arc<dyn ResearchDownload>> {
+    if is_loopback_url(url) {
+        return Err("demo downloads are only implemented for the impersonating transport".into());
+    }
+    #[cfg(feature = "hltv-impersonate")]
+    {
+        return Ok(Arc::new(super::impersonate::WreqIosHttp::for_ios_major(
+            ios_major,
+        )?));
+    }
+    #[cfg(not(feature = "hltv-impersonate"))]
+    {
+        let _ = ios_major;
+        Err("demo downloads require building kallbet-ai with `--features hltv-impersonate`".into())
+    }
+}
+
 fn build_transport(url: &str, ios_major: u8) -> Result<Arc<dyn ResearchHttp>> {
     if is_loopback_url(url) {
         return Ok(Arc::new(ReqwestHttp::new()));
@@ -225,8 +283,42 @@ pub async fn run_with_clock(args: &[String], clock: Arc<dyn Clock>) -> Result<St
     let o = parse_with_clock(args, clock.as_ref())?;
     let probe_url = match &o.mode {
         Mode::Single { url, .. } => url.as_str(),
-        Mode::Archive { base_url, .. } | Mode::Ranking { base_url, .. } => base_url.as_str(),
+        Mode::Archive { base_url, .. } | Mode::Ranking { base_url, .. } | Mode::Demo { base_url, .. } => {
+            base_url.as_str()
+        }
     };
+    if let Mode::Demo { ids, base_url } = &o.mode {
+        let dl = build_download_transport(base_url, o.ios_major)?;
+        let report = collect_demos(
+            &DemoConfig {
+                out_dir: o.out.clone(),
+                min_interval: Duration::from_secs(o.min_interval_secs),
+                ios: (o.ios_major, o.ios_minor, o.ios_patch),
+                max_requests: o.max_requests,
+            },
+            base_url,
+            ids,
+            dl,
+            clock,
+            Arc::new(TokioPause),
+        )
+        .await?;
+        let stop_note = match &report.stopped {
+            Some(s) => format!(" STOPPED(demo={} http={} {})", s.demo_id, s.status, s.reason),
+            None if report.stopped_by_max_requests => " STOPPED(max-requests)".to_string(),
+            None => String::new(),
+        };
+        return Ok(format!(
+            "hltv-collect demos: targets={} downloaded={} cached={} requests={} bytes={}{} out={}",
+            report.targets_total,
+            report.downloaded,
+            report.cached_hits,
+            report.requests_made,
+            report.bytes,
+            stop_note,
+            o.out.join("demos").display()
+        ));
+    }
     let http = build_transport(probe_url, o.ios_major)?;
     let collector_clock = clock.clone();
     let mut collector = HltvCollector::new(
@@ -279,6 +371,7 @@ pub async fn run_with_clock(args: &[String], clock: Arc<dyn Clock>) -> Result<St
                 o.out.join("ranking").display()
             ))
         }
+        Mode::Demo { .. } => unreachable!("handled before the collector is built"),
         Mode::Single { match_id, url } => {
             let outcome = collector.collect_match(match_id, &url).await?;
             Ok(format!(

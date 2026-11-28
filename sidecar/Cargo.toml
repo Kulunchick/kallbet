@@ -7,7 +7,7 @@ edition = "2024"
 default = []
 # Optional iOS TLS/HTTP2 impersonation transport for ticket #36's offline HLTV
 # research collector. Never enabled in default or production Docker builds.
-hltv-impersonate = ["dep:wreq", "dep:wreq-util"]
+hltv-impersonate = ["dep:wreq", "dep:wreq-util", "dep:futures-util"]
 
 [dependencies]
 async-trait = "0.1.92"
@@ -27,7 +27,8 @@ thiserror = "2.0.21"
 tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time", "fs", "process"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
-wreq = { version = "6.0.0-rc.31", optional = true, features = ["gzip", "brotli", "deflate"] }
+wreq = { version = "6.0.0-rc.31", optional = true, features = ["gzip", "brotli", "deflate", "stream"] }
+futures-util = { version = "0.3.34", optional = true, default-features = false }
 wreq-util = { version = "3.0.0-rc.14", optional = true, features = ["emulation"] }
 
 [dev-dependencies]
