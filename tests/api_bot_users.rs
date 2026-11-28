@@ -590,6 +590,67 @@ async fn hard_lock_is_never_undone_by_a_postponement() {
 }
 
 #[tokio::test]
+async fn hard_lock_reopens_on_postponement_when_bot_did_not_predict() {
+    let s = setup().await;
+    s.humans_reveal_early().await;
+    let humans_locked_at = s.card(&s.alice, NAVI_FAZE).await["lock"]["locked_at"].clone();
+    s.minutes_before_start(14);
+    poller::tick(&s.app.state).await;
+    assert_eq!(
+        s.try_predict(&s.oracle, NAVI_FAZE, FAZE)
+            .await
+            .error_code(),
+        "match_locked"
+    );
+
+    let moved = s.start + Duration::days(2);
+    s.app
+        .source
+        .postpone(EventId(EVENT), MatchId(NAVI_FAZE), moved);
+    s.app.clock.advance(Duration::minutes(5));
+    poller::tick(&s.app.state).await;
+
+    // Humans stay Locked and Revealed; the Bot User's Hard Lock reopened and
+    // it is blind to revealed Picks again until the new Hard Lock.
+    assert_eq!(
+        s.try_predict(&s.alice, NAVI_FAZE, FAZE)
+            .await
+            .error_code(),
+        "match_locked"
+    );
+    assert_eq!(
+        s.card(&s.alice, NAVI_FAZE).await["lock"]["locked_at"],
+        humans_locked_at
+    );
+
+    let oracle_card = s.card(&s.oracle, NAVI_FAZE).await;
+    assert_eq!(oracle_card["lock"]["locked"], false, "{oracle_card}");
+    assert_eq!(oracle_card["lock"]["can_predict"], true, "{oracle_card}");
+    assert_eq!(
+        oracle_card["lock"]["locks_at"],
+        json!(moved - Duration::minutes(15))
+    );
+    assert_eq!(oracle_card["predictions"]["revealed"], Value::Null);
+    s.predict(&s.oracle, NAVI_FAZE, FAZE).await;
+
+    // Once the Bot User has predicted and the new Hard Lock passes, another
+    // postponement keeps it Locked.
+    s.app.clock.set(moved - Duration::minutes(14));
+    poller::tick(&s.app.state).await;
+    s.app
+        .source
+        .postpone(EventId(EVENT), MatchId(NAVI_FAZE), moved + Duration::days(1));
+    s.app.clock.advance(Duration::minutes(5));
+    poller::tick(&s.app.state).await;
+    assert_eq!(
+        s.try_predict(&s.oracle, NAVI_FAZE, NAVI)
+            .await
+            .error_code(),
+        "match_locked"
+    );
+}
+
+#[tokio::test]
 async fn a_postponement_before_hard_lock_gives_a_bot_user_the_new_deadline() {
     let s = setup().await;
     s.humans_reveal_early().await;

@@ -73,7 +73,7 @@ An optional structured explanation attached to a Prediction, in practice by a Bo
 _Avoid_: Explanation, reasoning, analysis (in names and the API; the SPA's text may say "AI reasoning")
 
 **Lock**:
-The moment after which no Prediction for a Match can be made or changed: Scheduled Start minus 15 minutes, actual start, or Reveal, whichever comes first. A Lock is never undone. A Bot User is bound by the Hard Lock only.
+The moment after which no Prediction for a Match can be made or changed: Scheduled Start minus 15 minutes (once both teams are known), actual start, or Reveal, whichever comes first. Once every Eligible Member has predicted (or the Match starts or cancels), a Lock is never undone; if an `Upcoming` Match is postponed while someone Eligible has not yet predicted, it reopens until the new deadline. A Bot User is bound by the Hard Lock only.
 _Avoid_: Deadline, close
 
 **Hard Lock**:

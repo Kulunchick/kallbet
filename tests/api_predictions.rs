@@ -186,7 +186,19 @@ async fn a_postponement_before_lock_moves_the_lock() {
 #[tokio::test]
 async fn a_lock_stays_after_a_later_postponement() {
     let s = setup().await;
-    s.tick_after(Duration::minutes(106)).await; // locked 14 minutes before
+    // Alice predicts early; Bob predicts 17 minutes before the start so his
+    // 5-minute edit window is cut off by the scheduled Lock at start - 15m
+    // with all Eligible Members having predicted.
+    assert_eq!(
+        s.predict(&s.alice, NAVI_FAZE, NAVI).await.status,
+        StatusCode::OK
+    );
+    s.app.clock.set(s.start - Duration::minutes(17));
+    assert_eq!(
+        s.predict(&s.bob, NAVI_FAZE, FAZE).await.status,
+        StatusCode::OK
+    );
+    s.tick_after(Duration::minutes(3)).await; // locked 14 minutes before
 
     s.app.source.postpone(
         EventId(EVENT),
@@ -202,15 +214,24 @@ async fn a_lock_stays_after_a_later_postponement() {
         json!(s.start - Duration::minutes(15))
     );
     assert_eq!(card["scheduled_start"], json!(s.start + Duration::hours(3)));
-    assert_locked(&s.predict(&s.alice, NAVI_FAZE, NAVI).await);
+    assert_locked(&s.predict(&s.alice, NAVI_FAZE, FAZE).await);
 }
 
 #[tokio::test]
 async fn a_lock_that_was_due_before_a_postponement_arrives_stays() {
     let s = setup().await;
+    assert_eq!(
+        s.predict(&s.alice, NAVI_FAZE, NAVI).await.status,
+        StatusCode::OK
+    );
+    s.app.clock.set(s.start - Duration::minutes(17));
+    assert_eq!(
+        s.predict(&s.bob, NAVI_FAZE, FAZE).await.status,
+        StatusCode::OK
+    );
     // Nobody looked between the Lock time and the poll that brings the
     // postponement: the Lock still happened.
-    s.app.clock.advance(Duration::minutes(110));
+    s.app.clock.set(s.start - Duration::minutes(10));
     s.app.source.postpone(
         EventId(EVENT),
         MatchId(NAVI_FAZE),
@@ -218,7 +239,178 @@ async fn a_lock_that_was_due_before_a_postponement_arrives_stays() {
     );
     poller::tick(&s.app.state).await;
 
-    assert_locked(&s.predict(&s.alice, NAVI_FAZE, NAVI).await);
+    assert_locked(&s.predict(&s.alice, NAVI_FAZE, FAZE).await);
+}
+
+#[tokio::test]
+async fn a_lock_reopens_after_a_postponement_when_someone_has_not_predicted() {
+    let s = setup().await;
+    assert_eq!(
+        s.predict(&s.alice, NAVI_FAZE, NAVI).await.status,
+        StatusCode::OK
+    );
+    s.tick_after(Duration::minutes(106)).await; // Bob did not predict before Lock
+    let locked = s.card(&s.bob, NAVI_FAZE).await;
+    assert_eq!(locked["lock"]["locked"], true, "{locked}");
+    assert_ne!(locked["predictions"]["revealed"], Value::Null, "{locked}");
+
+    // Match is postponed: reopens because Bob missed predicting.
+    let moved = s.start + Duration::hours(3);
+    s.app
+        .source
+        .postpone(EventId(EVENT), MatchId(NAVI_FAZE), moved);
+    s.tick_after(Duration::minutes(1)).await;
+
+    let reopened = s.card(&s.bob, NAVI_FAZE).await;
+    assert_eq!(reopened["lock"]["locked"], false, "{reopened}");
+    assert_eq!(reopened["lock"]["can_predict"], true, "{reopened}");
+    assert_eq!(reopened["predictions"]["revealed"], Value::Null, "{reopened}");
+    assert_eq!(s.card(&s.alice, NAVI_FAZE).await["my_prediction"], NAVI);
+
+    assert_eq!(
+        s.predict(&s.bob, NAVI_FAZE, FAZE).await.status,
+        StatusCode::OK
+    );
+    // Once Bob's edit window expires and both have predicted, postponing
+    // again does not reopen the Match.
+    s.tick_after(Duration::minutes(5)).await;
+    s.app
+        .source
+        .postpone(EventId(EVENT), MatchId(NAVI_FAZE), moved + Duration::hours(2));
+    s.tick_after(Duration::minutes(5)).await;
+    assert_locked(&s.predict(&s.alice, NAVI_FAZE, FAZE).await);
+}
+
+#[tokio::test]
+async fn an_empty_lock_reopens_after_a_postponement() {
+    let app = TestApp::new().await;
+    let now = app.clock.now();
+    // Newly paired Match arrives with a stale start inside the 15-minute window.
+    let stale_start = now + Duration::minutes(2);
+    app.source.put_event(
+        EventSnapshotBuilder::new(EVENT, "Test Major")
+            .stage(StageKind::Swiss, "Stage 1")
+            .swiss_match(NAVI_FAZE, (1, 0, 0), "NAVI", "FaZe", stale_start)
+            .build(now),
+    );
+    let alice = app.user("alice").await;
+    let bob = app.user("bob").await;
+    let oracle = app.bot("oracle", "Oracle").await;
+    let res = alice
+        .post("/api/leagues", &json!({ "event_id": EVENT, "name": "Friends" }))
+        .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.text());
+    let league = res.json()["id"].as_i64().unwrap();
+    let token = res.json()["invite_token"].as_str().unwrap().to_string();
+    bob.post_empty(&format!("/api/invites/{token}/join")).await;
+    oracle.post_empty(&format!("/api/invites/{token}/join")).await;
+
+    poller::tick(&app.state).await;
+    let locked = alice.get(&format!("/api/leagues/{league}/matches")).await.json()["stages"][0]
+        ["groups"][0]["matches"][0]
+        .clone();
+    assert_eq!(locked["lock"]["locked"], true, "{locked}");
+
+    // The Data Source updates Scheduled Start to two hours from now. With
+    // zero Predictions, both human Members and the Bot User can predict again.
+    let real_start = now + Duration::hours(2);
+    app.source
+        .postpone(EventId(EVENT), MatchId(NAVI_FAZE), real_start);
+    app.clock.advance(Duration::minutes(5));
+    poller::tick(&app.state).await;
+
+    for client in [&alice, &bob, &oracle] {
+        let card = client.get(&format!("/api/leagues/{league}/matches")).await.json()["stages"][0]
+            ["groups"][0]["matches"][0]
+            .clone();
+        assert_eq!(card["lock"]["locked"], false, "{card}");
+        assert_eq!(card["lock"]["can_predict"], true, "{card}");
+        assert_eq!(
+            card["lock"]["locks_at"],
+            json!(real_start - Duration::minutes(15))
+        );
+        let put = client
+            .put(
+                &format!("/api/leagues/{league}/matches/{NAVI_FAZE}/prediction"),
+                &json!({ "team_id": NAVI }),
+            )
+            .await;
+        assert_eq!(put.status, StatusCode::OK, "{}", put.text());
+    }
+
+    // Once everyone has predicted and the real Lock passes, a further
+    // postponement no longer reopens the Match.
+    app.clock.set(real_start - Duration::minutes(14));
+    poller::tick(&app.state).await;
+    app.source
+        .postpone(EventId(EVENT), MatchId(NAVI_FAZE), real_start + Duration::hours(2));
+    app.clock.advance(Duration::minutes(5));
+    poller::tick(&app.state).await;
+    let stayed = alice
+        .put(
+            &format!("/api/leagues/{league}/matches/{NAVI_FAZE}/prediction"),
+            &json!({ "team_id": FAZE }),
+        )
+        .await;
+    assert_locked(&stayed);
+}
+
+#[tokio::test]
+async fn a_tbd_match_does_not_lock_by_schedule() {
+    let app = TestApp::new().await;
+    let now = app.clock.now();
+    app.source.put_event(
+        EventSnapshotBuilder::new(EVENT, "Test Major")
+            .stage(StageKind::Playoffs, "Playoffs")
+            .playoff_match(201, (1, 0), "NAVI", "FaZe", now + Duration::days(2))
+            .playoff_slot(301, (0, 0), now + Duration::hours(1))
+            .build(now),
+    );
+    let alice = app.user("alice").await;
+    let res = alice
+        .post("/api/leagues", &json!({ "event_id": EVENT, "name": "Friends" }))
+        .await;
+    let league = res.json()["id"].as_i64().unwrap();
+
+    app.clock.advance(Duration::hours(2)); // past the TBD slot's placeholder time
+    poller::tick(&app.state).await;
+    let view = alice.get(&format!("/api/leagues/{league}/matches")).await.json();
+    let final_card = &view["stages"][0]["groups"][1]["matches"][0];
+    assert_eq!(final_card["id"], 301);
+    assert_eq!(final_card["lock"]["locked"], false, "{final_card}");
+    assert_eq!(final_card["lock"]["locks_at"], Value::Null, "{final_card}");
+
+    // Half-TBD also does not lock by schedule and rejects predictions cleanly.
+    let half_start = app.clock.now() + Duration::hours(3);
+    app.source.update_match(EventId(EVENT), MatchId(301), |m| {
+        m.team_a = Some(kallbet::domain::TeamId(NAVI));
+        m.scheduled_start = Some(half_start);
+    });
+    app.clock.advance(Duration::hours(4));
+    poller::tick(&app.state).await;
+    let rej = alice
+        .put(
+            &format!("/api/leagues/{league}/matches/301/prediction"),
+            &json!({ "team_id": NAVI }),
+        )
+        .await;
+    assert_eq!(rej.error_code(), "team_not_in_match");
+
+    // Once both teams and a future start arrive, predicting succeeds.
+    let real_start = app.clock.now() + Duration::hours(2);
+    app.source.update_match(EventId(EVENT), MatchId(301), |m| {
+        m.team_b = Some(kallbet::domain::TeamId(FAZE));
+        m.scheduled_start = Some(real_start);
+    });
+    app.clock.advance(Duration::minutes(5));
+    poller::tick(&app.state).await;
+    let ok = alice
+        .put(
+            &format!("/api/leagues/{league}/matches/301/prediction"),
+            &json!({ "team_id": FAZE }),
+        )
+        .await;
+    assert_eq!(ok.status, StatusCode::OK, "{}", ok.text());
 }
 
 #[tokio::test]

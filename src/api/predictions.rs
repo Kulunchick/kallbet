@@ -108,7 +108,10 @@ async fn predict_as_bot(
     if outcome.is_hard_locked() {
         return Err(ApiError::conflict("match_locked"));
     }
-    if !game.data.teams().contains(&Some(write.team)) {
+    if game.data.team_a.is_none()
+        || game.data.team_b.is_none()
+        || !game.data.teams().contains(&Some(write.team))
+    {
         return Err(ApiError::unprocessable("team_not_in_match"));
     }
     predictions::upsert_for_bot(
@@ -142,7 +145,10 @@ async fn predict(
     if outcome.is_locked() || window.is_some_and(|(owner, _)| *owner != user) {
         return Err(ApiError::conflict("match_locked"));
     }
-    if !game.data.teams().contains(&Some(write.team)) {
+    if game.data.team_a.is_none()
+        || game.data.team_b.is_none()
+        || !game.data.teams().contains(&Some(write.team))
+    {
         return Err(ApiError::unprocessable("team_not_in_match"));
     }
     let prediction = predictions::upsert(

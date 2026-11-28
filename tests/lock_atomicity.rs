@@ -254,6 +254,11 @@ async fn a_lock_that_falls_due_during_a_slow_fetch_survives_the_postponement_it_
     let app = TestApp::builder().source(slow.clone()).build().await;
     slow.clock.set(app.clock.clone()).ok();
     let s = setup_with(app, &scripted).await;
+    // Everyone predicts right before the deadline (Bob's final edit window runs
+    // until start - 11m, so the scheduled Lock at start - 15m ends it).
+    s.predict(&s.alice, NAVI).await;
+    s.app.clock.set(s.start - Duration::minutes(16));
+    s.predict(&s.bob, FAZE).await;
     // Lock is due at start - 15 min. The tick begins 30 s before that, and
     // its fetch (one minute) brings a postponement by three hours.
     s.app
@@ -276,8 +281,11 @@ async fn a_lock_that_falls_due_during_a_slow_fetch_survives_the_postponement_it_
 #[tokio::test]
 async fn a_scheduled_start_override_does_not_erase_a_lock_that_already_passed() {
     let s = setup().await;
-    // The Lock passed (start - 15 min) but nothing has evaluated the League
-    // since: no poller tick, no request.
+    s.predict(&s.alice, NAVI).await;
+    s.app.clock.set(s.start - Duration::minutes(17));
+    s.predict(&s.bob, FAZE).await;
+    // The Lock passed (start - 15 min) while Bob's edit window was open,
+    // before any poll or request evaluated it.
     s.app.clock.set(s.start - Duration::minutes(10));
     let res = s
         .alice
