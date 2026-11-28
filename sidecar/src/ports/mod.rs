@@ -14,3 +14,7 @@ mod clock;
 pub use clock::*;
 mod pickem_solver;
 pub use pickem_solver::*;
+mod results_history;
+pub use results_history::*;
+mod player_stats;
+pub use player_stats::*;

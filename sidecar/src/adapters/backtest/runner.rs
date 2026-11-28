@@ -4,7 +4,9 @@
 use super::anonymizer::Blind;
 use super::archive::{ReplayArchive, ReplayStage};
 use super::feeds::{MarketSource, ReplayContext, ReplayOdds, ReplaySignal};
+use super::history::ReplayHistory;
 use super::platform::{Due, ReplayClock, ReplayPlatform, Submitted};
+use super::player_history::ReplayPlayerHistory;
 use super::report::{self, LlmTrack, PickemRow, Report, StageRow};
 use crate::adapters::{
     baseline::Noop,
@@ -55,6 +57,8 @@ pub struct Feeds {
     pub signal: Arc<dyn SignalEstimator>,
     pub odds: Arc<dyn OddsSource>,
     pub context: Arc<dyn ContextEnricher>,
+    pub history: Arc<dyn ResultsHistory>,
+    pub player_stats: Arc<dyn PlayerStatsHistory>,
 }
 impl Feeds {
     pub fn replay(archive: &ReplayArchive) -> Result<Self> {
@@ -62,6 +66,8 @@ impl Feeds {
             signal: Arc::new(ReplaySignal::new(&archive.standings)?),
             odds: Arc::new(ReplayOdds::new(archive)),
             context: Arc::new(ReplayContext::new(archive)),
+            history: Arc::new(ReplayHistory::new(archive)),
+            player_stats: Arc::new(ReplayPlayerHistory::new(archive)),
         })
     }
 }
@@ -390,7 +396,9 @@ impl Backtest {
                 with_vrs: count(s, &|d| !d["signal"].is_null()),
                 with_market: count(s, &|d| !d["market"].is_null()),
                 with_rosters: count(s, &|d| {
-                    d["context"].as_array().is_some_and(|c| !c.is_empty())
+                    d["context"].as_array().is_some_and(|facts| {
+                        facts.iter().any(|fact| fact["kind"] == "liquipedia_roster")
+                    })
                 }),
                 opening_view: s.opening_problem.clone(),
             })
@@ -600,9 +608,9 @@ impl Backtest {
                 evaluation_lead().num_seconds()
             ),
             "Scheduled Start and actual start come from PandaScore's final records (`scheduled_at`, `begin_at`).".into(),
-            "Market lines: OddsPapi historical Pinnacle series-winner prices, which exist for settled fixtures since January 2026 only (IEM Cologne Major 2026 and PGL Major Singapore 2026), then Polymarket and Kalshi price histories, saved for PGL Major Singapore 2026 Stage 1 only.".into(),
-            "Valve's global standings start in August 2024, so PGL Major Copenhagen 2024 has no rating: its Matches are not predicted and its Pick'em is drawn from even odds.".into(),
-            "Rosters: Liquipedia Event page revisions saved for some Matches only (see the Rosters column). No dated news archive exists, so no dossier holds news.".into(),
+            "The Market column counts dossiers with a saved pre-cutoff market line.".into(),
+            "Valve's global standings start in August 2024.".into(),
+            "The Rosters column counts dossiers with a pre-cutoff Liquipedia roster. This replay reads roster revisions from the archive; live news observations are kept in the sidecar audit database.".into(),
         ];
         notes.extend(stages.iter().filter_map(|s| {
             s.opening_problem

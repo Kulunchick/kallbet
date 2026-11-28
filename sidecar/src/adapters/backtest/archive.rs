@@ -6,13 +6,17 @@
 //! truth), Liquipedia revisions (a Stage page as it stood before the Stage: the
 //! Pick'em view; an Event page before a Match: the rosters), Valve global
 //! standings, OddsPapi settled fixture lists and their historical odds.
-//! Only the Liquipedia file name carries meaning: `lp-<tournament>` is the Stage
-//! revision of that PandaScore tournament.
-use super::{Dated, match_cutoff};
+//! Liquipedia Stage filenames identify their PandaScore tournament:
+//! `lp-<tournament>` is an opening revision, and `maps-<tournament>` is a
+//! post-Match revision used for played maps.
+use super::player_history::parse_hltv_record_json;
+use super::{Dated, map_history::MapHistory, match_cutoff};
 use crate::adapters::context::wikitext::{Template, find_templates, strip_comments};
+use crate::adapters::hltv_research::{archive::HltvMatchRecord, parse::parse_match_page};
 use crate::*;
 use serde::Serialize;
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     io::Read,
@@ -24,9 +28,18 @@ use std::{
 pub struct ReplayMatch {
     pub game: Match,
     pub actual_start: Instant,
+    /// For ordering only: PandaScore's `end_at`, else the actual start. Not a
+    /// time the result was known: read `known_finish` for that.
+    pub finished_at: Instant,
+    /// Source-reported finish, without the start-time fallback.
+    pub reported_finish: Option<Instant>,
     pub winner: i64,
+    /// Map score `(team_a_maps, team_b_maps)` from PandaScore `results`, if present.
+    pub maps_score: Option<(u32, u32)>,
     /// The Swiss round from PandaScore's name ("Round 3: ..."), if any.
     pub round: Option<u32>,
+    /// Bracket round name, if provided by the source.
+    pub bracket_round: Option<super::match_context::BracketRound>,
 }
 impl ReplayMatch {
     pub fn cutoff(&self) -> Instant {
@@ -34,6 +47,12 @@ impl ReplayMatch {
             self.game.scheduled_start.unwrap_or(self.actual_start),
             self.actual_start,
         )
+    }
+    /// When the result became known: the reported finish, if it is after the
+    /// start. `None`: unknown, so the result is never visible (a start time is
+    /// not a finish, and no duration is estimated).
+    pub fn known_finish(&self) -> Option<Instant> {
+        self.reported_finish.filter(|&end| end > self.actual_start)
     }
     pub fn loser(&self) -> i64 {
         if self.winner == self.game.team_a.id {
@@ -49,6 +68,8 @@ impl ReplayMatch {
 pub enum StageKind {
     Swiss,
     Playoffs,
+    Groups,
+    Other,
 }
 
 #[derive(Clone)]
@@ -59,6 +80,9 @@ pub struct ReplayStage {
     pub event_id: i64,
     /// "IEM Cologne Major 2026".
     pub event: String,
+    /// PandaScore tier of the Stage's tournament ("s", "a", ...), lowercase;
+    /// `None`: the saved payload names none.
+    pub tier: Option<String>,
     /// "Stage 1", "Playoffs".
     pub name: String,
     pub kind: StageKind,
@@ -72,6 +96,9 @@ pub struct ReplayStage {
     pub results: Vec<(i64, i64)>,
     /// Every Match of the Stage is finished or cancelled.
     pub complete: bool,
+    /// The latest reported `end_at` of its finished Matches that are not
+    /// scored (forfeits), which `known_end` adds to the scored ones.
+    pub unscored_end: Option<Instant>,
     /// Start of the Stage's first Match: earliest Scheduled Start or actual start.
     pub cutoff: Instant,
     /// The Pick'em view the server would show before the Stage, dated by the
@@ -83,6 +110,19 @@ pub struct ReplayStage {
     pub opening_problem: Option<String>,
 }
 impl ReplayStage {
+    /// When its last result became known: `None` while any Match is still to
+    /// play or any scored result has no reported finish.
+    pub fn known_end(&self) -> Option<Instant> {
+        if !self.complete {
+            return None;
+        }
+        let scored = self
+            .matches
+            .iter()
+            .map(ReplayMatch::known_finish)
+            .collect::<Option<Vec<_>>>()?;
+        scored.into_iter().chain(self.unscored_end).max()
+    }
     pub fn title(&self) -> String {
         format!("{} / {}", self.event, self.name)
     }
@@ -100,6 +140,7 @@ pub struct WikiRevision {
 #[derive(Default)]
 pub struct ReplayArchive {
     pub stages: Vec<ReplayStage>,
+    pub match_context: super::match_context::ArchiveContext,
     /// Valve global standings Markdown, in the form `vrs::Standings` reads.
     pub standings: Vec<String>,
     /// OddsPapi settled `/v4/fixtures` responses.
@@ -118,12 +159,70 @@ pub struct ReplayArchive {
     pub event_pages: BTreeMap<String, Vec<WikiRevision>>,
     /// Liquipedia root title of each Event (PandaScore serie id).
     pub event_titles: BTreeMap<i64, String>,
+    /// Historical HLTV match pages (`HltvMatchRecord`) with player statistics.
+    pub hltv_matches: Vec<HltvMatchRecord>,
+    /// The rank badges of each saved raw HLTV match page, by HLTV match id (ticket #57).
+    pub hltv_ranks: BTreeMap<i64, Vec<crate::adapters::hltv_research::rank_badges::TeamBadges>>,
+    /// Played maps linked to finished PandaScore Matches.
+    pub map_history: MapHistory,
+    /// Bo1 vetoes of the HLTV match pages linked to PandaScore Matches.
+    pub veto_history: super::veto_history::VetoHistory,
     /// SHA-256 over every file name and content, in name order.
     pub digest: String,
     pub files: usize,
 }
 
 /// Reads a file, inflating it when its name ends in `.gz`.
+impl ReplayArchive {
+    /// The archive without the Stages in `stages`, their Matches' played maps
+    /// and vetoes, and the HLTV records linked to their Matches.
+    pub fn without_stages(&self, stages: &BTreeSet<i64>) -> ReplayArchive {
+        let linker = super::player_history::Linker::new(self);
+        let removed: BTreeSet<i64> = self
+            .stages
+            .iter()
+            .filter(|s| stages.contains(&s.id))
+            .flat_map(|s| s.matches.iter().map(|m| m.game.id))
+            .collect();
+        let hltv_matches: Vec<HltvMatchRecord> = self
+            .hltv_matches
+            .iter()
+            .filter(|r| linker.link(r).is_none_or(|(id, _)| !removed.contains(&id)))
+            .cloned()
+            .collect();
+        let kept: BTreeSet<i64> = hltv_matches.iter().map(|r| r.match_id).collect();
+        ReplayArchive {
+            hltv_ranks: self
+                .hltv_ranks
+                .iter()
+                .filter(|(id, _)| kept.contains(id))
+                .map(|(id, b)| (*id, b.clone()))
+                .collect(),
+            stages: self
+                .stages
+                .iter()
+                .filter(|s| !stages.contains(&s.id))
+                .cloned()
+                .collect(),
+            match_context: self.match_context.clone(),
+            standings: self.standings.clone(),
+            fixture_lists: self.fixture_lists.clone(),
+            histories: self.histories.clone(),
+            polymarket_events: self.polymarket_events.clone(),
+            polymarket_histories: self.polymarket_histories.clone(),
+            kalshi_markets: self.kalshi_markets.clone(),
+            kalshi_candles: self.kalshi_candles.clone(),
+            event_pages: self.event_pages.clone(),
+            event_titles: self.event_titles.clone(),
+            hltv_matches,
+            map_history: self.map_history.without_stages(stages),
+            veto_history: self.veto_history.without_stages(stages),
+            digest: self.digest.clone(),
+            files: self.files,
+        }
+    }
+}
+
 pub fn read_file(path: &Path) -> Result<Vec<u8>> {
     let raw = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
     if path.extension().is_some_and(|e| e == "gz") {
@@ -181,11 +280,21 @@ impl ReplayArchive {
             .map(|f| f.map(|f| f.path()))
             .collect::<std::io::Result<_>>()?;
         names.retain(|p| p.is_file());
+        let catalog = dir.join("catalog");
+        if catalog.is_dir() {
+            for entry in std::fs::read_dir(&catalog)? {
+                let entry = entry?;
+                if entry.file_type()?.is_file() {
+                    names.push(entry.path());
+                }
+            }
+        }
         names.sort();
         let mut archive = Self::default();
-        let mut digest = Vec::new();
+        let mut digest = Sha256::new();
         let mut matches: BTreeMap<i64, Vec<Value>> = BTreeMap::new();
         let mut stage_pages: BTreeMap<i64, WikiRevision> = BTreeMap::new();
+        let mut map_pages = BTreeMap::new();
         for path in names {
             let name = path.file_name().unwrap_or_default().to_string_lossy();
             let stem = name.trim_end_matches(".gz");
@@ -193,9 +302,16 @@ impl ReplayArchive {
                 continue;
             }
             let bytes = read_file(&path)?;
-            digest.extend_from_slice(stem.as_bytes());
-            digest.extend_from_slice(&bytes);
+            let is_catalog = path.parent() == Some(catalog.as_path());
+            if is_catalog {
+                digest.update(b"catalog/");
+            }
+            digest.update(stem.as_bytes());
+            digest.update(&bytes);
             archive.files += 1;
+            if is_catalog {
+                continue;
+            }
             if stem.ends_with(".md") {
                 if stem.starts_with("standings_global_") {
                     archive.standings.push(String::from_utf8(bytes)?);
@@ -205,7 +321,24 @@ impl ReplayArchive {
             let value: Value =
                 serde_json::from_slice(&bytes).map_err(|e| format!("{name}: not JSON ({e})"))?;
             let first = &value[0];
-            if first["slug"].is_string() && first["markets"].is_array() {
+            if stem.starts_with("panda-") && value.as_array().is_some_and(Vec::is_empty) {
+                continue;
+            }
+            if let Some(tournament) = stem
+                .strip_prefix("maps-")
+                .and_then(|s| s.trim_end_matches(".json").parse::<i64>().ok())
+            {
+                let page = crate::adapters::hltv_research::liquipedia_maps::parse_stage_maps(
+                    std::str::from_utf8(&bytes)?,
+                )
+                .map_err(|e| format!("{name}: {e}"))?;
+                if map_pages.insert(tournament, page).is_some() {
+                    return Err(format!(
+                        "{name}: duplicate map revision for tournament {tournament}"
+                    )
+                    .into());
+                }
+            } else if first["slug"].is_string() && first["markets"].is_array() {
                 archive
                     .polymarket_events
                     .extend(value.as_array().cloned().unwrap_or_default());
@@ -236,6 +369,17 @@ impl ReplayArchive {
                     .or_default()
                     .extend(value.as_array().cloned().unwrap_or_default());
             } else if let Some(page) = value["query"]["pages"][0].as_object() {
+                let roster_event = stem
+                    .strip_prefix("roster-")
+                    .and_then(|s| s.split_once('-'))
+                    .and_then(|(id, _)| id.parse::<i64>().ok());
+                if roster_event.is_some()
+                    && page
+                        .get("revisions")
+                        .is_none_or(|r| r.as_array().is_some_and(Vec::is_empty))
+                {
+                    continue;
+                }
                 let revision = &page["revisions"][0];
                 let (Some(title), Some(timestamp)) = (
                     page["title"].as_str(),
@@ -248,6 +392,9 @@ impl ReplayArchive {
                     timestamp,
                     body: String::from_utf8(bytes)?,
                 };
+                if let Some(event) = roster_event {
+                    archive.event_titles.insert(event, title.to_owned());
+                }
                 match stem
                     .strip_prefix("lp-")
                     .and_then(|s| s.trim_end_matches(".json").parse::<i64>().ok())
@@ -261,16 +408,54 @@ impl ReplayArchive {
                         .or_default()
                         .push(revision),
                 }
+            } else if let Some(rec) = parse_hltv_record_json(&value) {
+                archive.hltv_matches.push(rec?);
             } else {
                 return Err(format!("{name}: unknown kind of saved response").into());
             }
         }
+        load_hltv_dir(dir, &mut archive, &mut digest)?;
+        let serie_maps = load_liquipedia_bundles(dir, &mut archive, &mut digest)?;
+        // One record per HLTV Match: the same page saved twice is one (the
+        // earliest fetch kept); two whose content differs are an error, never
+        // one silently kept.
+        archive.hltv_matches.sort_by_key(|r| (r.match_id, r.fetched_at));
+        let content = |r: &HltvMatchRecord| -> Result<Value> {
+            let mut v = serde_json::to_value(r)?;
+            v.as_object_mut().map(|o| o.remove("fetched_at"));
+            Ok(v)
+        };
+        let mut unique: Vec<HltvMatchRecord> = Vec::with_capacity(archive.hltv_matches.len());
+        for record in std::mem::take(&mut archive.hltv_matches) {
+            match unique.last() {
+                Some(last) if last.match_id == record.match_id => {
+                    if content(last)? != content(&record)? {
+                        return Err(format!(
+                            "HLTV Match {}: two saved records differ; keep one",
+                            record.match_id
+                        )
+                        .into());
+                    }
+                }
+                _ => unique.push(record),
+            }
+        }
+        unique.sort_by_key(|r| (r.started_at, r.match_id));
+        archive.hltv_matches = unique;
         for revisions in archive.event_pages.values_mut() {
             revisions.sort_by_key(|r| r.timestamp);
         }
-        archive.digest = crate::digest(&digest);
+        archive.digest = hex::encode(digest.finalize());
+        let mut map_matches = Vec::new();
+        let mut with_map_file = BTreeSet::new();
         for (id, rows) in matches {
             let stage = stage_from_pandascore(id, &rows, stage_pages.get(&id))?;
+            for row in &rows {
+                archive.match_context.pandascore(stage.id, row);
+            }
+            if let Some(page) = stage_pages.get(&id) {
+                archive.match_context.wiki(stage.event_id, page)?;
+            }
             if let Some(page) = stage_pages.get(&id) {
                 // `PGL/2026/Singapore/Stage 1` belongs to the Event page `PGL/2026/Singapore`;
                 // a Playoffs bracket may live on the Event page itself.
@@ -280,8 +465,29 @@ impl ReplayArchive {
                 };
                 archive.event_titles.insert(stage.event_id, root.to_owned());
             }
+            if let Some(page) = map_pages.remove(&id) {
+                map_matches.extend(super::map_history::link_stage(&stage, page));
+                with_map_file.insert(stage.id);
+            }
             archive.stages.push(stage);
         }
+        for (serie, pages) in serie_maps {
+            let stages: Vec<_> = archive
+                .stages
+                .iter()
+                .filter(|s| s.event_id == serie && !with_map_file.contains(&s.id))
+                .collect();
+            map_matches.extend(super::map_history::link_serie(&stages, &pages));
+        }
+        for (&event_id, title) in &archive.event_titles {
+            for page in archive.event_pages.get(title).into_iter().flatten() {
+                archive.match_context.wiki(event_id, page)?;
+            }
+        }
+        archive.match_context.sort();
+        archive.map_history = MapHistory::new(map_matches);
+        archive.veto_history =
+            super::veto_history::link(&archive.stages, archive.hltv_matches.iter().cloned());
         archive.stages.sort_by_key(|s| (s.cutoff, s.id));
         Ok(archive)
     }
@@ -311,8 +517,18 @@ fn stage_from_pandascore(
     let event_id = first["serie_id"].as_i64().ok_or("missing serie_id")?;
     let kind = if name.to_lowercase().contains("playoff") {
         StageKind::Playoffs
-    } else {
+    } else if name.to_lowercase().contains("group") {
+        StageKind::Groups
+    } else if name.to_lowercase().contains("swiss")
+        || (event.to_lowercase().contains("major")
+            && matches!(
+                name.as_str(),
+                "Elimination Stage" | "Opening Stage" | "Stage 1" | "Stage 2" | "Stage 3"
+            ))
+    {
         StageKind::Swiss
+    } else {
+        StageKind::Other
     };
     let mut teams: BTreeMap<i64, Team> = BTreeMap::new();
     let mut acronyms: BTreeMap<i64, String> = BTreeMap::new();
@@ -339,6 +555,7 @@ fn stage_from_pandascore(
     let mut complete = true;
     let mut opening_rows = Vec::new();
     let mut results = Vec::new();
+    let mut unscored_end: Option<Instant> = None;
     for row in rows {
         let status = row["status"].as_str().unwrap_or("");
         complete &= matches!(status, "finished" | "canceled");
@@ -389,16 +606,36 @@ fn stage_from_pandascore(
         {
             results.push((w, if w == a.id { b.id } else { a.id }));
         }
+        let maps_score = row["results"].as_array().and_then(|res| {
+            let score_of = |tid: i64| {
+                res.iter()
+                    .find(|r| r["team_id"].as_i64() == Some(tid))
+                    .and_then(|r| r["score"].as_u64())
+                    .and_then(|s| u32::try_from(s).ok())
+            };
+            Some((score_of(a.id)?, score_of(b.id)?))
+        });
         match (status, row["forfeit"].as_bool(), winner, scheduled, actual) {
             ("finished", Some(false), Some(w), Some(_), Some(actual)) if w == a.id || w == b.id => {
                 matches.push(ReplayMatch {
                     game,
                     actual_start: actual,
+                    finished_at: instant(&row["end_at"]).unwrap_or(actual).max(actual),
+                    reported_finish: instant(&row["end_at"]),
                     winner: w,
+                    maps_score,
                     round,
+                    bracket_round: super::match_context::BracketRound::parse(row["name"].as_str()),
                 })
             }
-            _ => unscored += 1,
+            _ => {
+                unscored += 1;
+                if status == "finished"
+                    && let Some(end) = instant(&row["end_at"])
+                {
+                    unscored_end = Some(unscored_end.map_or(end, |e| e.max(end)));
+                }
+            }
         }
     }
     matches.sort_by_key(|m| (m.cutoff(), m.game.id));
@@ -408,6 +645,10 @@ fn stage_from_pandascore(
         id,
         event_id,
         event,
+        tier: first["tournament"]["tier"]
+            .as_str()
+            .map(|t| t.trim().to_lowercase())
+            .filter(|t| !t.is_empty()),
         name,
         kind,
         teams,
@@ -415,6 +656,7 @@ fn stage_from_pandascore(
         unscored,
         results,
         complete,
+        unscored_end,
         cutoff,
         opening: None,
         opening_matches: vec![],
@@ -499,6 +741,9 @@ fn opening_view(
         json!({"id": id, "name": t.map(|t| t.name.as_str()).unwrap_or("")})
     };
     match stage.kind {
+        StageKind::Groups | StageKind::Other => {
+            Err("no Pick'em model for this Stage format".into())
+        }
         StageKind::Swiss => {
             let section = content
                 .split("====Round 1====")
@@ -613,4 +858,163 @@ fn field(content: &str, name: &str) -> Option<String> {
     let rest = &content[start..];
     let end = rest.find(['|', '\n']).unwrap_or(rest.len());
     Some(rest[..end].trim().to_owned()).filter(|s| !s.is_empty())
+}
+
+fn hltv_id_from_name(name: &str) -> Option<i64> {
+    name.strip_prefix("hltv-match-")?
+        .split(['-', '.'])
+        .next()?
+        .parse()
+        .ok()
+}
+
+/// Loads the #36 map collector's post-Match Liquipedia revisions,
+/// `<archive>/hltv/liquipedia/event-<PandaScore serie>.json[.gz]` (one
+/// MediaWiki response with a page per Stage page), split into one parsed page
+/// each and keyed by serie. A page without a parsable Stage is skipped: it is
+/// coverage the report shows, not an error.
+fn load_liquipedia_bundles(
+    dir: &Path,
+    archive: &mut ReplayArchive,
+    digest: &mut Sha256,
+) -> Result<BTreeMap<i64, Vec<crate::adapters::hltv_research::archive::LiquipediaStageMaps>>> {
+    let folder = dir.join("hltv").join("liquipedia");
+    let mut out = BTreeMap::new();
+    if !folder.is_dir() {
+        return Ok(out);
+    }
+    let mut paths = Vec::new();
+    for entry in std::fs::read_dir(&folder)? {
+        let entry = entry?;
+        if entry.file_type()?.is_file() {
+            paths.push(entry.path());
+        }
+    }
+    paths.sort();
+    for path in paths {
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        let stem = name.trim_end_matches(".gz");
+        let Some(serie) = stem
+            .strip_prefix("event-")
+            .and_then(|s| s.strip_suffix(".json"))
+            .and_then(|s| s.parse::<i64>().ok())
+        else {
+            continue;
+        };
+        let bytes = read_file(&path)?;
+        digest.update(b"hltv/liquipedia/");
+        digest.update(stem.as_bytes());
+        digest.update(&bytes);
+        archive.files += 1;
+        let value: Value =
+            serde_json::from_slice(&bytes).map_err(|e| format!("{name}: not JSON ({e})"))?;
+        let pages = value["query"]["pages"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        let parsed: &mut Vec<_> = out.entry(serie).or_default();
+        for page in pages {
+            let single = serde_json::json!({ "query": { "pages": [page] } }).to_string();
+            if let Ok(maps) =
+                crate::adapters::hltv_research::liquipedia_maps::parse_stage_maps(&single)
+            {
+                parsed.push(maps);
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Loads saved `HltvMatchRecord` JSONs (or raw `.html.gz` match pages when no
+/// parsed `.json` is cached) from `<archive>/hltv` (and `hltv/matches` if present).
+fn load_hltv_dir(dir: &Path, archive: &mut ReplayArchive, digest: &mut Sha256) -> Result<()> {
+    let mut paths = Vec::new();
+    for subdir in [dir.join("hltv"), dir.join("hltv").join("matches")] {
+        if !subdir.is_dir() {
+            continue;
+        }
+        for entry in std::fs::read_dir(&subdir)? {
+            let entry = entry?;
+            if entry.file_type()?.is_file() {
+                paths.push(entry.path());
+            }
+        }
+    }
+    if paths.is_empty() {
+        return Ok(());
+    }
+    paths.sort();
+
+    let mut seen_ids: BTreeSet<i64> = archive.hltv_matches.iter().map(|r| r.match_id).collect();
+    let mut recorded_parse_errors: BTreeSet<i64> = BTreeSet::new();
+    let manifest_path = dir.join("hltv").join("manifest.json");
+    if manifest_path.is_file()
+        && let Ok(bytes) = std::fs::read(&manifest_path)
+        && let Ok(val) = serde_json::from_slice::<Value>(&bytes)
+        && let Some(errors) = val.get("parse_errors").and_then(Value::as_object)
+    {
+        for id in errors.keys().filter_map(|k| k.parse::<i64>().ok()) {
+            recorded_parse_errors.insert(id);
+        }
+    }
+    let mut html_fallbacks = Vec::new();
+
+    for path in paths {
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        if name.contains("-blocked.") {
+            continue;
+        }
+        let stem = name.trim_end_matches(".gz");
+        if stem.ends_with(".json") {
+            let bytes = read_file(&path)?;
+            let value: Value =
+                serde_json::from_slice(&bytes).map_err(|e| format!("{name}: not JSON ({e})"))?;
+            let Some(rec) = parse_hltv_record_json(&value) else {
+                continue;
+            };
+            let rec = rec?;
+            digest.update(b"hltv/");
+            digest.update(stem.as_bytes());
+            digest.update(&bytes);
+            archive.files += 1;
+            seen_ids.insert(rec.match_id);
+            archive.hltv_matches.push(rec);
+        } else if stem.ends_with(".html")
+            && let Some(match_id) = hltv_id_from_name(stem)
+        {
+            html_fallbacks.push((match_id, stem.to_owned(), path));
+        }
+    }
+
+    for (match_id, stem, path) in html_fallbacks {
+        if recorded_parse_errors.contains(&match_id) {
+            continue;
+        }
+        let bytes = read_file(&path)?;
+        let html = String::from_utf8(bytes)?;
+        let badges = crate::adapters::hltv_research::rank_badges::parse_rank_badges(&html);
+        if !badges.is_empty() {
+            archive.hltv_ranks.insert(match_id, badges);
+        }
+        if !seen_ids.insert(match_id) {
+            // A parsed record is cached: the page is read for its rank badges only.
+            if archive.hltv_ranks.contains_key(&match_id) {
+                digest.update(b"hltv-ranks/");
+                digest.update(stem.as_bytes());
+                digest.update(html.as_bytes());
+                archive.files += 1;
+            }
+            continue;
+        }
+        let url = format!("https://www.hltv.org/matches/{match_id}/match");
+        let rec = parse_match_page(match_id, &url, chrono::DateTime::UNIX_EPOCH, &html)
+            .map_err(|e| format!("{stem}: {e}"))?;
+        digest.update(b"hltv/");
+        digest.update(stem.as_bytes());
+        digest.update(html.as_bytes());
+        archive.files += 1;
+        archive.hltv_matches.push(rec);
+    }
+
+    Ok(())
 }

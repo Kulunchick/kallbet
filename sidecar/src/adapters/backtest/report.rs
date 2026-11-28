@@ -83,6 +83,7 @@ pub fn pickem_points(stage: &ReplayStage, payload: &Value) -> (usize, usize, usi
         )
     };
     match stage.kind {
+        StageKind::Groups | StageKind::Other => (0, 0, 0),
         StageKind::Swiss => {
             let mut points = 0;
             let mut settled = 0;
@@ -350,6 +351,7 @@ pub fn pickem_detail(stage: &ReplayStage, payload: &Value) -> Vec<(String, Vec<P
         .to_owned()
     };
     match stage.kind {
+        StageKind::Groups | StageKind::Other => Default::default(),
         StageKind::Swiss => ["three_nil", "zero_three", "advance"]
             .into_iter()
             .map(|bucket| {
@@ -447,6 +449,14 @@ impl Report {
         }
         line(String::new());
         line("## Data per Stage".into());
+        line(String::new());
+        line(format!(
+            "Across {} scored Matches, {} had a rating, {} a market line and {} a roster.",
+            self.stages.iter().map(|s| s.scored_matches).sum::<usize>(),
+            self.stages.iter().map(|s| s.with_vrs).sum::<usize>(),
+            self.stages.iter().map(|s| s.with_market).sum::<usize>(),
+            self.stages.iter().map(|s| s.with_rosters).sum::<usize>()
+        ));
         line(String::new());
         line("| Stage | Kind | Finished | Scored Matches | Not scored | VRS | Market | Rosters | Pick'em view |".into());
         line("|---|---|---|--:|--:|--:|--:|--:|---|".into());

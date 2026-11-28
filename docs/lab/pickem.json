@@ -1,0 +1,384 @@
+{
+  "protocol_version": "signal-lab/4",
+  "seed": 33,
+  "resamples": 2000,
+  "level": 0.9,
+  "min_stages": 10,
+  "simulations": 5000,
+  "members": 6,
+  "member_noise": 0.5,
+  "discount": 0.5,
+  "archive_digest": "25459d150e1fac87409e38d17a73ab2110444401703a056b1c4d4c846c4df782",
+  "stages": [
+    {
+      "event_id": 7278,
+      "stage_id": 13056,
+      "event": "PGL Major Copenhagen 2024",
+      "stage": "Opening Stage",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "trailing": false,
+      "best_member": 3
+    },
+    {
+      "event_id": 7278,
+      "stage_id": 13058,
+      "event": "PGL Major Copenhagen 2024",
+      "stage": "Elimination Stage",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "trailing": false,
+      "best_member": 4
+    },
+    {
+      "event_id": 7278,
+      "stage_id": 13167,
+      "event": "PGL Major Copenhagen 2024",
+      "stage": "Playoffs",
+      "kind": "playoffs",
+      "picks": 7,
+      "points": [
+        4,
+        4,
+        4,
+        1
+      ],
+      "trailing": true,
+      "best_member": 4
+    },
+    {
+      "event_id": 8751,
+      "stage_id": 15477,
+      "event": "Perfect World Major Shanghai Major 2024",
+      "stage": "Opening Stage",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "trailing": false,
+      "best_member": 6
+    },
+    {
+      "event_id": 8751,
+      "stage_id": 15478,
+      "event": "Perfect World Major Shanghai Major 2024",
+      "stage": "Elimination Stage",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        6,
+        6,
+        6,
+        4
+      ],
+      "trailing": true,
+      "best_member": 6
+    },
+    {
+      "event_id": 8751,
+      "stage_id": 15479,
+      "event": "Perfect World Major Shanghai Major 2024",
+      "stage": "Playoffs",
+      "kind": "playoffs",
+      "picks": 7,
+      "points": [
+        3,
+        3,
+        3,
+        4
+      ],
+      "trailing": true,
+      "best_member": 4
+    },
+    {
+      "event_id": 9309,
+      "stage_id": 16658,
+      "event": "BLAST.tv Major Austin 2025",
+      "stage": "Stage 1",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "trailing": false,
+      "best_member": 6
+    },
+    {
+      "event_id": 9309,
+      "stage_id": 16659,
+      "event": "BLAST.tv Major Austin 2025",
+      "stage": "Stage 2",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "trailing": false,
+      "best_member": 3
+    },
+    {
+      "event_id": 9309,
+      "stage_id": 16660,
+      "event": "BLAST.tv Major Austin 2025",
+      "stage": "Stage 3",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "trailing": true,
+      "best_member": 4
+    },
+    {
+      "event_id": 9309,
+      "stage_id": 16725,
+      "event": "BLAST.tv Major Austin 2025",
+      "stage": "Playoffs",
+      "kind": "playoffs",
+      "picks": 7,
+      "points": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "trailing": false,
+      "best_member": 6
+    },
+    {
+      "event_id": 9822,
+      "stage_id": 17897,
+      "event": "StarLadder Major Budapest 2025",
+      "stage": "Stage 1",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "trailing": false,
+      "best_member": 6
+    },
+    {
+      "event_id": 9822,
+      "stage_id": 17898,
+      "event": "StarLadder Major Budapest 2025",
+      "stage": "Stage 2",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "trailing": false,
+      "best_member": 6
+    },
+    {
+      "event_id": 9822,
+      "stage_id": 17899,
+      "event": "StarLadder Major Budapest 2025",
+      "stage": "Stage 3",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        4,
+        4,
+        4,
+        6
+      ],
+      "trailing": true,
+      "best_member": 5
+    },
+    {
+      "event_id": 9822,
+      "stage_id": 17900,
+      "event": "StarLadder Major Budapest 2025",
+      "stage": "Playoffs",
+      "kind": "playoffs",
+      "picks": 7,
+      "points": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "trailing": false,
+      "best_member": 2
+    },
+    {
+      "event_id": 10488,
+      "stage_id": 20708,
+      "event": "IEM Cologne Major 2026",
+      "stage": "Stage 1",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        4,
+        2,
+        4,
+        4
+      ],
+      "trailing": false,
+      "best_member": 5
+    },
+    {
+      "event_id": 10488,
+      "stage_id": 20709,
+      "event": "IEM Cologne Major 2026",
+      "stage": "Stage 2",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        5,
+        6,
+        6,
+        6
+      ],
+      "trailing": true,
+      "best_member": 7
+    },
+    {
+      "event_id": 10488,
+      "stage_id": 21115,
+      "event": "IEM Cologne Major 2026",
+      "stage": "Stage 3",
+      "kind": "swiss",
+      "picks": 10,
+      "points": [
+        4,
+        2,
+        2,
+        1
+      ],
+      "trailing": true,
+      "best_member": 4
+    },
+    {
+      "event_id": 10488,
+      "stage_id": 20710,
+      "event": "IEM Cologne Major 2026",
+      "stage": "Playoffs",
+      "kind": "playoffs",
+      "picks": 7,
+      "points": [
+        4,
+        4,
+        4,
+        3
+      ],
+      "trailing": true,
+      "best_member": 6
+    }
+  ],
+  "excluded": [
+    "PGL Major Singapore 2026 / Stage 1: the Stage is not complete"
+  ],
+  "variants": [
+    {
+      "name": "baseline",
+      "description": "the solver as it runs live: market line for the opening pairs, Valve's rating otherwise",
+      "verdict": "no evidence",
+      "reason": "the reference",
+      "total_points": 70,
+      "stages_compared": 18,
+      "events": 0,
+      "difference": null,
+      "interval": null,
+      "std_error": null,
+      "detectable": null,
+      "rated_pairs": 0,
+      "fallback_pairs": 0,
+      "mean_place": 3.1666666666666665,
+      "events_first": 2
+    },
+    {
+      "name": "calibrated",
+      "description": "the solver fed by `rating_calibration`, fitted walk-forward",
+      "verdict": "no evidence",
+      "reason": "the interval of the Pick'em Points difference includes zero",
+      "total_points": 67,
+      "stages_compared": 18,
+      "events": 5,
+      "difference": -0.16666666666666666,
+      "interval": {
+        "low": -0.45,
+        "high": 0.0
+      },
+      "std_error": 0.1441112782287933,
+      "detectable": 0.35832906171168316,
+      "rated_pairs": 1180,
+      "fallback_pairs": 268,
+      "mean_place": 3.8333333333333335,
+      "events_first": 2
+    },
+    {
+      "name": "learned",
+      "description": "the solver fed by `learned_weights`, fitted walk-forward",
+      "verdict": "no evidence",
+      "reason": "the interval of the Pick'em Points difference includes zero",
+      "total_points": 69,
+      "stages_compared": 18,
+      "events": 5,
+      "difference": -0.05555555555555555,
+      "interval": {
+        "low": -0.15,
+        "high": 0.0
+      },
+      "std_error": 0.048037092742931,
+      "detectable": 0.1194430205705608,
+      "rated_pairs": 1448,
+      "fallback_pairs": 0,
+      "mean_place": 3.3333333333333335,
+      "events_first": 2
+    },
+    {
+      "name": "variance_seeking",
+      "description": "the baseline, but when trailing on the Pick'em Leaderboard the picks the field shares are worth less",
+      "verdict": "no evidence",
+      "reason": "the interval of the Pick'em Points difference includes zero",
+      "total_points": 65,
+      "stages_compared": 18,
+      "events": 5,
+      "difference": -0.2777777777777778,
+      "interval": {
+        "low": -0.6875,
+        "high": 0.1111111111111111
+      },
+      "std_error": 0.24471388116784937,
+      "detectable": 0.608474898734052,
+      "rated_pairs": 0,
+      "fallback_pairs": 0,
+      "mean_place": 3.8333333333333335,
+      "events_first": 3
+    }
+  ]
+}

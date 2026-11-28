@@ -82,23 +82,47 @@ impl SettledFixture {
     /// Match the history response to this fixture. Return team A's closing
     /// probability as of the requested cutoff, capped at Hard Lock.
     pub fn quote(&self, body: &[u8], cutoff: Instant) -> Result<Option<AsOf<f64>>> {
+        self.quote_parsed(&serde_json::from_slice(body)?, cutoff)
+    }
+
+    /// `quote` on a history already parsed.
+    pub fn quote_parsed(&self, history: &Value, cutoff: Instant) -> Result<Option<AsOf<f64>>> {
         let cutoff = cutoff.min(self.hard_lock);
-        let Some(quote) = parse_history(body, &self.id, cutoff)? else {
+        let Some(quote) = history_quote(history, &self.id, cutoff)? else {
             return Ok(None);
         };
         let first = *quote.at(cutoff)?;
         let team_a = if self.side == 0 { first } else { 1.0 - first };
         Ok(Some(AsOf::new(team_a, quote.observed_at(), cutoff)?))
     }
+
+    /// Every pre-cutoff series price of team A, oldest first, capped at Hard Lock
+    /// like `quote` (a price point is one tick time at which both sides were active).
+    pub fn points(&self, body: &[u8], cutoff: Instant) -> Result<Vec<(Instant, f64)>> {
+        self.points_parsed(&serde_json::from_slice(body)?, cutoff)
+    }
+
+    /// `points` on a history already parsed.
+    pub fn points_parsed(&self, history: &Value, cutoff: Instant) -> Result<Vec<(Instant, f64)>> {
+        let cutoff = cutoff.min(self.hard_lock);
+        let points = history_points(history, &self.id, cutoff)?;
+        Ok(points
+            .into_iter()
+            .map(|(at, p)| (at, if self.side == 0 { p } else { 1.0 - p }))
+            .collect())
+    }
 }
 
 /// Link a canonical Match to an OddsPapi fixture from the Event's settled
 /// `/v4/fixtures` response. Replay can then load that fixture's saved history.
 pub fn match_settled_fixture(body: &[u8], game: &Match) -> Result<Option<SettledFixture>> {
-    let Some(scheduled) = game.scheduled_start else {
-        return Ok(None);
-    };
     let fixtures: Vec<Value> = serde_json::from_slice(body)?;
+    Ok(match_settled_in(&fixtures, game))
+}
+
+/// `match_settled_fixture` on a fixture list already parsed.
+pub fn match_settled_in(fixtures: &[Value], game: &Match) -> Option<SettledFixture> {
+    let scheduled = game.scheduled_start?;
     let candidates: Vec<_> = fixtures
         .iter()
         .filter(|fixture| fixture["statusId"] == 2)
@@ -111,21 +135,20 @@ pub fn match_settled_fixture(body: &[u8], game: &Match) -> Result<Option<Settled
             ))
         })
         .collect();
-    Ok(
-        lines::best(game, &candidates, |item| (&item.1, item.2)).map(|(item, side)| {
-            SettledFixture {
-                id: item.0.into(),
-                side,
-                hard_lock: crate::hard_lock(scheduled).min(item.3),
-            }
-        }),
-    )
+    lines::best(game, &candidates, |item| (&item.1, item.2)).map(|(item, side)| SettledFixture {
+        id: item.0.into(),
+        side,
+        hard_lock: crate::hard_lock(scheduled).min(item.3),
+    })
 }
 
 /// Return the last active pre-cutoff series quote, in OddsPapi participant
 /// order. Replay supplies the matched fixture ID and the Match's Hard Lock cutoff.
 pub fn parse_history(body: &[u8], fixture_id: &str, cutoff: Instant) -> Result<Option<AsOf<f64>>> {
-    let history: Value = serde_json::from_slice(body)?;
+    history_quote(&serde_json::from_slice(body)?, fixture_id, cutoff)
+}
+
+fn history_quote(history: &Value, fixture_id: &str, cutoff: Instant) -> Result<Option<AsOf<f64>>> {
     if history["fixtureId"] != fixture_id {
         return Err("OddsPapi history returned a different fixture".into());
     }
@@ -146,4 +169,62 @@ pub fn parse_history(body: &[u8], fixture_id: &str, cutoff: Instant) -> Result<O
     Ok(fair
         .map(|(p, time)| AsOf::new(p, time, cutoff))
         .transpose()?)
+}
+
+/// Every active pre-cutoff series price (OddsPapi participant order), oldest
+/// first: merges both outcome tick streams in time order and emits one point
+/// whenever both sides are active, from the first bookmaker that has any.
+pub fn parse_history_points(
+    body: &[u8],
+    fixture_id: &str,
+    cutoff: Instant,
+) -> Result<Vec<(Instant, f64)>> {
+    history_points(&serde_json::from_slice(body)?, fixture_id, cutoff)
+}
+
+fn history_points(history: &Value, fixture_id: &str, cutoff: Instant) -> Result<Vec<(Instant, f64)>> {
+    if history["fixtureId"] != fixture_id {
+        return Err("OddsPapi history returned a different fixture".into());
+    }
+    for book in [PINNACLE, FREE_PINNACLE] {
+        // At each tick timestamp, record the update (Some(price) when active,
+        // None when suspended/inactive) for each participant side.
+        let mut events: std::collections::BTreeMap<Instant, [Option<Option<f64>>; 2]> =
+            std::collections::BTreeMap::new();
+        for (side, outcome) in PARTICIPANTS.iter().enumerate() {
+            let ticks = history["bookmakers"][book]["markets"][WINNER]["outcomes"][outcome]
+                ["players"]["0"]
+                .as_array();
+            for tick in ticks.into_iter().flatten() {
+                let Some(time) = timestamp(&tick["createdAt"]) else {
+                    continue;
+                };
+                if time >= cutoff {
+                    continue;
+                }
+                let active_price = (tick["active"] == true)
+                    .then(|| tick["price"].as_f64())
+                    .flatten();
+                events.entry(time).or_default()[side] = Some(active_price);
+            }
+        }
+        let mut current: [Option<f64>; 2] = [None, None];
+        let mut points = Vec::new();
+        for (time, update) in events {
+            for side in 0..2 {
+                if let Some(state) = update[side] {
+                    current[side] = state;
+                }
+            }
+            if let [Some(pa), Some(pb)] = current
+                && let Some([fair_a, _]) = normalize(pa.recip(), pb.recip())
+            {
+                points.push((time, fair_a));
+            }
+        }
+        if !points.is_empty() {
+            return Ok(points);
+        }
+    }
+    Ok(vec![])
 }
