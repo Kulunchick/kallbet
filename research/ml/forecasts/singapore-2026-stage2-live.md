@@ -1,6 +1,6 @@
 # PGL Major Singapore 2026 Stage 2 — LIVE tracking (post-start)
 
-**Live, made 2026-11-28T13:50:07Z during Stage 2** at git `e69bfae381f6782ecf58f8157c7212f639bb61c2` from the PandaScore listing saved as `forecasts/data/panda-22473-matches-live-2026-11-28T134659Z.json.gz` (latest listing change 2026-11-28T13:43:44Z). This is live tracking, separate from the Holdout evaluation, which scores only the pre-registered forecast (`singapore-2026-stage2.md`, unchanged). Probabilities of the remaining Matches come from the pre-Stage models only (inputs as of the cutoff 2026-11-28T04:00:00Z, no refit on any Stage 2 result); finished Matches are fixed, running ones count as unplayed. 5,000,000 GPU runs per model, seed 33.
+**Live, made 2026-11-28T14:51:35Z during Stage 2** at git `0bd98228bdac6faa87e9a893a5cd0c5125b018a9` from the PandaScore listing saved as `forecasts/data/panda-22473-matches-live-2026-11-28T144954Z.json.gz` (latest listing change 2026-11-28T14:47:50Z). This is live tracking, separate from the Holdout evaluation, which scores only the pre-registered forecast (`singapore-2026-stage2.md`, unchanged). Probabilities of the remaining Matches come from the pre-Stage models only (inputs as of the cutoff 2026-11-28T04:00:00Z, no refit on any Stage 2 result); finished Matches are fixed, running ones count as unplayed. 5,000,000 GPU runs per model, seed 33.
 
 ## Results so far
 
@@ -21,7 +21,7 @@
 | 2 | FUT Esports vs 100 Thieves | FUT Esports | finished |
 | 2 | MIBR vs Imperial | MIBR | finished |
 | 2 | Natus Vincere vs Astralis | Astralis | finished |
-| 2 | FlyQuest vs PARIVISION | — | running |
+| 2 | FlyQuest vs PARIVISION | FlyQuest | finished |
 
 Pairing checks: round 2: listed pairing = simulator's pairing.
 
@@ -34,17 +34,17 @@ Pairing checks: round 2: listed pairing = simulator's pairing.
 | G2 | 2–0 |
 | THE ONE | 2–0 |
 | 100 Thieves | 1–1 |
+| FlyQuest | 1–1 |
 | Liquid | 1–1 |
 | MIBR | 1–1 |
 | NIP | 1–1 |
 | Natus Vincere | 1–1 |
 | Nemiga | 1–1 |
 | TheMongolz | 1–1 |
-| FlyQuest | 0–1 |
-| PARIVISION | 0–1 |
 | Eternal Fire | 0–2 |
 | Imperial | 0–2 |
 | Lynn Vision | 0–2 |
+| PARIVISION | 0–2 |
 
 ## lgbm all B (pre-registered)
 
@@ -52,25 +52,25 @@ Pairing checks: round 2: listed pairing = simulator's pairing.
 
 | Model | P(≥5) | P(≥6) | P(≥7) | Expected correct | Score distribution 0…10 |
 |---|---:|---:|---:|---:|---|
-| lgbm all | 49.1% | 20.9% | 4.3% | 4.46 | 1: 0.5% · 2: 4.9% · 3: 17.1% · 4: 28.4% · 5: 28.2% · 6: 16.6% · 7: 4.2% · 8: 0.2% |
-| lgbm-ext | 50.3% | 21.6% | 4.3% | 4.49 | 1: 0.4% · 2: 4.5% · 3: 16.7% · 4: 28.1% · 5: 28.7% · 6: 17.3% · 7: 4.2% · 8: 0.2% |
-| logreg-ext | 49.7% | 20.7% | 4.0% | 4.47 | 1: 0.4% · 2: 4.5% · 3: 16.8% · 4: 28.6% · 5: 28.9% · 6: 16.8% · 7: 3.8% · 8: 0.1% |
-| Anchor | 65.1% | 31.6% | 7.0% | 4.89 | 1: 0.1% · 2: 2.3% · 3: 10.1% · 4: 22.4% · 5: 33.5% · 6: 24.6% · 7: 6.7% · 8: 0.3% |
+| lgbm all | 31.4% | 6.0% | 0.2% | 3.98 | 1: 0.8% · 2: 6.7% · 3: 23.9% · 4: 37.3% · 5: 25.4% · 6: 5.8% · 7: 0.2% |
+| lgbm-ext | 31.7% | 5.8% | 0.2% | 3.99 | 1: 0.7% · 2: 6.4% · 3: 23.5% · 4: 37.7% · 5: 25.8% · 6: 5.6% · 7: 0.2% |
+| logreg-ext | 31.8% | 5.8% | 0.2% | 4.00 | 1: 0.7% · 2: 6.4% · 3: 23.4% · 4: 37.7% · 5: 26.0% · 6: 5.6% · 7: 0.2% |
+| Anchor | 53.9% | 13.6% | 0.6% | 4.54 | 1: 0.1% · 2: 1.4% · 3: 11.0% · 4: 33.7% · 5: 40.2% · 6: 13.0% · 7: 0.6% |
 
 Per pick (probability it comes true; settled = 0% or 100% under every model):
 
 | Pick | Team | Record | lgbm all | lgbm-ext | logreg-ext | Anchor | State |
 |---|---|---|---:|---:|---:|---:|---|
-| 3–0 | FUT Esports | 2–0 | 65.1% | 65.2% | 64.2% | 74.8% | open |
+| 3–0 | FUT Esports | 2–0 | 64.7% | 65.4% | 63.0% | 78.0% | open |
 | 3–0 | TheMongolz | 1–1 | 0.0% | 0.0% | 0.0% | 0.0% | wrong |
-| 0–3 | FlyQuest | 0–1 | 28.0% | 30.0% | 25.1% | 31.4% | open |
-| 0–3 | Lynn Vision | 0–2 | 59.4% | 59.1% | 64.3% | 66.5% | open |
-| advance | Nemiga | 1–1 | 54.9% | 63.7% | 61.8% | 75.5% | open |
-| advance | G2 | 2–0 | 35.2% | 33.5% | 33.3% | 35.6% | open |
-| advance | THE ONE | 2–0 | 46.6% | 43.5% | 40.7% | 56.0% | open |
-| advance | Natus Vincere | 1–1 | 66.7% | 72.3% | 70.0% | 63.4% | open |
-| advance | Liquid | 1–1 | 48.9% | 42.1% | 50.9% | 42.5% | open |
-| advance | PARIVISION | 0–1 | 41.3% | 39.9% | 37.1% | 43.2% | open |
+| 0–3 | FlyQuest | 1–1 | 0.0% | 0.0% | 0.0% | 0.0% | wrong |
+| 0–3 | Lynn Vision | 0–2 | 67.0% | 68.4% | 70.9% | 89.5% | open |
+| advance | Nemiga | 1–1 | 55.7% | 65.1% | 62.9% | 77.6% | open |
+| advance | G2 | 2–0 | 34.5% | 31.2% | 33.2% | 38.8% | open |
+| advance | THE ONE | 2–0 | 43.6% | 40.7% | 36.3% | 43.1% | open |
+| advance | Natus Vincere | 1–1 | 65.9% | 72.1% | 68.1% | 63.6% | open |
+| advance | Liquid | 1–1 | 48.6% | 41.2% | 50.8% | 43.1% | open |
+| advance | PARIVISION | 0–2 | 17.9% | 15.1% | 14.2% | 20.4% | open |
 
 ## Anchor A (pre-registered file)
 
@@ -78,25 +78,25 @@ Per pick (probability it comes true; settled = 0% or 100% under every model):
 
 | Model | P(≥5) | P(≥6) | P(≥7) | Expected correct | Score distribution 0…10 |
 |---|---:|---:|---:|---:|---|
-| lgbm all | 53.1% | 23.9% | 3.9% | 4.54 | 1: 0.6% · 2: 4.8% · 3: 15.6% · 4: 25.9% · 5: 29.3% · 6: 20.0% · 7: 3.9% |
-| lgbm-ext | 54.7% | 24.7% | 4.1% | 4.59 | 1: 0.5% · 2: 4.2% · 3: 14.8% · 4: 25.9% · 5: 30.0% · 6: 20.6% · 7: 4.1% |
-| logreg-ext | 52.6% | 22.8% | 3.7% | 4.53 | 1: 0.5% · 2: 4.6% · 3: 15.6% · 4: 26.6% · 5: 29.9% · 6: 19.1% · 7: 3.7% |
-| Anchor | 66.1% | 33.6% | 5.5% | 4.90 | 1: 0.1% · 2: 2.3% · 3: 10.3% · 4: 21.1% · 5: 32.4% · 6: 28.1% · 7: 5.5% |
+| lgbm all | 47.9% | 19.9% | 3.0% | 4.37 | 0: 0.1% · 1: 1.1% · 2: 6.5% · 3: 17.5% · 4: 26.9% · 5: 28.0% · 6: 16.8% · 7: 3.0% |
+| lgbm-ext | 49.6% | 20.7% | 3.2% | 4.42 | 1: 1.0% · 2: 6.0% · 3: 16.8% · 4: 26.6% · 5: 28.9% · 6: 17.5% · 7: 3.2% |
+| logreg-ext | 47.4% | 19.1% | 2.8% | 4.36 | 1: 1.0% · 2: 6.4% · 3: 17.8% · 4: 27.3% · 5: 28.3% · 6: 16.3% · 7: 2.8% |
+| Anchor | 67.8% | 34.2% | 5.8% | 4.94 | 1: 0.2% · 2: 2.0% · 3: 9.3% · 4: 20.7% · 5: 33.6% · 6: 28.4% · 7: 5.8% |
 
 Per pick (probability it comes true; settled = 0% or 100% under every model):
 
 | Pick | Team | Record | lgbm all | lgbm-ext | logreg-ext | Anchor | State |
 |---|---|---|---:|---:|---:|---:|---|
-| 3–0 | FUT Esports | 2–0 | 65.1% | 65.2% | 64.2% | 74.8% | open |
+| 3–0 | FUT Esports | 2–0 | 64.7% | 65.4% | 63.0% | 78.0% | open |
 | 3–0 | Nemiga | 1–1 | 0.0% | 0.0% | 0.0% | 0.0% | wrong |
-| 0–3 | FlyQuest | 0–1 | 28.0% | 30.0% | 25.1% | 31.4% | open |
-| 0–3 | Lynn Vision | 0–2 | 59.4% | 59.1% | 64.3% | 66.5% | open |
-| advance | G2 | 2–0 | 35.2% | 33.5% | 33.3% | 35.6% | open |
-| advance | THE ONE | 2–0 | 46.6% | 43.5% | 40.7% | 56.0% | open |
-| advance | Natus Vincere | 1–1 | 66.7% | 72.3% | 70.0% | 63.4% | open |
-| advance | Astralis | 2–0 | 43.9% | 42.5% | 40.0% | 48.8% | open |
-| advance | TheMongolz | 1–1 | 60.4% | 64.3% | 62.3% | 54.4% | open |
-| advance | NIP | 1–1 | 48.5% | 48.5% | 52.7% | 58.9% | open |
+| 0–3 | FlyQuest | 1–1 | 0.0% | 0.0% | 0.0% | 0.0% | wrong |
+| 0–3 | Lynn Vision | 0–2 | 67.0% | 68.4% | 70.9% | 89.5% | open |
+| advance | G2 | 2–0 | 34.5% | 31.2% | 33.2% | 38.8% | open |
+| advance | THE ONE | 2–0 | 43.6% | 40.7% | 36.3% | 43.1% | open |
+| advance | Natus Vincere | 1–1 | 65.9% | 72.1% | 68.1% | 63.6% | open |
+| advance | Astralis | 2–0 | 47.5% | 47.8% | 44.0% | 60.9% | open |
+| advance | TheMongolz | 1–1 | 64.0% | 66.9% | 66.1% | 62.4% | open |
+| advance | NIP | 1–1 | 49.4% | 49.0% | 53.8% | 57.5% | open |
 
 ## logreg-ext B (not pre-registered)
 
@@ -104,25 +104,25 @@ Per pick (probability it comes true; settled = 0% or 100% under every model):
 
 | Model | P(≥5) | P(≥6) | P(≥7) | Expected correct | Score distribution 0…10 |
 |---|---:|---:|---:|---:|---|
-| lgbm all | 51.9% | 17.0% | 2.0% | 4.51 | 1: 0.2% · 2: 2.8% · 3: 13.5% · 4: 31.6% · 5: 34.9% · 6: 15.0% · 7: 2.0% |
-| lgbm-ext | 56.8% | 20.3% | 2.9% | 4.64 | 1: 0.1% · 2: 2.0% · 3: 11.3% · 4: 29.9% · 5: 36.4% · 6: 17.5% · 7: 2.8% · 8: 0.1% |
-| logreg-ext | 60.4% | 23.5% | 3.8% | 4.75 | 1: 0.1% · 2: 1.5% · 3: 9.8% · 4: 28.2% · 5: 36.9% · 6: 19.7% · 7: 3.7% · 8: 0.1% |
-| Anchor | 69.5% | 27.0% | 3.2% | 4.94 | 2: 0.3% · 3: 5.4% · 4: 24.7% · 5: 42.5% · 6: 23.9% · 7: 3.1% · 8: 0.1% |
+| lgbm all | 35.2% | 8.0% | 0.6% | 4.08 | 1: 0.6% · 2: 6.0% · 3: 22.0% · 4: 36.2% · 5: 27.1% · 6: 7.5% · 7: 0.6% |
+| lgbm-ext | 39.5% | 9.8% | 0.8% | 4.20 | 1: 0.4% · 2: 4.6% · 3: 19.6% · 4: 36.0% · 5: 29.7% · 6: 9.1% · 7: 0.8% |
+| logreg-ext | 44.0% | 12.3% | 1.1% | 4.32 | 1: 0.2% · 2: 3.5% · 3: 17.3% · 4: 35.0% · 5: 31.7% · 6: 11.2% · 7: 1.1% |
+| Anchor | 59.2% | 17.3% | 1.3% | 4.67 | 2: 0.9% · 3: 8.9% · 4: 31.0% · 5: 42.0% · 6: 16.0% · 7: 1.2% |
 
 Per pick (probability it comes true; settled = 0% or 100% under every model):
 
 | Pick | Team | Record | lgbm all | lgbm-ext | logreg-ext | Anchor | State |
 |---|---|---|---:|---:|---:|---:|---|
-| 3–0 | FUT Esports | 2–0 | 65.1% | 65.2% | 64.2% | 74.8% | open |
+| 3–0 | FUT Esports | 2–0 | 64.7% | 65.4% | 63.0% | 78.0% | open |
 | 3–0 | TheMongolz | 1–1 | 0.0% | 0.0% | 0.0% | 0.0% | wrong |
-| 0–3 | FlyQuest | 0–1 | 28.0% | 30.0% | 25.1% | 31.4% | open |
-| 0–3 | Lynn Vision | 0–2 | 59.4% | 59.1% | 64.3% | 66.5% | open |
-| advance | Nemiga | 1–1 | 54.9% | 63.7% | 61.8% | 75.5% | open |
-| advance | Natus Vincere | 1–1 | 66.7% | 72.3% | 70.0% | 63.4% | open |
-| advance | NIP | 1–1 | 48.5% | 48.5% | 52.7% | 58.9% | open |
-| advance | Liquid | 1–1 | 48.9% | 42.1% | 50.9% | 42.5% | open |
-| advance | PARIVISION | 0–1 | 41.3% | 39.9% | 37.1% | 43.2% | open |
-| advance | 100 Thieves | 1–1 | 38.4% | 43.7% | 48.6% | 37.5% | open |
+| 0–3 | FlyQuest | 1–1 | 0.0% | 0.0% | 0.0% | 0.0% | wrong |
+| 0–3 | Lynn Vision | 0–2 | 67.0% | 68.4% | 70.9% | 89.5% | open |
+| advance | Nemiga | 1–1 | 55.7% | 65.1% | 62.9% | 77.6% | open |
+| advance | Natus Vincere | 1–1 | 65.9% | 72.1% | 68.1% | 63.6% | open |
+| advance | NIP | 1–1 | 49.4% | 49.0% | 53.8% | 57.5% | open |
+| advance | Liquid | 1–1 | 48.6% | 41.2% | 50.8% | 43.1% | open |
+| advance | PARIVISION | 0–2 | 17.9% | 15.1% | 14.2% | 20.4% | open |
+| advance | 100 Thieves | 1–1 | 38.6% | 43.9% | 48.6% | 37.4% | open |
 
 ## Method
 
