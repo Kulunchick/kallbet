@@ -4,29 +4,34 @@
 //! who has predicted, the stored Lock and Reveal timestamps, and now. Output:
 //! whether the Match is locked or revealed, and the transitions to persist.
 //!
-//! Lock happens at Scheduled Start minus [`LOCK_BEFORE_START`], or at the
+//! Lock happens at Scheduled Start minus [`LOCK_BEFORE_START`] once both
+//! teams of the Match are known (TBD slots do not Lock by schedule), or at the
 //! actual start if that is earlier, recomputed from the latest Scheduled
-//! Start until it happens. Once stored it is never undone: a later
-//! postponement does not reopen the Match.
+//! Start until it happens. When an `Upcoming` Match is postponed so that
+//! neither a scheduled deadline nor an early edit window still holds, any
+//! stored Lock reopens for Members who have not yet predicted (full unlock
+//! if a human Eligible Member missed predicting or zero Predictions exist;
+//! Hard Lock unlock only if every human predicted but a Bot User did not).
+//! Once every Eligible Member has predicted, or the Match has started or been
+//! cancelled, stored Locks remain permanent across any postponement.
 //!
 //! When the final Eligible Member submits a Prediction, an edit window can
 //! delay early Lock and Reveal by up to five minutes. Normal Lock deadlines
 //! still apply. When a membership change completes participation with no
 //! final submission, the Match Locks and Reveals immediately.
 //! Otherwise Reveal happens at Lock, stamped with the Lock time. A League
-//! with no Eligible Member waits for Lock. Both stamps are stored once and
-//! never cleared, so `revealed_at` is the one record of when a Reveal
-//! happened.
+//! with no Eligible Member waits for Lock.
 //!
 //! Bot Users (ADR-0003's amendment). The early Reveal is the humans' affair:
 //! it waits for every *human* Eligible Member and for nobody else, so a
 //! League without one waits for Lock. The Lock it brings (`locked_at`) binds
 //! the humans. A Bot User is bound by the **Hard Lock** only
 //! (`hard_locked_at`): the Lock the schedule or the Match itself brings
-//! (Scheduled Start minus 15 minutes, actual start, cancellation), which is
-//! stored once and never undone like the others. Until then a Bot User may
-//! predict, and must not be shown what was revealed (the API's job, see
-//! `api::matches`).
+//! (Scheduled Start minus 15 minutes once both teams are known, actual start,
+//! cancellation). If a Bot User missed the Hard Lock and the `Upcoming` Match
+//! is postponed, the Hard Lock alone reopens (`HardUnlocked`) while the
+//! humans' Lock/Reveal stays; until Hard Lock a Bot User may predict and
+//! must not be shown what was revealed (the API's job, see `api::matches`).
 
 use chrono::{DateTime, Duration, Utc};
 
@@ -47,7 +52,9 @@ pub struct MemberSpan {
     pub is_bot: bool,
 }
 
-/// The per-League timestamps stored for a Match. Set once, never cleared.
+/// The per-League timestamps stored for a Match. Retained once every
+/// Eligible Member has predicted (or once the Match starts/cancels); reopened
+/// on postponement for any Member who missed predicting.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Stamps {
     /// The Lock of the human Members: an early Reveal or the Hard Lock,
@@ -77,6 +84,14 @@ pub enum Transition {
     Locked(DateTime<Utc>),
     Revealed(DateTime<Utc>),
     HardLocked(DateTime<Utc>),
+    /// A scheduled Lock on an Upcoming Match was cleared on postponement
+    /// because at least one human Eligible Member had not predicted (or zero
+    /// Predictions existed).
+    Unlocked,
+    /// A Hard Lock on an Upcoming Match was cleared on postponement because at
+    /// least one Bot User Eligible Member had not predicted, while the humans'
+    /// Lock and Reveal stayed.
+    HardUnlocked,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -85,12 +100,12 @@ pub struct Outcome {
     pub stamps: Stamps,
     /// When the Match Locks (or Locked) for the humans, for the countdown:
     /// the stored Lock, else Scheduled Start minus 15 minutes. `None`
-    /// without a Scheduled Start.
+    /// without a Scheduled Start or while either team is TBD.
     pub lock_time: Option<DateTime<Utc>>,
     /// When the Match Hard Locks (or did): the stored Hard Lock, else
     /// Scheduled Start minus 15 minutes. A Bot User's countdown.
     pub hard_lock_time: Option<DateTime<Utc>>,
-    /// New stamps to persist; empty when nothing changed.
+    /// Transitions to persist; empty when nothing changed.
     pub transitions: Vec<Transition>,
     /// The Eligible Members (the M of "N of M predicted"), in membership
     /// order: current Members who joined before their Lock (any current
@@ -118,8 +133,12 @@ impl Outcome {
     }
 }
 
-/// The Lock that the schedule asks for: Scheduled Start minus 15 minutes.
+/// The Lock that the schedule asks for: Scheduled Start minus 15 minutes,
+/// once both teams of the Match are known.
 pub fn scheduled_lock(game: &Match) -> Option<DateTime<Utc>> {
+    if game.team_a.is_none() || game.team_b.is_none() {
+        return None;
+    }
     game.scheduled_start.map(|start| start - LOCK_BEFORE_START)
 }
 
@@ -135,6 +154,26 @@ pub fn evaluate(inputs: &Inputs<'_>) -> Outcome {
     let mut stamps = stored;
     let mut transitions = Vec::new();
     let due = lock_due(game, now);
+
+    // Reopen a postponed Upcoming Match if any Eligible Member (as of the
+    // stored Lock) has not yet predicted (ADR-0003's amendment).
+    if game.status == MatchStatus::Upcoming && due.is_none() {
+        let stored_humans = eligible_where(members, stamps, |m| !m.is_bot);
+        let stored_bots = eligible_where(members, stamps, |m| m.is_bot);
+        let human_missing = stored_humans.iter().any(|u| !predicted.contains(u));
+        let bot_missing = stored_bots.iter().any(|u| !predicted.contains(u));
+        let has_stored = stamps.locked_at.is_some()
+            || stamps.revealed_at.is_some()
+            || stamps.hard_locked_at.is_some();
+
+        if has_stored && edit_until.is_none() && (human_missing || predicted.is_empty()) {
+            stamps = Stamps::default();
+            transitions.push(Transition::Unlocked);
+        } else if stamps.hard_locked_at.is_some() && bot_missing {
+            stamps.hard_locked_at = None;
+            transitions.push(Transition::HardUnlocked);
+        }
+    }
 
     if stamps.locked_at.is_none()
         && let Some(at) = due
@@ -230,7 +269,7 @@ mod tests {
     use chrono::TimeZone;
 
     use super::*;
-    use crate::domain::{MatchFormat, MatchId, MatchPlacement, StageOrdinal};
+    use crate::domain::{MatchFormat, MatchId, MatchPlacement, StageOrdinal, TeamId};
 
     fn at(h: u32, m: u32) -> DateTime<Utc> {
         Utc.with_ymd_and_hms(2026, 1, 10, h, m, 0).unwrap()
@@ -241,8 +280,8 @@ mod tests {
             id: MatchId(1),
             stage: StageOrdinal(1),
             placement: MatchPlacement::Unplaced,
-            team_a: None,
-            team_b: None,
+            team_a: Some(TeamId(1)),
+            team_b: Some(TeamId(2)),
             format: MatchFormat::Bo3,
             scheduled_start: Some(start),
             actual_start: None,
@@ -306,12 +345,194 @@ mod tests {
             revealed_at: Some(at(13, 45)),
             hard_locked_at: Some(at(13, 45)),
         };
-        let out = run(&game(at(18, 0)), stored, at(14, 0));
+        let members = [span(1, at(9, 0), None)];
+        let out = evaluate(&Inputs {
+            game: &game(at(18, 0)),
+            members: &members,
+            predicted: &[UserId(1)],
+            stored,
+            edit_until: None,
+            now: at(14, 0),
+        });
         assert!(out.is_locked());
         assert!(out.is_hard_locked());
         assert_eq!(out.lock_time, Some(at(13, 45)));
         assert_eq!(out.hard_lock_time, Some(at(13, 45)));
         assert!(out.transitions.is_empty());
+
+        // A human who joined only after the Lock was not Eligible for it and
+        // does not reopen it when the Match is postponed.
+        let with_latecomer = [span(1, at(9, 0), None), span(2, at(13, 50), None)];
+        let kept = evaluate(&Inputs {
+            game: &game(at(18, 0)),
+            members: &with_latecomer,
+            predicted: &[UserId(1)],
+            stored,
+            edit_until: None,
+            now: at(14, 0),
+        });
+        assert!(kept.is_locked());
+        assert!(kept.transitions.is_empty());
+        assert_eq!(kept.eligible, [UserId(1)]);
+    }
+
+    #[test]
+    fn a_tbd_match_does_not_lock_by_schedule() {
+        let mut both_tbd = game(at(14, 0));
+        both_tbd.team_a = None;
+        both_tbd.team_b = None;
+        assert_eq!(scheduled_lock(&both_tbd), None);
+        let out = run(&both_tbd, Stamps::default(), at(14, 30));
+        assert!(!out.is_locked());
+        assert!(!out.is_hard_locked());
+        assert_eq!(out.lock_time, None);
+        assert!(out.transitions.is_empty());
+
+        let mut half_tbd = game(at(14, 0));
+        half_tbd.team_b = None;
+        assert_eq!(scheduled_lock(&half_tbd), None);
+        assert!(!run(&half_tbd, Stamps::default(), at(14, 30)).is_locked());
+
+        // An actual start or cancellation still Locks a TBD Match.
+        let mut live_tbd = both_tbd.clone();
+        live_tbd.status = MatchStatus::Live;
+        assert!(run(&live_tbd, Stamps::default(), at(14, 30)).is_locked());
+        let mut cancelled_tbd = both_tbd;
+        cancelled_tbd.status = MatchStatus::Cancelled;
+        assert!(run(&cancelled_tbd, Stamps::default(), at(12, 0)).is_locked());
+    }
+
+    #[test]
+    fn an_empty_scheduled_lock_reopens_on_postponement() {
+        let stored = Stamps {
+            locked_at: Some(at(13, 45)),
+            revealed_at: Some(at(13, 45)),
+            hard_locked_at: Some(at(13, 45)),
+        };
+        let members = [span(1, at(9, 0), None), span(2, at(13, 50), None)];
+        let out = evaluate(&Inputs {
+            game: &game(at(18, 0)),
+            members: &members,
+            predicted: &[],
+            stored,
+            edit_until: None,
+            now: at(14, 0),
+        });
+        assert!(!out.is_locked());
+        assert!(!out.is_revealed());
+        assert!(!out.is_hard_locked());
+        assert_eq!(out.stamps, Stamps::default());
+        assert_eq!(out.transitions, [Transition::Unlocked]);
+        assert_eq!(out.lock_time, Some(at(17, 45)));
+        assert_eq!(out.hard_lock_time, Some(at(17, 45)));
+        assert_eq!(out.eligible, [UserId(1), UserId(2)]);
+
+        let mut unscheduled = game(at(18, 0));
+        unscheduled.scheduled_start = None;
+        let cleared = run(&unscheduled, stored, at(14, 0));
+        assert!(!cleared.is_locked());
+        assert_eq!(cleared.transitions, [Transition::Unlocked]);
+        assert_eq!(cleared.lock_time, None);
+    }
+
+    #[test]
+    fn an_empty_lock_stays_locked_when_still_due_or_started_or_cancelled() {
+        let stored = Stamps {
+            locked_at: Some(at(13, 45)),
+            revealed_at: Some(at(13, 45)),
+            hard_locked_at: Some(at(13, 45)),
+        };
+        // Postponed from 14:00 to 14:10 -> new lock is 13:55, already <= 14:00.
+        let still_due = run(&game(at(14, 10)), stored, at(14, 0));
+        assert!(still_due.is_locked());
+        assert!(still_due.transitions.is_empty());
+
+        for status in [MatchStatus::Live, MatchStatus::Finished, MatchStatus::Cancelled] {
+            let mut g = game(at(18, 0));
+            g.status = status;
+            let out = run(&g, stored, at(14, 0));
+            assert!(out.is_locked(), "{status:?} stays locked");
+            assert!(out.transitions.is_empty());
+        }
+    }
+
+    #[test]
+    fn a_partial_scheduled_lock_reopens_when_a_human_missed_it() {
+        let stored = Stamps {
+            locked_at: Some(at(13, 45)),
+            revealed_at: Some(at(13, 45)),
+            hard_locked_at: Some(at(13, 45)),
+        };
+        let members = [
+            span(1, at(9, 0), None),
+            span(2, at(9, 0), None),
+            bot(7, at(9, 0)),
+        ];
+        // One human predicted and the other did not: postponing reopens the Match.
+        let partial = evaluate(&Inputs {
+            game: &game(at(18, 0)),
+            members: &members,
+            predicted: &[UserId(1)],
+            stored,
+            edit_until: None,
+            now: at(14, 0),
+        });
+        assert!(!partial.is_locked());
+        assert!(!partial.is_revealed());
+        assert!(!partial.is_hard_locked());
+        assert_eq!(partial.transitions, [Transition::Unlocked]);
+        assert_eq!(partial.lock_time, Some(at(17, 45)));
+        assert_eq!(partial.hard_lock_time, Some(at(17, 45)));
+
+        // Bot predicted only while neither human predicted: also reopens.
+        let bot_only = evaluate(&Inputs {
+            game: &game(at(18, 0)),
+            members: &members,
+            predicted: &[UserId(7)],
+            stored,
+            edit_until: None,
+            now: at(14, 0),
+        });
+        assert!(!bot_only.is_locked());
+        assert!(!bot_only.is_hard_locked());
+        assert_eq!(bot_only.transitions, [Transition::Unlocked]);
+    }
+
+    #[test]
+    fn a_hard_lock_reopens_for_a_missing_bot_while_keeping_human_reveal() {
+        let stored = Stamps {
+            locked_at: Some(at(12, 0)),
+            revealed_at: Some(at(12, 0)),
+            hard_locked_at: Some(at(13, 45)),
+        };
+        let members = [span(1, at(9, 0), None), bot(7, at(9, 0))];
+        let out = evaluate(&Inputs {
+            game: &game(at(18, 0)),
+            members: &members,
+            predicted: &[UserId(1)],
+            stored,
+            edit_until: Some(at(12, 0)),
+            now: at(14, 0),
+        });
+        assert!(out.is_locked());
+        assert!(out.is_revealed());
+        assert!(!out.is_hard_locked());
+        assert_eq!(out.lock_time, Some(at(12, 0)));
+        assert_eq!(out.hard_lock_time, Some(at(17, 45)));
+        assert_eq!(out.transitions, [Transition::HardUnlocked]);
+
+        // Once the Bot User also predicted, postponement keeps the Hard Lock too.
+        let both_locked = evaluate(&Inputs {
+            game: &game(at(18, 0)),
+            members: &members,
+            predicted: &[UserId(1), UserId(7)],
+            stored,
+            edit_until: Some(at(12, 0)),
+            now: at(14, 0),
+        });
+        assert!(both_locked.is_locked());
+        assert!(both_locked.is_hard_locked());
+        assert!(both_locked.transitions.is_empty());
     }
 
     #[test]
@@ -416,20 +637,30 @@ mod tests {
             revealed_at: Some(at(12, 0)),
             hard_locked_at: None,
         };
+        let eval = |g: &Match, stored: Stamps, now: DateTime<Utc>| {
+            evaluate(&Inputs {
+                game: g,
+                members: &[],
+                predicted: &[UserId(1)],
+                stored,
+                edit_until: None,
+                now,
+            })
+        };
         let g = game(at(14, 0));
-        assert!(run(&g, early, at(13, 44)).transitions.is_empty());
+        assert!(eval(&g, early, at(13, 44)).transitions.is_empty());
 
-        let out = run(&g, early, at(13, 50));
+        let out = eval(&g, early, at(13, 50));
         assert_eq!(out.transitions, [Transition::HardLocked(at(13, 45))]);
         assert_eq!(out.stamps.locked_at, Some(at(12, 0)));
 
         // Postponed afterwards: it stays.
-        let later = run(&game(at(18, 0)), out.stamps, at(14, 0));
+        let later = eval(&game(at(18, 0)), out.stamps, at(14, 0));
         assert!(later.is_hard_locked());
         assert_eq!(later.hard_lock_time, Some(at(13, 45)));
         assert!(later.transitions.is_empty());
         // Postponed before it came: a Bot User has until the new one.
-        let moved = run(&game(at(18, 0)), early, at(14, 0));
+        let moved = eval(&game(at(18, 0)), early, at(14, 0));
         assert!(!moved.is_hard_locked());
         assert_eq!(moved.hard_lock_time, Some(at(17, 45)));
         assert_eq!(moved.lock_time, Some(at(12, 0)));

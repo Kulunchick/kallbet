@@ -1,6 +1,6 @@
 //! Persistence of Predictions and the per-League Match lock state
-//! (`match_locks`: Lock, Reveal and Hard Lock timestamps, set once and never
-//! cleared).
+//! (`match_locks`: Lock, Reveal and Hard Lock timestamps; kept once any
+//! Prediction exists, or cleared if an empty scheduled Lock is postponed).
 
 use std::collections::HashMap;
 
@@ -179,7 +179,9 @@ pub async fn stamps<'e>(
 }
 
 /// Persists the transitions of one evaluation. A stamp already stored is
-/// never overwritten.
+/// never overwritten; [`Transition::Unlocked`] removes the Lock row and
+/// [`Transition::HardUnlocked`] clears `hard_locked_at` when a postponed Match
+/// reopens for Members who missed predicting.
 pub async fn record(
     db: &mut SqliteConnection,
     league: LeagueId,
@@ -188,6 +190,25 @@ pub async fn record(
 ) -> Result<(), sqlx::Error> {
     for transition in transitions {
         let (locked_at, revealed_at, hard_locked_at) = match *transition {
+            Transition::Unlocked => {
+                sqlx::query("DELETE FROM match_locks WHERE league_id = ? AND match_id = ?")
+                    .bind(league)
+                    .bind(game)
+                    .execute(&mut *db)
+                    .await?;
+                continue;
+            }
+            Transition::HardUnlocked => {
+                sqlx::query(
+                    "UPDATE match_locks SET hard_locked_at = NULL \
+                     WHERE league_id = ? AND match_id = ?",
+                )
+                .bind(league)
+                .bind(game)
+                .execute(&mut *db)
+                .await?;
+                continue;
+            }
             Transition::Locked(at) => (Some(at), None, None),
             Transition::Revealed(at) => (None, Some(at), None),
             Transition::HardLocked(at) => (None, None, Some(at)),

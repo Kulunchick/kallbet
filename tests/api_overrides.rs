@@ -155,7 +155,19 @@ async fn a_scheduled_start_override_moves_the_lock_in_its_league_only() {
 #[tokio::test]
 async fn a_lock_that_happened_stays_when_an_override_postpones_the_match() {
     let s = setup().await;
-    s.app.clock.advance(Duration::minutes(106)); // 14 minutes before the start
+    // Alice predicts 17 minutes before the start; her 5-minute edit window is
+    // cut off by the scheduled Lock 15 minutes before the start, so all
+    // Eligible Members have predicted when it Locks.
+    s.app.clock.advance(Duration::minutes(103));
+    let pred = s
+        .alice
+        .put(
+            &format!("/api/leagues/{}/matches/101/prediction", s.league),
+            &json!({ "team_id": NAVI }),
+        )
+        .await;
+    assert_eq!(pred.status, StatusCode::OK, "{}", pred.text());
+    s.app.clock.advance(Duration::minutes(3)); // 14 minutes before the start
     assert_eq!(card(&s.alice, s.league, 101).await["lock"]["locked"], true);
 
     let later = s.app.clock.now() + Duration::hours(5);
@@ -174,10 +186,64 @@ async fn a_lock_that_happened_stays_when_an_override_postpones_the_match() {
         .alice
         .put(
             &format!("/api/leagues/{}/matches/101/prediction", s.league),
-            &json!({ "team_id": NAVI }),
+            &json!({ "team_id": FAZE }),
         )
         .await;
     assert_eq!(res.error_code(), "match_locked");
+}
+
+#[tokio::test]
+async fn a_scheduled_start_override_reopens_a_lock_when_someone_missed_predicting() {
+    let s = setup().await;
+    let bob = s.member("bob").await;
+    // Empty scheduled Lock (0 predictions) reopens on Override.
+    s.app.clock.advance(Duration::minutes(106));
+    assert_eq!(card(&s.alice, s.league, 101).await["lock"]["locked"], true);
+
+    let later = s.app.clock.now() + Duration::hours(5);
+    s.set(
+        &s.alice,
+        s.league,
+        101,
+        json!({ "field": "scheduled_start", "scheduled_start": later }),
+    )
+    .await;
+
+    let game = card(&s.alice, s.league, 101).await;
+    assert_eq!(game["lock"]["locked"], false, "{game}");
+    assert_eq!(game["lock"]["can_predict"], true, "{game}");
+    let res = s
+        .alice
+        .put(
+            &format!("/api/leagues/{}/matches/101/prediction", s.league),
+            &json!({ "team_id": NAVI }),
+        )
+        .await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.text());
+
+    // Partial scheduled Lock (Alice predicted, Bob did not) also reopens when
+    // another Scheduled Start Override postpones it again.
+    s.app.clock.set(later - Duration::minutes(14));
+    assert_eq!(card(&bob, s.league, 101).await["lock"]["locked"], true);
+    let much_later = later + Duration::hours(4);
+    s.set(
+        &s.alice,
+        s.league,
+        101,
+        json!({ "field": "scheduled_start", "scheduled_start": much_later }),
+    )
+    .await;
+
+    let reopened = card(&bob, s.league, 101).await;
+    assert_eq!(reopened["lock"]["locked"], false, "{reopened}");
+    assert_eq!(reopened["lock"]["can_predict"], true, "{reopened}");
+    let bob_put = bob
+        .put(
+            &format!("/api/leagues/{}/matches/101/prediction", s.league),
+            &json!({ "team_id": FAZE }),
+        )
+        .await;
+    assert_eq!(bob_put.status, StatusCode::OK, "{}", bob_put.text());
 }
 
 #[tokio::test]

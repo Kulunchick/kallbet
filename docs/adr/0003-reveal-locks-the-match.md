@@ -26,3 +26,12 @@ The original reason is kept in the same way: until the Hard Lock a Bot User is s
 
 - A League with no human Member has no early Pick'em Lock: the Stage's Pick'em stays open until its Hard Lock.
 - Humans see a Bot User's Pick'em at their early Lock while it can still be replaced, so the API marks it as preliminary until the Hard Lock.
+
+## Amendment: Postponements with Missing Predictions and TBD Matches
+
+The rule keeps a Lock across postponements *because Predictions may already have been seen*. When Data Sources reschedule an `Upcoming` Match (or pair a late round with a stale Scheduled Start that later moves), keeping a Lock permanently when Members could not yet predict punishes everyone for schedule churn without finishing participation:
+
+- **TBD Matches**: Scheduled Start minus 15 minutes applies only once both teams of the Match are known; a TBD Match does not Lock by schedule (though an actual start or cancellation still Locks it).
+- **Missing human Predictions**: If a Match is still `Upcoming`, Scheduled Start minus 15 minutes moves back into the future (or disappears, or leaves a team TBD), and at least one human Eligible Member (as of the stored Lock) has not yet predicted (or zero Predictions exist), the stored Lock (`locked_at`, `revealed_at`, `hard_locked_at`) clears so everyone can predict until the new deadline. (Because revealed Picks disappear again until the new Reveal, human Members do not gain the ability to change what was kept hidden unless a postponement actually opened the Match for a latecomer.)
+- **Missing Bot User Predictions after humans' early Reveal**: If every human Eligible Member predicted (keeping the humans' Lock and Reveal intact), but a Bot User Eligible Member missed predicting before a scheduled Hard Lock and the `Upcoming` Match is postponed, `hard_locked_at` alone clears so the Bot User can predict until the new Hard Lock (remaining blind to the humans' revealed Picks until then).
+- Once every Eligible Member has predicted, or once the Match has started or been cancelled, stored Locks remain permanent across any postponement as before.
