@@ -13,6 +13,7 @@ with probability `eps` (0 for the market follower); no consensus means every opp
 """
 from __future__ import annotations
 
+import functools
 import heapq
 import math
 from dataclasses import dataclass
@@ -35,6 +36,7 @@ def _binom(n: int, p: float) -> np.ndarray:
     return np.array([math.comb(n, k) * p ** k * (1 - p) ** (n - k) for k in range(n + 1)])
 
 
+@functools.lru_cache(maxsize=256)
 def transitions(n_opp: int, eps: float):
     """{outcome: (P_inc0, P_inc1)}, outcome 1 = consensus side wins, 0 = it loses; P_inc[s, s'] =
     P(leader gains inc and the field moves from state s to s')."""
